@@ -1,6 +1,6 @@
 ---
 title: Dashboard & Core Layout
-status: todo
+status: in_progress
 priority: high
 type: feature
 tags: [frontend, dashboard, navigation]

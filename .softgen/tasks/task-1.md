@@ -1,6 +1,6 @@
 ---
 title: Database Schema & Design System
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [database, design, foundation]
