@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ExternalLink, TrendingUp, TrendingDown, Activity, Droplets, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { ExternalLink, TrendingUp, TrendingDown, Activity, Droplets, ArrowUpRight, ArrowDownRight, Coins } from "lucide-react";
 
 const positions = [
   {

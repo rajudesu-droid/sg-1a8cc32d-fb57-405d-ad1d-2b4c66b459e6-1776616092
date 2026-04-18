@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Pencil, Trash2, Download, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, Download, Upload, RefreshCw } from "lucide-react";
 
 const mockAssets = [
   {
@@ -94,131 +94,19 @@ export default function DemoPortfolio() {
             </p>
           </div>
 
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
+          <div className="flex items-center gap-3">
+            <Button onClick={() => setIsAddAssetOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Asset
+            </Button>
+            <Button variant="outline" className="gap-2">
               <Download className="h-4 w-4" />
-              Export
+              Import Sample Portfolio
             </Button>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Upload className="h-4 w-4" />
-              Import Sample
+            <Button variant="outline" className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Reset Simulation
             </Button>
-            <Dialog open={isAddAssetOpen} onOpenChange={setIsAddAssetOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Asset
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Add Asset to Demo Portfolio</DialogTitle>
-                  <DialogDescription>
-                    Manually add assets with custom balances for simulation
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="search">Search Asset</Label>
-                    <Input
-                      id="search"
-                      placeholder="Search by symbol (e.g., USDT, BTC, SOL)..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-4">
-                    <h3 className="font-semibold text-sm">Or enter manually</h3>
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="chain">Chain Family</Label>
-                        <Select>
-                          <SelectTrigger id="chain">
-                            <SelectValue placeholder="Select chain family" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="evm">EVM (Ethereum, BSC, Polygon, etc.)</SelectItem>
-                            <SelectItem value="solana">Solana</SelectItem>
-                            <SelectItem value="tron">TRON</SelectItem>
-                            <SelectItem value="bitcoin">Bitcoin</SelectItem>
-                            <SelectItem value="xrpl">XRPL</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="network">Network</Label>
-                        <Select>
-                          <SelectTrigger id="network">
-                            <SelectValue placeholder="Select network" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ethereum">Ethereum</SelectItem>
-                            <SelectItem value="bsc">BSC</SelectItem>
-                            <SelectItem value="polygon">Polygon</SelectItem>
-                            <SelectItem value="avalanche">Avalanche</SelectItem>
-                            <SelectItem value="solana">Solana</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="asset-kind">Asset Kind</Label>
-                        <Select>
-                          <SelectTrigger id="asset-kind">
-                            <SelectValue placeholder="Select asset kind" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="native">Native (ETH, BNB, etc.)</SelectItem>
-                            <SelectItem value="token">Token (ERC20, SPL, etc.)</SelectItem>
-                            <SelectItem value="lp">LP Position</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="symbol">Symbol</Label>
-                        <Input id="symbol" placeholder="e.g., USDC" />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="name">Name</Label>
-                        <Input id="name" placeholder="e.g., USD Coin" />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="contract">Contract Address (if token)</Label>
-                        <Input id="contract" placeholder="0x..." />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="quantity">Quantity</Label>
-                        <Input id="quantity" type="number" placeholder="0.00" />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="price">Price Override (optional)</Label>
-                        <Input id="price" type="number" placeholder="Auto from oracle" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-4">
-                    <Button variant="outline" onClick={() => setIsAddAssetOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={() => setIsAddAssetOpen(false)}>
-                      Add to Portfolio
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
           </div>
         </div>
 
@@ -365,6 +253,117 @@ export default function DemoPortfolio() {
             </div>
           </CardContent>
         </Card>
+
+        <Dialog open={isAddAssetOpen} onOpenChange={setIsAddAssetOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Add Asset to Demo Portfolio</DialogTitle>
+              <DialogDescription>
+                Manually add assets with custom balances for simulation
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="search">Search Asset</Label>
+                <Input
+                  id="search"
+                  placeholder="Search by symbol (e.g., USDT, BTC, SOL)..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                <h3 className="font-semibold text-sm">Or enter manually</h3>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="chain">Chain Family</Label>
+                    <Select>
+                      <SelectTrigger id="chain">
+                        <SelectValue placeholder="Select chain family" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="evm">EVM (Ethereum, BSC, Polygon, etc.)</SelectItem>
+                        <SelectItem value="solana">Solana</SelectItem>
+                        <SelectItem value="tron">TRON</SelectItem>
+                        <SelectItem value="bitcoin">Bitcoin</SelectItem>
+                        <SelectItem value="xrpl">XRPL</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="network">Network</Label>
+                    <Select>
+                      <SelectTrigger id="network">
+                        <SelectValue placeholder="Select network" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ethereum">Ethereum</SelectItem>
+                        <SelectItem value="bsc">BSC</SelectItem>
+                        <SelectItem value="polygon">Polygon</SelectItem>
+                        <SelectItem value="avalanche">Avalanche</SelectItem>
+                        <SelectItem value="solana">Solana</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="asset-kind">Asset Kind</Label>
+                    <Select>
+                      <SelectTrigger id="asset-kind">
+                        <SelectValue placeholder="Select asset kind" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="native">Native (ETH, BNB, etc.)</SelectItem>
+                        <SelectItem value="token">Token (ERC20, SPL, etc.)</SelectItem>
+                        <SelectItem value="lp">LP Position</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="symbol">Symbol</Label>
+                    <Input id="symbol" placeholder="e.g., USDC" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Name</Label>
+                    <Input id="name" placeholder="e.g., USD Coin" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="contract">Contract Address (if token)</Label>
+                    <Input id="contract" placeholder="0x..." />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity">Quantity</Label>
+                    <Input id="quantity" type="number" placeholder="0.00" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="price">Price Override (optional)</Label>
+                    <Input id="price" type="number" placeholder="Auto from oracle" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setIsAddAssetOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={() => setIsAddAssetOpen(false)}>
+                  Add Asset
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );

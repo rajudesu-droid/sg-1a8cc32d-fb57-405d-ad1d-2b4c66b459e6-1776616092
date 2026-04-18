@@ -50,12 +50,25 @@ export default function Wallets() {
             <h1 className="text-3xl font-semibold tracking-tight">Wallets</h1>
             <p className="text-muted-foreground mt-1">Manage wallet connections and assets</p>
           </div>
-          {!isConnected && (
-            <Button onClick={() => setShowConnectionModal(true)} className="gap-2">
-              <Wallet className="h-4 w-4" />
-              Connect Wallet
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            {!isConnected ? (
+              <Button onClick={() => setShowConnectionModal(true)} className="gap-2">
+                <Wallet className="h-4 w-4" />
+                Connect Wallet
+              </Button>
+            ) : (
+              <>
+                <Button onClick={refreshBalances} className="gap-2" disabled={isRefreshing}>
+                  <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+                  Refresh Balances
+                </Button>
+                <Button variant="outline" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Token Manually
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         {!isConnected ? (

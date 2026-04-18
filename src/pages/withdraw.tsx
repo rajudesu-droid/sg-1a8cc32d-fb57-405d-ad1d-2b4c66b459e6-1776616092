@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowRight, TrendingDown, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ArrowRight, TrendingDown, AlertCircle, CheckCircle2, Play, ArrowDownToLine } from "lucide-react";
 
 const mockUnwindPlan = [
   {
@@ -253,10 +253,22 @@ export default function Withdraw() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-3">
-          <Button variant="outline">Cancel</Button>
-          <Button size="lg" className="gap-2">
-            <TrendingDown className="h-4 w-4" />
+        <div className="flex items-center justify-end gap-3">
+          <Button variant="outline">
+            Cancel
+          </Button>
+          <Button className="gap-2">
+            <Play className="h-4 w-4" />
+            Preview Withdrawal Plan
+          </Button>
+        </div>
+
+        <div className="flex items-center justify-end gap-3">
+          <Button variant="outline">
+            Modify Plan
+          </Button>
+          <Button variant="destructive" className="gap-2">
+            <ArrowDownToLine className="h-4 w-4" />
             Execute Withdrawal Plan
           </Button>
         </div>

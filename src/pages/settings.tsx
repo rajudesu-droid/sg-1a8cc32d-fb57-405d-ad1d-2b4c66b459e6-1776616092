@@ -263,8 +263,13 @@ export default function Settings() {
           </TabsContent>
         </Tabs>
 
-        <div className="flex justify-end">
-          <Button>Save Changes</Button>
+        <div className="flex items-center justify-end gap-3">
+          <Button variant="outline">
+            Reset to Defaults
+          </Button>
+          <Button>
+            Save Changes
+          </Button>
         </div>
       </div>
     </AppLayout>

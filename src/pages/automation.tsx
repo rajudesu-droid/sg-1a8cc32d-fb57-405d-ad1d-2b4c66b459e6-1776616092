@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, Zap, Shield, Activity, Pause, Play } from "lucide-react";
+import { AlertCircle, Zap, Shield, Activity, Pause, Play, AlertTriangle } from "lucide-react";
 
 export default function Automation() {
   const [policies, setPolicies] = useState({
@@ -367,9 +367,17 @@ export default function Automation() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-3">
-          <Button variant="outline">Reset to Defaults</Button>
-          <Button>Save Policy Changes</Button>
+        <div className="flex items-center justify-end gap-3">
+          <Button variant="outline">
+            Test Policy Rules
+          </Button>
+          <Button>
+            Save Policy Changes
+          </Button>
+          <Button variant="destructive" className="gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            Emergency Stop All
+          </Button>
         </div>
       </div>
     </AppLayout>

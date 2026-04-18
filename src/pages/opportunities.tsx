@@ -252,10 +252,14 @@ export default function Opportunities() {
                   </div>
                 </div>
 
-                <Button className="w-full gap-2" size="sm">
-                  <Droplets className="h-4 w-4" />
-                  Deploy Liquidity
-                </Button>
+                <div className="flex items-center gap-3">
+                  <Button onClick={() => setSelectedOpportunity(opportunity)}>
+                    View Details
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    Quick Deploy
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
