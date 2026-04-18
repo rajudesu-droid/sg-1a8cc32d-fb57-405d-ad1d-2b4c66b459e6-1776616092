@@ -41,6 +41,56 @@ Professional DeFi terminal aesthetic. Grid-based layouts, precision data display
 - Demo Portfolio: Manual asset management and simulation
 - Settings: Chain/DEX preferences, notifications, policies
 
+## Architecture
+
+### Centralized Engine-Based System
+The application uses a **coordinated engine architecture** where all business logic, data flow, and synchronization is managed through specialized engines:
+
+**Core Components:**
+1. **Central Orchestrator** (`src/core/orchestrator/`):
+   - Master coordinator for the entire app
+   - Routes events between engines
+   - Enforces business rules
+   - Prevents conflicting updates
+
+2. **Domain Engines** (`src/core/engines/`):
+   - WalletEngine: Connection, asset detection, balances
+   - PortfolioEngine: Metrics, capital tracking, earnings
+   - OpportunityEngine: Pool scanning, scoring, ranking
+   - PositionEngine: LP lifecycle, health monitoring
+   - RewardsEngine: Calculation, harvest, compound
+   - WithdrawalEngine: Analysis, optimization, execution
+   - PolicyEngine: Rules, thresholds, guardrails
+
+3. **Sync Engine** (`src/core/sync/`):
+   - Keeps all pages synchronized
+   - Propagates changes automatically
+   - Prevents stale data
+   - Cache invalidation
+
+4. **Code Impact Engine** (`src/core/analysis/`):
+   - Dependency mapping
+   - Change impact analysis
+   - Circular dependency detection
+   - Module relationship tracking
+
+5. **Shared Contracts** (`src/core/contracts/`):
+   - Single source of truth for types
+   - No duplicate type definitions
+   - Enforced consistency
+
+6. **Centralized Store** (`src/store/`):
+   - Zustand-based global state
+   - Mode, wallet, portfolio, positions
+   - Automatic UI updates
+
+**Architecture Principles:**
+- ✅ Single source of truth
+- ✅ No logic duplication
+- ✅ Automatic synchronization
+- ✅ Deterministic data flow
+- ✅ Modular but coordinated
+
 ## Implementation Status
 **Completed:**
 - ✅ Full database schema with multi-chain asset support
@@ -60,7 +110,7 @@ Professional DeFi terminal aesthetic. Grid-based layouts, precision data display
   * Info tooltips with methodology explanations
 - ✅ Opportunities explorer with filtering and risk scoring
 - ✅ Position management with health tracking
-- ✅ Automation & policy configuration interface
+- ✅ Automation & policy configuration interface with full functionality
 - ✅ Withdrawal optimizer with cost breakdown
 - ✅ Demo portfolio with manual asset management
 - ✅ Settings page for chains, DEXes, and preferences
@@ -74,6 +124,18 @@ Professional DeFi terminal aesthetic. Grid-based layouts, precision data display
   * Connected wallet summary in header and dashboard
   * Wallets page with full asset management
   * Security notices and best practices
+- ✅ **Centralized Engine Architecture**:
+  * Central Orchestrator for app-wide coordination
+  * 7 domain engines (Wallet, Portfolio, Opportunity, Position, Rewards, Withdrawal, Policy)
+  * Sync Engine for automatic page synchronization
+  * Code Impact Engine for dependency analysis
+  * Shared contracts layer (single source of truth for types)
+  * Centralized Zustand store
+  * Event-driven architecture with publish/subscribe
+  * No logic duplication across pages
+  * Automatic change propagation
+  * Full dependency mapping
+  * Architecture documentation in README.md
 
 **Ready for:**
 - Backend service integration (opportunity scanner, scoring engine)
@@ -82,3 +144,4 @@ Professional DeFi terminal aesthetic. Grid-based layouts, precision data display
 - Simulation engine logic
 - Live execution engine with transaction signing
 - Production WalletConnect project ID configuration
+- Integration of engines with live data sources
