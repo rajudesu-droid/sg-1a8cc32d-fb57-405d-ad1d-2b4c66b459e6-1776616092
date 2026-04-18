@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExternalLink, TrendingUp, TrendingDown, Activity, Droplets, ArrowUpRight, ArrowDownRight, Coins } from "lucide-react";
+import { useState } from "react";
+import { useToast } from "@/components/ui/use-toast";
 
 const positions = [
   {
@@ -79,9 +81,57 @@ const positions = [
 ];
 
 export default function Positions() {
+  const [filterStatus, setFilterStatus] = useState<PositionStatus | "all">("all");
+  const [filterChain, setFilterChain] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const { toast } = useToast();
+
   const totalValue = positions.reduce((sum, p) => sum + parseFloat(p.currentValue.replace(/[$,]/g, "")), 0);
   const totalDeployed = positions.reduce((sum, p) => sum + parseFloat(p.deployed.replace(/[$,]/g, "")), 0);
   const inRangeCount = positions.filter(p => p.status === "in-range").length;
+
+  const handleAddLiquidity = (position: Position) => {
+    toast({
+      title: "Adding Liquidity",
+      description: `Increasing position size for ${position.pair}`,
+    });
+  };
+
+  const handleHarvest = (position: Position) => {
+    toast({
+      title: "Harvesting Rewards",
+      description: `Claiming ${position.accruedFees} in fees and ${position.accruedRewards} in rewards`,
+    });
+  };
+
+  const handleCompound = (position: Position) => {
+    toast({
+      title: "Compounding",
+      description: `Reinvesting rewards into ${position.pair} position`,
+    });
+  };
+
+  const handleRebalance = (position: Position) => {
+    toast({
+      title: "Rebalancing Position",
+      description: `Adjusting range for ${position.pair}`,
+    });
+  };
+
+  const handleClosePosition = (position: Position) => {
+    toast({
+      title: "Closing Position",
+      description: `Withdrawing all liquidity from ${position.pair}`,
+      variant: "destructive",
+    });
+  };
+
+  const handleViewDetails = (position: Position) => {
+    toast({
+      title: "Position Details",
+      description: `Opening detailed view for ${position.pair}`,
+    });
+  };
 
   return (
     <AppLayout>

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Search, TrendingUp, Shield, Droplets, ExternalLink } from "lucide-react";
+import { Search, TrendingUp, Shield, Droplets, ExternalLink, RefreshCw } from "lucide-react";
 
 type SortOption = "recommended" | "apy" | "tvl" | "risk";
 type RiskFilter = "all" | "low" | "medium" | "high";
@@ -105,6 +105,7 @@ export default function Opportunities() {
   const [chainFilter, setChainFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedOpportunity, setSelectedOpportunity] = useState<typeof opportunities[0] | null>(null);
+  const { toast } = useToast();
 
   const filteredOpportunities = opportunities
     .filter(opp => {
@@ -127,12 +128,36 @@ export default function Opportunities() {
     return "border-destructive/50 text-destructive bg-destructive/10";
   };
 
+  const handleQuickDeploy = (opp: typeof opportunities[0]) => {
+    toast({
+      title: "Deploying Position",
+      description: `Opening LP position for ${opp.pair} on ${opp.dex}`,
+    });
+  };
+
+  const handleViewDetails = (opp: typeof opportunities[0]) => {
+    setSelectedOpportunity(opp);
+    toast({
+      title: "Viewing Details",
+      description: `Opening detailed analysis for ${opp.pair}`,
+    });
+  };
+
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">LP Opportunities</h1>
-          <p className="text-muted-foreground mt-1">Discover and deploy to whitelisted liquidity pools</p>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight">Opportunities</h1>
+            <p className="text-muted-foreground mt-1">
+              Discover and rank LP pools by risk-adjusted score
+            </p>
+          </div>
+          <Button className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Refresh Pools
+          </Button>
         </div>
 
         <Card className="card-gradient border-border/50">
@@ -189,92 +214,151 @@ export default function Opportunities() {
           </CardContent>
         </Card>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {/* Opportunities Grid */}
+        <div className="grid gap-4">
           {filteredOpportunities.map((opp) => (
-            <Card key={opp.id} className="card-gradient border-border/50 transition-all hover:border-primary/50">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <CardTitle className="text-lg">{opp.pair}</CardTitle>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {opp.dex}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {opp.chain}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {opp.feeTier}
-                      </Badge>
-                    </div>
+            <Card key={opp.id}>
+              <CardContent className="p-6">
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search pairs..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9"
+                    />
                   </div>
-                  {opp.recommended && (
-                    <Badge className="bg-primary/20 text-primary border-primary/50">
-                      <TrendingUp className="h-3 w-3 mr-1" />
-                      Top
-                    </Badge>
-                  )}
-                </div>
-              </CardHeader>
 
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground text-xs">Net APY</p>
-                    <p className="text-xl font-semibold metric-positive">{opp.netApy}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs">Risk Score</p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-xl font-mono font-semibold">{opp.riskScore}</p>
-                      <Badge variant="outline" className={`text-xs ${getRiskBadgeColor(opp.riskLevel)}`}>
-                        {opp.riskLevel}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
+                  <Select value={chainFilter} onValueChange={setChainFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Chains" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Chains</SelectItem>
+                      <SelectItem value="Ethereum">Ethereum</SelectItem>
+                      <SelectItem value="BSC">BSC</SelectItem>
+                      <SelectItem value="Polygon">Polygon</SelectItem>
+                      <SelectItem value="Avalanche">Avalanche</SelectItem>
+                      <SelectItem value="Solana">Solana</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-                <div className="space-y-2 pt-2 border-t border-border/30">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Fee APY</span>
-                    <span className="font-mono font-medium">{opp.feeApy}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Reward APY</span>
-                    <span className="font-mono font-medium">{opp.rewardApy}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">TVL</span>
-                    <span className="font-mono font-medium">{opp.tvl}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">24h Volume</span>
-                    <span className="font-mono font-medium">{opp.volume24h}</span>
-                  </div>
+                  <Select value={riskFilter} onValueChange={(v) => setRiskFilter(v as RiskFilter)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Risk Level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Risk Levels</SelectItem>
+                      <SelectItem value="low">Low Risk</SelectItem>
+                      <SelectItem value="medium">Medium Risk</SelectItem>
+                      <SelectItem value="high">High Risk</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sort By" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="recommended">Recommended</SelectItem>
+                      <SelectItem value="apy">Highest APY</SelectItem>
+                      <SelectItem value="tvl">Highest TVL</SelectItem>
+                      <SelectItem value="risk">Lowest Risk</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <Button onClick={() => setSelectedOpportunity(opp)}>
-                    View Details
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    Quick Deploy
-                  </Button>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {filteredOpportunities.map((opp) => (
+                    <Card key={opp.id} className="card-gradient border-border/50 transition-all hover:border-primary/50">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-2">
+                            <CardTitle className="text-lg">{opp.pair}</CardTitle>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="secondary" className="text-xs">
+                                {opp.dex}
+                              </Badge>
+                              <Badge variant="outline" className="text-xs">
+                                {opp.chain}
+                              </Badge>
+                              <Badge variant="outline" className="text-xs">
+                                {opp.feeTier}
+                              </Badge>
+                            </div>
+                          </div>
+                          {opp.recommended && (
+                            <Badge className="bg-primary/20 text-primary border-primary/50">
+                              <TrendingUp className="h-3 w-3 mr-1" />
+                              Top
+                            </Badge>
+                          )}
+                        </div>
+                      </CardHeader>
+
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="text-muted-foreground text-xs">Net APY</p>
+                            <p className="text-xl font-semibold metric-positive">{opp.netApy}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs">Risk Score</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xl font-mono font-semibold">{opp.riskScore}</p>
+                              <Badge variant="outline" className={`text-xs ${getRiskBadgeColor(opp.riskLevel)}`}>
+                                {opp.riskLevel}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 pt-2 border-t border-border/30">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Fee APY</span>
+                            <span className="font-mono font-medium">{opp.feeApy}</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Reward APY</span>
+                            <span className="font-mono font-medium">{opp.rewardApy}</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">TVL</span>
+                            <span className="font-mono font-medium">{opp.tvl}</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">24h Volume</span>
+                            <span className="font-mono font-medium">{opp.volume24h}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <Button onClick={() => handleViewDetails(opp)}>
+                            View Details
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => handleQuickDeploy(opp)}>
+                            Quick Deploy
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
+
+                {filteredOpportunities.length === 0 && (
+                  <Card className="card-gradient border-border/50">
+                    <CardContent className="py-12 text-center">
+                      <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <h3 className="text-lg font-semibold mb-2">No opportunities found</h3>
+                      <p className="text-muted-foreground">Try adjusting your filters or search term</p>
+                    </CardContent>
+                  </Card>
+                )}
               </CardContent>
             </Card>
           ))}
         </div>
-
-        {filteredOpportunities.length === 0 && (
-          <Card className="card-gradient border-border/50">
-            <CardContent className="py-12 text-center">
-              <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">No opportunities found</h3>
-              <p className="text-muted-foreground">Try adjusting your filters or search term</p>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </AppLayout>
   );
