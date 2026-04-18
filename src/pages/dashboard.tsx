@@ -42,6 +42,24 @@ export default function Dashboard() {
     });
   };
 
+  const getModeLabel = () => {
+    switch (mode) {
+      case "demo": return "Demo";
+      case "shadow": return "Shadow";
+      case "live": return "Live";
+      default: return "Demo";
+    }
+  };
+
+  const getModeVariant = () => {
+    switch (mode) {
+      case "demo": return "secondary" as const;
+      case "shadow": return "outline" as const;
+      case "live": return "default" as const;
+      default: return "secondary" as const;
+    }
+  };
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -54,8 +72,8 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Badge variant={mode === "demo" ? "secondary" : mode === "shadow" ? "outline" : "default"}>
-              {mode.charAt(0).toUpperCase() + mode.slice(1)} Mode
+            <Badge variant={getModeVariant()}>
+              {getModeLabel()} Mode
             </Badge>
             {botRunning ? (
               <Button onClick={handleStopBot} variant="destructive" className="gap-2">
@@ -105,7 +123,7 @@ export default function Dashboard() {
         )}
 
         {/* Metrics */}
-        <PortfolioMetrics />
+        <PortfolioMetrics mode={mode} />
 
         {/* Main Content Grid */}
         <div className="grid gap-6 md:grid-cols-2">

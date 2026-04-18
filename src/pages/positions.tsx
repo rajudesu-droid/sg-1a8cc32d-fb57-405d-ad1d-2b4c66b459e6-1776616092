@@ -1,82 +1,85 @@
 import { AppLayout } from "@/components/AppLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ExternalLink, TrendingUp, TrendingDown, Activity, Droplets, ArrowUpRight, ArrowDownRight, Coins } from "lucide-react";
 import { useState } from "react";
-import { useToast } from "@/components/ui/use-toast";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { TrendingUp, TrendingDown, Coins, Target, Activity, AlertTriangle, RefreshCw, Search } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
-const positions = [
+type PositionStatus = "active" | "out_of_range" | "closed";
+
+interface Position {
+  id: string;
+  pair: string;
+  chain: string;
+  dex: string;
+  status: PositionStatus;
+  valueUsd: number;
+  rangeMin: number;
+  rangeMax: number;
+  currentPrice: number;
+  liquidity: string;
+  accruedFees: string;
+  accruedRewards: string;
+  health: number;
+  apr: string;
+  openedAt: string;
+}
+
+const mockPositions: Position[] = [
   {
     id: "1",
     pair: "ETH/USDC",
-    dex: "Uniswap V3",
     chain: "Ethereum",
-    feeTier: "0.3%",
-    status: "in-range" as const,
-    health: 92,
-    deployed: "$8,200.00",
-    currentValue: "$8,524.30",
-    entryPrice: "$1,845.20",
-    currentPrice: "$1,952.40",
-    rangeLower: "$1,800.00",
-    rangeUpper: "$2,100.00",
-    fees: "$124.30",
-    rewards: "$45.80",
-    unrealizedPnL: "+$324.30",
-    pnlPercent: "+3.96%",
-    il: "-$12.40",
-    ilPercent: "-0.15%",
-    apy: "12.4%",
-    nextAction: "Harvest rewards ($170.10 available)",
+    dex: "Uniswap V3",
+    status: "active",
+    valueUsd: 5234.67,
+    rangeMin: 1800,
+    rangeMax: 2200,
+    currentPrice: 1952,
+    liquidity: "$5,234.67",
+    accruedFees: "$124.30",
+    accruedRewards: "$18.40",
+    health: 85,
+    apr: "18.5%",
+    openedAt: "2026-03-15",
   },
   {
     id: "2",
     pair: "BNB/BUSD",
-    dex: "PancakeSwap V3",
     chain: "BSC",
-    feeTier: "0.25%",
-    status: "in-range" as const,
-    health: 85,
-    deployed: "$5,600.00",
-    currentValue: "$5,710.70",
-    entryPrice: "$288.40",
-    currentPrice: "$295.10",
-    rangeLower: "$280.00",
-    rangeUpper: "$320.00",
-    fees: "$78.20",
-    rewards: "$32.50",
-    unrealizedPnL: "+$110.70",
-    pnlPercent: "+1.98%",
-    il: "-$8.60",
-    ilPercent: "-0.15%",
-    apy: "9.8%",
-    nextAction: "Position healthy, no action needed",
+    dex: "PancakeSwap V3",
+    status: "active",
+    valueUsd: 3210.45,
+    rangeMin: 280,
+    rangeMax: 310,
+    currentPrice: 295,
+    liquidity: "$3,210.45",
+    accruedFees: "$87.20",
+    accruedRewards: "$12.60",
+    health: 92,
+    apr: "22.3%",
+    openedAt: "2026-03-20",
   },
   {
     id: "3",
     pair: "MATIC/USDC",
-    dex: "Uniswap V3",
     chain: "Polygon",
-    feeTier: "0.3%",
-    status: "out-of-range" as const,
-    health: 42,
-    deployed: "$4,600.00",
-    currentValue: "$4,570.90",
-    entryPrice: "$0.82",
-    currentPrice: "$0.72",
-    rangeLower: "$0.75",
-    rangeUpper: "$0.95",
-    fees: "$52.10",
-    rewards: "$18.40",
-    unrealizedPnL: "-$29.10",
-    pnlPercent: "-0.63%",
-    il: "-$64.20",
-    ilPercent: "-1.40%",
-    apy: "6.2%",
-    nextAction: "Rebalance to new range or close position",
+    dex: "Uniswap V3",
+    status: "out_of_range",
+    valueUsd: 1845.23,
+    rangeMin: 0.85,
+    rangeMax: 1.15,
+    currentPrice: 0.78,
+    liquidity: "$1,845.23",
+    accruedFees: "$52.10",
+    accruedRewards: "$8.30",
+    health: 45,
+    apr: "14.2%",
+    openedAt: "2026-04-01",
   },
 ];
 
@@ -86,9 +89,12 @@ export default function Positions() {
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
-  const totalValue = positions.reduce((sum, p) => sum + parseFloat(p.currentValue.replace(/[$,]/g, "")), 0);
-  const totalDeployed = positions.reduce((sum, p) => sum + parseFloat(p.deployed.replace(/[$,]/g, "")), 0);
-  const inRangeCount = positions.filter(p => p.status === "in-range").length;
+  const filteredPositions = mockPositions.filter((position) => {
+    const matchesStatus = filterStatus === "all" || position.status === filterStatus;
+    const matchesChain = filterChain === "all" || position.chain === filterChain;
+    const matchesSearch = position.pair.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesStatus && matchesChain && matchesSearch;
+  });
 
   const handleAddLiquidity = (position: Position) => {
     toast({
@@ -136,182 +142,205 @@ export default function Positions() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">LP Positions</h1>
-          <p className="text-muted-foreground mt-1">Active positions and performance tracking</p>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight">Active Positions</h1>
+            <p className="text-muted-foreground mt-1">
+              Monitor and manage your LP positions
+            </p>
+          </div>
+          <Button className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Refresh Positions
+          </Button>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card className="card-gradient border-border/50">
-            <CardContent className="p-6">
+        {/* Filters */}
+        <Card className="card-gradient border-border/50">
+          <CardContent className="p-6">
+            <div className="grid gap-4 md:grid-cols-4">
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground font-medium">Total Position Value</p>
-                <p className="text-2xl font-semibold">${totalValue.toLocaleString()}</p>
-                <p className="text-xs metric-positive">+$405.90 unrealized</p>
+                <label className="text-sm font-medium">Search</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by pair..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card className="card-gradient border-border/50">
-            <CardContent className="p-6">
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground font-medium">Active Positions</p>
-                <p className="text-2xl font-semibold">{positions.length}</p>
-                <p className="text-xs text-muted-foreground">{inRangeCount} in range · {positions.length - inRangeCount} out of range</p>
+                <label className="text-sm font-medium">Status</label>
+                <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as PositionStatus | "all")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="out_of_range">Out of Range</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card className="card-gradient border-border/50">
-            <CardContent className="p-6">
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground font-medium">Total Fees + Rewards</p>
-                <p className="text-2xl font-semibold metric-positive">$351.30</p>
-                <p className="text-xs text-muted-foreground">Claimable across all positions</p>
+                <label className="text-sm font-medium">Chain</label>
+                <Select value={filterChain} onValueChange={setFilterChain}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Chains</SelectItem>
+                    <SelectItem value="Ethereum">Ethereum</SelectItem>
+                    <SelectItem value="BSC">BSC</SelectItem>
+                    <SelectItem value="Polygon">Polygon</SelectItem>
+                    <SelectItem value="Avalanche">Avalanche</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        <Tabs defaultValue="all" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="all">All Positions</TabsTrigger>
-            <TabsTrigger value="in-range">In Range</TabsTrigger>
-            <TabsTrigger value="out-of-range">Out of Range</TabsTrigger>
-          </TabsList>
+              <div className="flex items-end">
+                <Button variant="outline" className="w-full">
+                  Clear Filters
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          <TabsContent value="all" className="space-y-4">
-            {positions.map((position) => (
-              <Card key={position.id} className="card-gradient border-border/50">
-                <CardHeader>
+        {/* Positions Grid */}
+        <div className="grid gap-4">
+          {filteredPositions.map((position) => (
+            <Card key={position.id} className="card-gradient border-border/50">
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  {/* Header */}
                   <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <CardTitle className="text-xl">{position.pair}</CardTitle>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">
-                          {position.dex}
-                        </Badge>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-lg font-semibold">{position.pair}</h3>
                         <Badge variant="outline" className="text-xs">
                           {position.chain}
                         </Badge>
                         <Badge variant="outline" className="text-xs">
-                          {position.feeTier}
-                        </Badge>
-                        <Badge 
-                          variant="outline"
-                          className={`text-xs ${
-                            position.status === "in-range"
-                              ? "border-success/50 text-success bg-success/10"
-                              : "border-accent/50 text-accent bg-accent/10"
-                          }`}
-                        >
-                          {position.status === "in-range" ? "In Range" : "Out of Range"}
+                          {position.dex}
                         </Badge>
                       </div>
-                    </div>
-
-                    <div className="text-right space-y-1">
-                      <p className="text-xs text-muted-foreground">Health Score</p>
-                      <p className={`text-2xl font-semibold ${
-                        position.health >= 70 ? "metric-positive" :
-                        position.health >= 50 ? "metric-warning" : "metric-negative"
-                      }`}>
-                        {position.health}
+                      <p className="text-sm text-muted-foreground">
+                        Opened {position.openedAt} • APR {position.apr}
                       </p>
-                      <Progress value={position.health} className="w-24 h-2" />
                     </div>
-                  </div>
-                </CardHeader>
 
-                <CardContent className="space-y-6">
+                    <Badge
+                      variant={
+                        position.status === "active"
+                          ? "default"
+                          : position.status === "out_of_range"
+                          ? "destructive"
+                          : "secondary"
+                      }
+                    >
+                      {position.status === "active"
+                        ? "In Range"
+                        : position.status === "out_of_range"
+                        ? "Out of Range"
+                        : "Closed"}
+                    </Badge>
+                  </div>
+
+                  {/* Metrics Grid */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
-                      <p className="text-xs text-muted-foreground">Deployed</p>
-                      <p className="text-sm font-semibold">{position.deployed}</p>
+                      <p className="text-xs text-muted-foreground">Liquidity</p>
+                      <p className="text-sm font-semibold">{position.liquidity}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Current Value</p>
-                      <p className="text-sm font-semibold">{position.currentValue}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Unrealized P&L</p>
-                      <p className={`text-sm font-semibold ${
-                        position.unrealizedPnL.startsWith("+") ? "metric-positive" : "metric-negative"
-                      }`}>
-                        {position.unrealizedPnL} ({position.pnlPercent})
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">APY</p>
-                      <p className="text-sm font-semibold">{position.apy}</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Price Range</span>
-                      <span className="font-mono">{position.rangeLower} - {position.rangeUpper}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Entry Price</span>
-                      <span className="font-mono">{position.entryPrice}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Current Price</span>
-                      <span className="font-mono font-semibold">{position.currentPrice}</span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4 pt-4 border-t border-border/30">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Fees Earned</p>
-                      <p className="text-sm font-mono metric-positive">{position.fees}</p>
+                      <p className="text-xs text-muted-foreground">Accrued Fees</p>
+                      <p className="text-sm font-semibold metric-positive">{position.accruedFees}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Rewards</p>
-                      <p className="text-sm font-mono metric-positive">{position.rewards}</p>
+                      <p className="text-sm font-semibold metric-positive">{position.accruedRewards}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">IL Impact</p>
-                      <p className="text-sm font-mono metric-negative">{position.il} ({position.ilPercent})</p>
+                      <p className="text-xs text-muted-foreground">Health</p>
+                      <p
+                        className={`text-sm font-semibold ${
+                          position.health >= 80
+                            ? "metric-positive"
+                            : position.health >= 60
+                            ? "text-accent"
+                            : "metric-negative"
+                        }`}
+                      >
+                        {position.health}%
+                      </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-4 border-t border-border/30">
-                    <div className="flex items-start gap-2">
-                      <Activity className="h-4 w-4 mt-0.5 text-primary" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Recommended Action</p>
-                        <p className="text-sm font-medium">{position.nextAction}</p>
-                      </div>
+                  {/* Range Info */}
+                  <div className="rounded-lg bg-muted/50 p-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Range:</span>
+                      <span className="font-mono">
+                        ${position.rangeMin} - ${position.rangeMax}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm mt-1">
+                      <span className="text-muted-foreground">Current Price:</span>
+                      <span className="font-mono font-semibold">${position.currentPrice}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-between pt-4 border-t border-border">
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" className="gap-2" onClick={() => handleAddLiquidity(position)}>
+                        <TrendingUp className="h-4 w-4" />
+                        Add Liquidity
+                      </Button>
+                      <Button size="sm" variant="outline" className="gap-2" onClick={() => handleHarvest(position)}>
+                        <Coins className="h-4 w-4" />
+                        Harvest
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleViewDetails(position)}>
+                        View Details
+                      </Button>
                     </div>
 
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        Manage
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="outline" onClick={() => handleCompound(position)}>
+                        Compound
                       </Button>
-                      <Button variant="ghost" size="sm">
-                        <ExternalLink className="h-4 w-4" />
+                      <Button size="sm" variant="outline" onClick={() => handleRebalance(position)}>
+                        Rebalance
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => handleClosePosition(position)}>
+                        Close Position
                       </Button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </TabsContent>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-          <TabsContent value="in-range" className="space-y-4">
-            {positions.filter(p => p.status === "in-range").map((position) => (
-              <div key={position.id}>Position card here (same as above)</div>
-            ))}
-          </TabsContent>
-
-          <TabsContent value="out-of-range" className="space-y-4">
-            {positions.filter(p => p.status === "out-of-range").map((position) => (
-              <div key={position.id}>Position card here (same as above)</div>
-            ))}
-          </TabsContent>
-        </Tabs>
+        {filteredPositions.length === 0 && (
+          <Card className="card-gradient border-border/50">
+            <CardContent className="p-12 text-center">
+              <Target className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground">
+                No positions found matching your filters
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </AppLayout>
   );
