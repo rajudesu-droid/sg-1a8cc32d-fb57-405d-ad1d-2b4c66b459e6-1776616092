@@ -3,6 +3,7 @@ import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGrou
 import { LayoutDashboard, Search, Layers, Settings, Wallet, LogOut, TrendingUp, FileText } from "lucide-react";
 import Link from "next/link";
 import { ModeSelector } from "@/components/ModeSelector";
+import { WalletButton } from "@/components/WalletButton";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -14,6 +15,7 @@ const navigation = [
   { name: "Positions", href: "/positions", icon: Layers },
   { name: "Automation", href: "/automation", icon: TrendingUp },
   { name: "Withdraw", href: "/withdraw", icon: Wallet },
+  { name: "Wallets", href: "/wallets", icon: Wallet },
   { name: "Demo Portfolio", href: "/demo", icon: FileText },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
@@ -73,7 +75,10 @@ export function AppLayout({ children }: AppLayoutProps) {
           <div className="border-b border-border bg-card/50 px-6 py-3 backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <SidebarTrigger />
-              <ModeSelector />
+              <div className="flex items-center gap-4">
+                <ModeSelector />
+                <WalletButton />
+              </div>
             </div>
           </div>
           <div className="p-6">

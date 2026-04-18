@@ -41,6 +41,10 @@
     "@stripe/stripe-js": "^5.5.0",
     "@supabase/supabase-js": "^2.103.3",
     "@t3-oss/env-nextjs": "^0.12.0",
+    "@tanstack/react-query": "^5.62.11",
+    "@walletconnect/qrcode-modal": "^1.8.0",
+    "@walletconnect/sign-client": "^2.23.9",
+    "@walletconnect/web3wallet": "^1.16.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.4",
@@ -64,6 +68,8 @@
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
     "vercel": "^41.4.1",
+    "viem": "^2.21.54",
+    "wagmi": "^2.12.26",
     "zod": "^3.24.1"
   },
   "devDependencies": {
