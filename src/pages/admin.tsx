@@ -310,7 +310,7 @@ export default function Admin() {
                           <Database className="h-4 w-4 text-primary" />
                           <h3 className="font-semibold capitalize">{name}</h3>
                           <Badge variant="outline" className="text-xs">
-                            {dep.type}
+                            Module
                           </Badge>
                         </div>
 
