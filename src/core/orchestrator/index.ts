@@ -30,7 +30,7 @@ export class CentralOrchestrator extends EventEmitter {
     console.log(`[Orchestrator] Engine registered: ${name}`);
   }
 
-  getEngine<T>(name: string): T | undefined {
+  getEngine<T = any>(name: string): T | undefined {
     return this.engineRegistry.get(name) as T;
   }
 
@@ -112,7 +112,7 @@ export class CentralOrchestrator extends EventEmitter {
     );
 
     // Trigger sync engine to refresh all data
-    const syncEngine = this.getEngine("sync");
+    const syncEngine = this.getEngine<any>("sync");
     if (syncEngine && typeof syncEngine.syncAll === "function") {
       await syncEngine.syncAll();
     }

@@ -78,8 +78,8 @@ export class SyncEngine {
     console.log("[Sync] Syncing modules:", modules);
 
     try {
-      for (const module of modules) {
-        switch (module) {
+      for (const modName of modules) {
+        switch (modName) {
           case "wallet":
             await this.syncWallet();
             break;
@@ -106,42 +106,42 @@ export class SyncEngine {
   }
 
   private async syncWallet(): Promise<void> {
-    const walletEngine = orchestrator.getEngine("wallet");
+    const walletEngine = orchestrator.getEngine<any>("wallet");
     if (walletEngine && typeof walletEngine.refresh === "function") {
       await walletEngine.refresh();
     }
   }
 
   private async syncPortfolio(): Promise<void> {
-    const portfolioEngine = orchestrator.getEngine("portfolio");
+    const portfolioEngine = orchestrator.getEngine<any>("portfolio");
     if (portfolioEngine && typeof portfolioEngine.recalculate === "function") {
       await portfolioEngine.recalculate();
     }
   }
 
   private async syncOpportunities(): Promise<void> {
-    const opportunityEngine = orchestrator.getEngine("opportunity");
+    const opportunityEngine = orchestrator.getEngine<any>("opportunity");
     if (opportunityEngine && typeof opportunityEngine.rescan === "function") {
       await opportunityEngine.rescan();
     }
   }
 
   private async syncPositions(): Promise<void> {
-    const positionEngine = orchestrator.getEngine("position");
+    const positionEngine = orchestrator.getEngine<any>("position");
     if (positionEngine && typeof positionEngine.updateAll === "function") {
       await positionEngine.updateAll();
     }
   }
 
   private async syncRewards(): Promise<void> {
-    const rewardsEngine = orchestrator.getEngine("rewards");
+    const rewardsEngine = orchestrator.getEngine<any>("rewards");
     if (rewardsEngine && typeof rewardsEngine.recalculate === "function") {
       await rewardsEngine.recalculate();
     }
   }
 
   private async syncWithdrawal(): Promise<void> {
-    const withdrawalEngine = orchestrator.getEngine("withdrawal");
+    const withdrawalEngine = orchestrator.getEngine<any>("withdrawal");
     if (withdrawalEngine && typeof withdrawalEngine.invalidateCache === "function") {
       await withdrawalEngine.invalidateCache();
     }
