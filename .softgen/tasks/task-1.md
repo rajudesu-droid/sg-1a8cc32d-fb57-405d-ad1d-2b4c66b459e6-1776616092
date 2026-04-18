@@ -14,8 +14,8 @@ Foundation layer: database schema for all entities (users, portfolios, assets, p
 
 ## Checklist
 - [x] Convert hex colors to HSL via terminal
-- [ ] Update globals.css with LP Yield Autopilot color scheme and JetBrains Mono font
-- [ ] Register custom colors in tailwind.config.ts
-- [ ] Create database schema: profiles, portfolios, assets, balances, supported_pools, opportunities, positions, rewards, actions, policies, withdrawal_plans
-- [ ] Apply RLS policies for all tables
-- [ ] Generate TypeScript types
+- [x] Update globals.css with LP Yield Autopilot color scheme and JetBrains Mono font
+- [x] Register custom colors in tailwind.config.ts
+- [x] Create database schema: profiles, portfolios, assets, balances, supported_pools, opportunities, positions, rewards, actions, policies, withdrawal_plans
+- [x] Apply RLS policies for all tables
+- [x] Generate TypeScript types
