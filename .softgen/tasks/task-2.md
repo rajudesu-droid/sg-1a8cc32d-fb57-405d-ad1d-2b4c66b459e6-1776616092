@@ -1,6 +1,6 @@
 ---
 title: Dashboard & Core Layout
-status: in_progress
+status: done
 priority: high
 type: feature
 tags: [frontend, dashboard, navigation]
@@ -13,10 +13,10 @@ position: 2
 Main application shell with responsive layout, navigation, mode selector (Demo/Shadow/Live), and dashboard overview showing portfolio metrics, active positions, and yield summary.
 
 ## Checklist
-- [ ] Create AppLayout component with sidebar navigation
-- [ ] Build ModeSelector component (Demo/Shadow/Live toggle)
-- [ ] Create Dashboard page with portfolio summary cards
-- [ ] Add PortfolioMetrics component: total value, deployed capital, idle capital, net yield
-- [ ] Create ActivePositions component: position cards with health indicators
-- [ ] Add RecentAlerts component with color-coded severity
-- [ ] Style with grid layouts and custom color scheme
+- [x] Create AppLayout component with sidebar navigation
+- [x] Build ModeSelector component (Demo/Shadow/Live toggle)
+- [x] Create Dashboard page with portfolio summary cards
+- [x] Add PortfolioMetrics component: total value, deployed capital, idle capital, net yield
+- [x] Create ActivePositions component: position cards with health indicators
+- [x] Add RecentAlerts component with color-coded severity
+- [x] Style with grid layouts and custom color scheme
