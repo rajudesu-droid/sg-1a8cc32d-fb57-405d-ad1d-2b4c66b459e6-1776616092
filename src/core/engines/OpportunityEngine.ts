@@ -36,34 +36,38 @@ export class OpportunityEngine {
           chain: "Ethereum",
           dex: "Uniswap V3",
           pair: "ETH/USDT",
+          token0: "ETH",
+          token1: "USDT",
           feeTier: "0.3%",
-          pool: "0x...",
-          tvl: 45000000,
-          volume24h: 12000000,
-          feeApy: 18.5,
-          farmApy: 5.2,
-          netApy: 23.7,
+          poolAddress: "0x...",
+          tvl: "45000000",
+          volume24h: "12000000",
+          feeApy: "18.5",
+          rewardApy: "5.2",
+          netApy: "23.7",
           riskScore: 72,
+          riskLevel: "low",
           recommended: true,
-          status: "active",
-          lastUpdated: new Date(),
+          score: 85,
         },
         {
           id: "opp-bnb-usdt-pancake-v3",
           chain: "BSC",
           dex: "PancakeSwap V3",
           pair: "BNB/USDT",
+          token0: "BNB",
+          token1: "USDT",
           feeTier: "0.25%",
-          pool: "0x...",
-          tvl: 28000000,
-          volume24h: 8500000,
-          feeApy: 22.3,
-          farmApy: 8.1,
-          netApy: 30.4,
+          poolAddress: "0x...",
+          tvl: "28000000",
+          volume24h: "8500000",
+          feeApy: "22.3",
+          rewardApy: "8.1",
+          netApy: "30.4",
           riskScore: 68,
+          riskLevel: "medium",
           recommended: true,
-          status: "active",
-          lastUpdated: new Date(),
+          score: 75,
         },
       ];
 
@@ -125,17 +129,21 @@ export class OpportunityEngine {
   private calculateRiskScore(opp: Opportunity): number {
     // Mock risk scoring (in production, use real risk models)
     let score = 100;
+    
+    const tvl = parseFloat(opp.tvl);
+    const volume24h = parseFloat(opp.volume24h);
+    const netApy = parseFloat(opp.netApy);
 
     // TVL depth
-    if (opp.tvl < 1000000) score -= 20;
-    else if (opp.tvl < 5000000) score -= 10;
+    if (tvl < 1000000) score -= 20;
+    else if (tvl < 5000000) score -= 10;
 
     // Volume
-    if (opp.volume24h < opp.tvl * 0.1) score -= 15;
+    if (volume24h < tvl * 0.1) score -= 15;
 
     // APY sustainability
-    if (opp.netApy > 50) score -= 10;
-    else if (opp.netApy > 30) score -= 5;
+    if (netApy > 50) score -= 10;
+    else if (netApy > 30) score -= 5;
 
     return Math.max(0, Math.min(100, score));
   }
