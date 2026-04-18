@@ -104,7 +104,12 @@ export class RewardsEngine {
     // Harvest first
     const harvestResult = await this.harvest(positionId);
     if (!harvestResult.success) {
-      return harvestResult;
+      return {
+        success: false,
+        error: harvestResult.error,
+        affectedModules: harvestResult.affectedModules,
+        events: harvestResult.events,
+      };
     }
 
     // Add liquidity back to position (in production, execute swap + add liquidity)
