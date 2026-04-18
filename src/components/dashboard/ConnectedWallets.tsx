@@ -1,85 +1,110 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Wallet, ExternalLink, Plus } from "lucide-react";
-
-const connectedWallets = [
-  {
-    address: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
-    chain: "Ethereum",
-    balance: "$14,226.58",
-    status: "active",
-  },
-  {
-    address: "0x8a9C4dFe8b9D8962B31e4e16F8321C44d48e246f",
-    chain: "BSC",
-    balance: "$8,859.35",
-    status: "active",
-  },
-];
+import { Wallet, ExternalLink, AlertCircle } from "lucide-react";
+import { useWallet } from "@/contexts/WalletContext";
+import { useState } from "react";
+import { WalletConnectionModal } from "@/components/WalletConnectionModal";
+import { supportedNetworks } from "@/lib/walletConfig";
 
 export function ConnectedWallets() {
+  const [showModal, setShowModal] = useState(false);
+  const { isConnected, address, chainId } = useWallet();
+
+  const currentNetwork = supportedNetworks.find((n) => n.id === chainId);
+
+  if (!isConnected) {
+    return (
+      <>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wallet className="h-5 w-5" />
+              Connected Wallets
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-3">
+                <Wallet className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground mb-4 text-center">
+                No wallet connected
+              </p>
+              <Button onClick={() => setShowModal(true)} size="sm" variant="outline" className="gap-2">
+                <Wallet className="h-4 w-4" />
+                Connect Wallet
+              </Button>
+              <p className="text-xs text-muted-foreground mt-4 text-center max-w-[280px]">
+                Connect your wallet to access Shadow and Live modes.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        <WalletConnectionModal open={showModal} onClose={() => setShowModal(false)} />
+      </>
+    );
+  }
+
+  const shortAddress = `${address?.slice(0, 6)}...${address?.slice(-4)}`;
+
   return (
-    <Card className="card-gradient border-border/50">
+    <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Wallet className="h-5 w-5" />
-            Connected Wallets
-          </CardTitle>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Plus className="h-3.5 w-3.5" />
-            Add Wallet
-          </Button>
-        </div>
+        <CardTitle className="flex items-center gap-2">
+          <Wallet className="h-5 w-5" />
+          Connected Wallets
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {connectedWallets.length === 0 ? (
-          <div className="py-8 text-center">
-            <p className="text-sm text-muted-foreground mb-3">
-              No wallets connected. Demo mode uses simulated balances.
-            </p>
-            <Button size="sm">Connect Wallet</Button>
-          </div>
-        ) : (
-          connectedWallets.map((wallet) => (
-            <div
-              key={wallet.address}
-              className="rounded-lg border border-border/50 bg-card/30 p-4"
-            >
-              <div className="flex items-start justify-between">
-                <div className="space-y-2 flex-1">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      {wallet.chain}
-                    </Badge>
-                    <Badge
-                      variant={wallet.status === "active" ? "default" : "secondary"}
-                      className="text-xs"
-                    >
-                      {wallet.status}
-                    </Badge>
-                  </div>
-                  <p className="font-mono text-xs text-muted-foreground">
-                    {wallet.address.slice(0, 6)}...{wallet.address.slice(-4)}
-                  </p>
-                  <p className="font-semibold">{wallet.balance}</p>
-                </div>
-                <Button variant="ghost" size="sm">
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              </div>
+        <div className="rounded-lg border border-border p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
+              <span className="text-sm font-medium">Primary Wallet</span>
             </div>
-          ))
-        )}
+            {currentNetwork && (
+              <Badge variant="secondary" className="text-xs">
+                {currentNetwork.symbol}
+              </Badge>
+            )}
+          </div>
 
-        {connectedWallets.length === 0 && (
-          <div className="pt-4 border-t border-border/30">
-            <p className="text-xs text-muted-foreground text-center">
-              Demo Mode: Using simulated portfolio. Connect wallet to use Shadow or Live modes.
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <code className="flex-1 rounded bg-muted px-2 py-1 font-mono text-xs">
+                {address}
+              </code>
+              <Button variant="ghost" size="sm" asChild className="h-7 w-7 p-0">
+                <a href={`${currentNetwork?.explorer}/address/${address}`} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </Button>
+            </div>
+
+            {currentNetwork && (
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <div className="text-muted-foreground">Network</div>
+                  <div className="font-medium">{currentNetwork.name}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Chain ID</div>
+                  <div className="font-mono">{chainId}</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-accent/50 bg-accent/10 p-3">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="h-4 w-4 text-accent mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-muted-foreground">
+              <strong className="text-foreground">Non-custodial:</strong> This app never stores your private keys. You retain full custody of your assets.
             </p>
           </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   );

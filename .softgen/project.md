@@ -64,11 +64,21 @@ Professional DeFi terminal aesthetic. Grid-based layouts, precision data display
 - ✅ Withdrawal optimizer with cost breakdown
 - ✅ Demo portfolio with manual asset management
 - ✅ Settings page for chains, DEXes, and preferences
+- ✅ Secure Web3 wallet connection module:
+  * QR-based mobile wallet connection via WalletConnect
+  * Non-custodial architecture (no private key storage)
+  * Multi-chain support (Ethereum, BSC, Polygon, Avalanche)
+  * Auto-detection of native assets and tokens
+  * Network-grouped asset display
+  * Same-symbol tokens separated by network (USDT-ETH, USDT-BSC, etc.)
+  * Connected wallet summary in header and dashboard
+  * Wallets page with full asset management
+  * Security notices and best practices
 
 **Ready for:**
 - Backend service integration (opportunity scanner, scoring engine)
-- Wallet connection implementation
-- Real-time data feeds and price oracles
+- Real-time price feeds and token metadata APIs
 - DEX protocol adapters (Uniswap V3, PancakeSwap V3)
 - Simulation engine logic
 - Live execution engine with transaction signing
+- Production WalletConnect project ID configuration
