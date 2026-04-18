@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Settings as SettingsIcon, Wallet, Bell, Shield } from "lucide-react";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const supportedChains = [
   { id: "ethereum", name: "Ethereum", enabled: true },
@@ -24,6 +26,50 @@ const supportedDexes = [
 ];
 
 export default function Settings() {
+  const [chainSettings, setChainSettings] = useState(supportedChains);
+  const [dexSettings, setDexSettings] = useState(supportedDexes);
+  const [slippageTolerance, setSlippageTolerance] = useState("2.0");
+  const { toast } = useToast();
+
+  const handleSaveChanges = () => {
+    toast({
+      title: "Settings Saved",
+      description: "All settings have been saved successfully",
+    });
+  };
+
+  const handleResetDefaults = () => {
+    setChainSettings(supportedChains);
+    setDexSettings(supportedDexes);
+    setSlippageTolerance("2.0");
+    toast({
+      title: "Settings Reset",
+      description: "All settings have been reset to defaults",
+    });
+  };
+
+  const handleConnectWallet = () => {
+    toast({
+      title: "Connecting Wallet",
+      description: "Opening wallet connection modal",
+    });
+  };
+
+  const handleExportData = () => {
+    toast({
+      title: "Exporting Data",
+      description: "Downloading positions, actions, and audit logs",
+    });
+  };
+
+  const handleSetSlippage = (value: string) => {
+    setSlippageTolerance(value);
+    toast({
+      title: "Slippage Updated",
+      description: `Default slippage set to ${value}%`,
+    });
+  };
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -52,7 +98,7 @@ export default function Settings() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {supportedChains.map((chain) => (
+                  {chainSettings.map((chain, index) => (
                     <div key={chain.id}>
                       <div className="flex items-center justify-between">
                         <div className="space-y-1">
@@ -63,11 +109,17 @@ export default function Settings() {
                               : "Platform will ignore this chain"}
                           </p>
                         </div>
-                        <Switch id={`chain-${chain.id}`} checked={chain.enabled} />
+                        <Switch
+                          id={`chain-${chain.id}`}
+                          checked={chain.enabled}
+                          onCheckedChange={(checked) => {
+                            const newSettings = [...chainSettings];
+                            newSettings[index].enabled = checked;
+                            setChainSettings(newSettings);
+                          }}
+                        />
                       </div>
-                      {chain.id !== supportedChains[supportedChains.length - 1].id && (
-                        <Separator className="mt-4" />
-                      )}
+                      {index !== chainSettings.length - 1 && <Separator className="mt-4" />}
                     </div>
                   ))}
                 </div>
@@ -83,7 +135,7 @@ export default function Settings() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {supportedDexes.map((dex) => (
+                  {dexSettings.map((dex, index) => (
                     <div key={dex.id}>
                       <div className="flex items-center justify-between">
                         <div className="space-y-1">
@@ -97,11 +149,17 @@ export default function Settings() {
                             {dex.enabled ? "Enabled for opportunities" : "Disabled"}
                           </p>
                         </div>
-                        <Switch id={`dex-${dex.id}`} checked={dex.enabled} />
+                        <Switch
+                          id={`dex-${dex.id}`}
+                          checked={dex.enabled}
+                          onCheckedChange={(checked) => {
+                            const newSettings = [...dexSettings];
+                            newSettings[index].enabled = checked;
+                            setDexSettings(newSettings);
+                          }}
+                        />
                       </div>
-                      {dex.id !== supportedDexes[supportedDexes.length - 1].id && (
-                        <Separator className="mt-4" />
-                      )}
+                      {index !== dexSettings.length - 1 && <Separator className="mt-4" />}
                     </div>
                   ))}
                 </div>
@@ -125,7 +183,7 @@ export default function Settings() {
                   <p className="text-sm text-muted-foreground mb-3">
                     No wallet connected. Connect a wallet to use Shadow or Live modes.
                   </p>
-                  <Button>Connect Wallet</Button>
+                  <Button onClick={handleConnectWallet}>Connect Wallet</Button>
                 </div>
 
                 <Separator />
@@ -133,10 +191,30 @@ export default function Settings() {
                 <div className="space-y-3">
                   <Label>Default Slippage Tolerance</Label>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm">0.5%</Button>
-                    <Button variant="outline" size="sm">1.0%</Button>
-                    <Button variant="default" size="sm">2.0%</Button>
-                    <Button variant="outline" size="sm">Custom</Button>
+                    <Button
+                      variant={slippageTolerance === "0.5" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleSetSlippage("0.5")}
+                    >
+                      0.5%
+                    </Button>
+                    <Button
+                      variant={slippageTolerance === "1.0" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleSetSlippage("1.0")}
+                    >
+                      1.0%
+                    </Button>
+                    <Button
+                      variant={slippageTolerance === "2.0" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleSetSlippage("2.0")}
+                    >
+                      2.0%
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      Custom
+                    </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Default slippage tolerance for all transactions
@@ -253,7 +331,7 @@ export default function Settings() {
                         Export all positions, actions, and audit logs
                       </p>
                     </div>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={handleExportData}>
                       Export Data
                     </Button>
                   </div>
@@ -264,10 +342,10 @@ export default function Settings() {
         </Tabs>
 
         <div className="flex items-center justify-end gap-3">
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleResetDefaults}>
             Reset to Defaults
           </Button>
-          <Button>
+          <Button onClick={handleSaveChanges}>
             Save Changes
           </Button>
         </div>

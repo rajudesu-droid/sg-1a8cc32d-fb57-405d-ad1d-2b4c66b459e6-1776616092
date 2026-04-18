@@ -7,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Plus, Pencil, Trash2, Download, Upload, RefreshCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const mockAssets = [
   {
@@ -80,8 +81,54 @@ const mockLedger = [
 ];
 
 export default function DemoPortfolio() {
-  const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
+  const [showAddAsset, setShowAddAsset] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const { toast } = useToast();
+
+  const handleAddAsset = () => {
+    setShowAddAsset(false);
+    toast({
+      title: "Asset Added",
+      description: "New asset has been added to demo portfolio",
+    });
+  };
+
+  const handleEditAsset = (assetId: string) => {
+    toast({
+      title: "Editing Asset",
+      description: `Opening editor for asset ${assetId}`,
+    });
+  };
+
+  const handleDeleteAsset = (assetId: string) => {
+    toast({
+      title: "Asset Deleted",
+      description: "Asset has been removed from demo portfolio",
+      variant: "destructive",
+    });
+  };
+
+  const handleImportSample = () => {
+    toast({
+      title: "Importing Sample Portfolio",
+      description: "Loading pre-built demo portfolio with sample assets",
+    });
+  };
+
+  const handleResetSimulation = () => {
+    toast({
+      title: "Simulation Reset",
+      description: "All assets and simulation history have been cleared",
+      variant: "destructive",
+    });
+  };
+
+  const handleBrowseSamples = () => {
+    toast({
+      title: "Browse Sample Portfolios",
+      description: "Opening sample portfolio library",
+    });
+  };
 
   return (
     <AppLayout>
@@ -95,15 +142,15 @@ export default function DemoPortfolio() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button onClick={() => setIsAddAssetOpen(true)} className="gap-2">
+            <Button onClick={() => setShowAddAsset(true)} className="gap-2">
               <Plus className="h-4 w-4" />
               Add Asset
             </Button>
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2" onClick={handleImportSample}>
               <Download className="h-4 w-4" />
               Import Sample Portfolio
             </Button>
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2" onClick={handleResetSimulation}>
               <RefreshCw className="h-4 w-4" />
               Reset Simulation
             </Button>
@@ -154,10 +201,10 @@ export default function DemoPortfolio() {
                     <TableCell className="text-right font-semibold">{asset.value}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" onClick={() => handleEditAsset(asset.id)}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteAsset(asset.id)}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -232,7 +279,7 @@ export default function DemoPortfolio() {
                     Load pre-built demo portfolios to test platform features
                   </p>
                 </div>
-                <Button variant="outline">
+                <Button variant="outline" onClick={handleBrowseSamples}>
                   Browse Samples
                 </Button>
               </div>
@@ -246,7 +293,7 @@ export default function DemoPortfolio() {
                     Clear all assets and simulation history
                   </p>
                 </div>
-                <Button variant="destructive">
+                <Button variant="destructive" onClick={handleResetSimulation}>
                   Reset All
                 </Button>
               </div>
@@ -254,7 +301,7 @@ export default function DemoPortfolio() {
           </CardContent>
         </Card>
 
-        <Dialog open={isAddAssetOpen} onOpenChange={setIsAddAssetOpen}>
+        <Dialog open={showAddAsset} onOpenChange={setShowAddAsset}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Add Asset to Demo Portfolio</DialogTitle>
@@ -354,10 +401,10 @@ export default function DemoPortfolio() {
               </div>
 
               <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setIsAddAssetOpen(false)}>
+                <Button variant="outline" onClick={() => setShowAddAsset(false)}>
                   Cancel
                 </Button>
-                <Button onClick={() => setIsAddAssetOpen(false)}>
+                <Button onClick={handleAddAsset}>
                   Add Asset
                 </Button>
               </div>

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ArrowRight, TrendingDown, AlertCircle, CheckCircle2, Play, ArrowDownToLine } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const mockUnwindPlan = [
   {
@@ -39,6 +40,8 @@ const mockUnwindPlan = [
 export default function Withdraw() {
   const [targetAmount, setTargetAmount] = useState("8000");
   const [targetToken, setTargetToken] = useState("USDC");
+  const [planGenerated, setPlanGenerated] = useState(false);
+  const { toast } = useToast();
 
   const totalNetProceeds = mockUnwindPlan.reduce(
     (sum, plan) => sum + parseFloat(plan.netProceeds.replace(/[$,]/g, "")),
@@ -54,6 +57,45 @@ export default function Withdraw() {
     (sum, plan) => sum + parseFloat(plan.slippage.replace(/[$,]/g, "")),
     0
   );
+
+  const handleGeneratePlan = () => {
+    setPlanGenerated(true);
+    toast({
+      title: "Plan Generated",
+      description: `Optimized withdrawal plan created for $${targetAmount} ${targetToken}`,
+    });
+  };
+
+  const handlePreviewPlan = () => {
+    toast({
+      title: "Previewing Withdrawal",
+      description: "Opening detailed preview of withdrawal plan",
+    });
+  };
+
+  const handleExecuteWithdrawal = () => {
+    toast({
+      title: "Executing Withdrawal",
+      description: "Processing withdrawal plan across selected positions",
+      variant: "destructive",
+    });
+  };
+
+  const handleCancel = () => {
+    setPlanGenerated(false);
+    setTargetAmount("8000");
+    toast({
+      title: "Plan Cancelled",
+      description: "Withdrawal plan has been cleared",
+    });
+  };
+
+  const handleModifyPlan = () => {
+    toast({
+      title: "Modifying Plan",
+      description: "Opening plan editor",
+    });
+  };
 
   return (
     <AppLayout>
@@ -102,7 +144,7 @@ export default function Withdraw() {
                 </div>
               </div>
 
-              <Button className="w-full" size="lg">
+              <Button className="w-full" size="lg" onClick={handleGeneratePlan}>
                 Generate Optimal Unwind Plan
               </Button>
             </CardContent>
@@ -132,146 +174,150 @@ export default function Withdraw() {
           </Card>
         </div>
 
-        <Card className="card-gradient border-border/50">
-          <CardHeader>
-            <CardTitle>Recommended Unwind Plan</CardTitle>
-            <CardDescription>
-              Positions selected for optimal closure with minimal cost
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {mockUnwindPlan.map((plan, index) => (
-              <div key={index}>
-                <div className="rounded-lg border border-border/50 bg-card/30 p-4">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{plan.position}</h3>
-                        <Badge variant="outline" className="text-xs">
-                          {plan.chain}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${
-                            plan.action.includes("100%")
-                              ? "border-destructive/50 text-destructive"
-                              : "border-accent/50 text-accent"
-                          }`}
-                        >
-                          {plan.action}
-                        </Badge>
+        {planGenerated && (
+          <>
+            <Card className="card-gradient border-border/50">
+              <CardHeader>
+                <CardTitle>Recommended Unwind Plan</CardTitle>
+                <CardDescription>
+                  Positions selected for optimal closure with minimal cost
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {mockUnwindPlan.map((plan, index) => (
+                  <div key={index}>
+                    <div className="rounded-lg border border-border/50 bg-card/30 p-4">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold">{plan.position}</h3>
+                            <Badge variant="outline" className="text-xs">
+                              {plan.chain}
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className={`text-xs ${
+                                plan.action.includes("100%")
+                                  ? "border-destructive/50 text-destructive"
+                                  : "border-accent/50 text-accent"
+                              }`}
+                            >
+                              {plan.action}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{plan.reason}</p>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Net Proceeds</p>
+                          <p className="text-lg font-semibold metric-positive">{plan.netProceeds}</p>
+                        </div>
                       </div>
-                      <p className="text-xs text-muted-foreground">{plan.reason}</p>
-                    </div>
 
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Net Proceeds</p>
-                      <p className="text-lg font-semibold metric-positive">{plan.netProceeds}</p>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                        <div>
+                          <p className="text-muted-foreground text-xs">Deployed</p>
+                          <p className="font-mono">{plan.deployed}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground text-xs">Current Value</p>
+                          <p className="font-mono">{plan.value}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground text-xs">Accrued Fees</p>
+                          <p className="font-mono metric-positive">{plan.fees}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground text-xs">Gas Cost</p>
+                          <p className="font-mono metric-negative">{plan.gasEstimate}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground text-xs">Slippage</p>
+                          <p className="font-mono metric-negative">{plan.slippage}</p>
+                        </div>
+                      </div>
                     </div>
+                    {index < mockUnwindPlan.length - 1 && (
+                      <div className="flex justify-center py-2">
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    )}
                   </div>
+                ))}
+              </CardContent>
+            </Card>
 
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground text-xs">Deployed</p>
-                      <p className="font-mono">{plan.deployed}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs">Current Value</p>
-                      <p className="font-mono">{plan.value}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs">Accrued Fees</p>
-                      <p className="font-mono metric-positive">{plan.fees}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs">Gas Cost</p>
-                      <p className="font-mono metric-negative">{plan.gasEstimate}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs">Slippage</p>
-                      <p className="font-mono metric-negative">{plan.slippage}</p>
-                    </div>
+            <Card className="card-gradient border-border/50">
+              <CardHeader>
+                <CardTitle className="text-base">Cost Breakdown</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Total Position Value</span>
+                    <span className="font-mono font-semibold">$7,997.32</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">+ Accrued Fees</span>
+                    <span className="font-mono metric-positive">+$99.02</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">- Total Gas</span>
+                    <span className="font-mono metric-negative">-${totalGas.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">- Total Slippage</span>
+                    <span className="font-mono metric-negative">-${totalSlippage.toFixed(2)}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between text-lg">
+                    <span className="font-semibold">Final Amount</span>
+                    <span className="font-mono font-semibold metric-positive">
+                      ${totalNetProceeds.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
                   </div>
                 </div>
-                {index < mockUnwindPlan.length - 1 && (
-                  <div className="flex justify-center py-2">
-                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </CardContent>
+            </Card>
+
+            <Card className="card-gradient border-primary/20 border">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <CheckCircle2 className="h-5 w-5 text-primary mt-0.5" />
+                  <div className="space-y-2 flex-1">
+                    <p className="font-semibold">Optimization Summary</p>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• Prioritized out-of-range positions to minimize yield destruction</li>
+                      <li>• Selected lower-gas chains first (Polygon before Ethereum)</li>
+                      <li>• Preserved highest-performing positions (ETH/USDC stays active)</li>
+                      <li>• Estimated total execution time: ~3-5 minutes across 2 transactions</li>
+                    </ul>
                   </div>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card className="card-gradient border-border/50">
-          <CardHeader>
-            <CardTitle className="text-base">Cost Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Total Position Value</span>
-                <span className="font-mono font-semibold">$7,997.32</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">+ Accrued Fees</span>
-                <span className="font-mono metric-positive">+$99.02</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">- Total Gas</span>
-                <span className="font-mono metric-negative">-${totalGas.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">- Total Slippage</span>
-                <span className="font-mono metric-negative">-${totalSlippage.toFixed(2)}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between text-lg">
-                <span className="font-semibold">Final Amount</span>
-                <span className="font-mono font-semibold metric-positive">
-                  ${totalNetProceeds.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </span>
-              </div>
+            <div className="flex items-center justify-end gap-3">
+              <Button variant="outline" onClick={handleCancel}>
+                Cancel
+              </Button>
+              <Button className="gap-2" onClick={handlePreviewPlan}>
+                <Play className="h-4 w-4" />
+                Preview Withdrawal Plan
+              </Button>
             </div>
-          </CardContent>
-        </Card>
 
-        <Card className="card-gradient border-primary/20 border">
-          <CardContent className="p-6">
-            <div className="flex items-start gap-4">
-              <CheckCircle2 className="h-5 w-5 text-primary mt-0.5" />
-              <div className="space-y-2 flex-1">
-                <p className="font-semibold">Optimization Summary</p>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Prioritized out-of-range positions to minimize yield destruction</li>
-                  <li>• Selected lower-gas chains first (Polygon before Ethereum)</li>
-                  <li>• Preserved highest-performing positions (ETH/USDC stays active)</li>
-                  <li>• Estimated total execution time: ~3-5 minutes across 2 transactions</li>
-                </ul>
-              </div>
+            <div className="flex items-center justify-end gap-3">
+              <Button variant="outline" onClick={handleModifyPlan}>
+                Modify Plan
+              </Button>
+              <Button variant="destructive" className="gap-2" onClick={handleExecuteWithdrawal}>
+                <ArrowDownToLine className="h-4 w-4" />
+                Execute Withdrawal Plan
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-
-        <div className="flex items-center justify-end gap-3">
-          <Button variant="outline">
-            Cancel
-          </Button>
-          <Button className="gap-2">
-            <Play className="h-4 w-4" />
-            Preview Withdrawal Plan
-          </Button>
-        </div>
-
-        <div className="flex items-center justify-end gap-3">
-          <Button variant="outline">
-            Modify Plan
-          </Button>
-          <Button variant="destructive" className="gap-2">
-            <ArrowDownToLine className="h-4 w-4" />
-            Execute Withdrawal Plan
-          </Button>
-        </div>
+          </>
+        )}
       </div>
     </AppLayout>
   );
