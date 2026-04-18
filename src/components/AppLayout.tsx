@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { LayoutDashboard, Search, Layers, Settings, Wallet, LogOut, TrendingUp, FileText } from "lucide-react";
+import { LayoutDashboard, Search, Layers, Settings, Wallet, LogOut, TrendingUp, FileText, Target, Zap, ArrowDownToLine, Beaker } from "lucide-react";
 import Link from "next/link";
 import { ModeSelector } from "@/components/ModeSelector";
 import { WalletButton } from "@/components/WalletButton";
@@ -9,15 +9,15 @@ interface AppLayoutProps {
   children: ReactNode;
 }
 
-const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Opportunities", href: "/opportunities", icon: Search },
-  { name: "Positions", href: "/positions", icon: Layers },
-  { name: "Automation", href: "/automation", icon: TrendingUp },
-  { name: "Withdraw", href: "/withdraw", icon: Wallet },
-  { name: "Wallets", href: "/wallets", icon: Wallet },
-  { name: "Demo Portfolio", href: "/demo", icon: FileText },
-  { name: "Settings", href: "/settings", icon: Settings },
+const navItems = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/opportunities", label: "Opportunities", icon: TrendingUp },
+  { href: "/positions", label: "Positions", icon: Target },
+  { href: "/automation", label: "Automation", icon: Zap },
+  { href: "/withdraw", label: "Withdraw", icon: ArrowDownToLine },
+  { href: "/wallets", label: "Wallets", icon: Wallet },
+  { href: "/demo", label: "Demo Portfolio", icon: Beaker },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function AppLayout({ children }: AppLayoutProps) {
@@ -42,12 +42,12 @@ export function AppLayout({ children }: AppLayoutProps) {
               <SidebarGroupLabel>Navigation</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {navigation.map((item) => (
-                    <SidebarMenuItem key={item.name}>
+                  {navItems.map((item) => (
+                    <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton asChild>
                         <Link href={item.href}>
                           <item.icon className="h-4 w-4" />
-                          <span>{item.name}</span>
+                          <span>{item.label}</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
