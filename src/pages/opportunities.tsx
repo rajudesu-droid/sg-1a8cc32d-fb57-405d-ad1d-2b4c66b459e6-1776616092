@@ -104,6 +104,7 @@ export default function Opportunities() {
   const [riskFilter, setRiskFilter] = useState<RiskFilter>("all");
   const [chainFilter, setChainFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedOpportunity, setSelectedOpportunity] = useState<typeof opportunities[0] | null>(null);
 
   const filteredOpportunities = opportunities
     .filter(opp => {
@@ -253,7 +254,7 @@ export default function Opportunities() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <Button onClick={() => setSelectedOpportunity(opportunity)}>
+                  <Button onClick={() => setSelectedOpportunity(opp)}>
                     View Details
                   </Button>
                   <Button variant="outline" size="sm">

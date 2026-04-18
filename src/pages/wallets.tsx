@@ -14,6 +14,7 @@ import { supportedNetworks } from "@/lib/walletConfig";
 export default function Wallets() {
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { isConnected, address, chainId, detectedAssets, refreshBalances } = useWallet();
 
   const currentNetwork = supportedNetworks.find((n) => n.id === chainId);
@@ -58,7 +59,15 @@ export default function Wallets() {
               </Button>
             ) : (
               <>
-                <Button onClick={refreshBalances} className="gap-2" disabled={isRefreshing}>
+                <Button 
+                  onClick={async () => {
+                    setIsRefreshing(true);
+                    await refreshBalances();
+                    setIsRefreshing(false);
+                  }} 
+                  className="gap-2" 
+                  disabled={isRefreshing}
+                >
                   <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
                   Refresh Balances
                 </Button>
