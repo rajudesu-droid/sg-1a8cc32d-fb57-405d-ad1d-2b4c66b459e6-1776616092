@@ -2,6 +2,8 @@ import { AppLayout } from "@/components/AppLayout";
 import { PortfolioMetrics } from "@/components/dashboard/PortfolioMetrics";
 import { ActivePositions } from "@/components/dashboard/ActivePositions";
 import { RecentAlerts } from "@/components/dashboard/RecentAlerts";
+import { NetworkBalances } from "@/components/dashboard/NetworkBalances";
+import { ConnectedWallets } from "@/components/dashboard/ConnectedWallets";
 
 export default function Dashboard() {
   return (
@@ -18,8 +20,10 @@ export default function Dashboard() {
           <div className="lg:col-span-2">
             <ActivePositions />
           </div>
-          <div>
+          <div className="space-y-6">
             <RecentAlerts />
+            <NetworkBalances />
+            <ConnectedWallets />
           </div>
         </div>
       </div>
