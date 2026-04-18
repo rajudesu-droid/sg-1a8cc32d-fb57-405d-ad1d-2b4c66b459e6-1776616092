@@ -28,7 +28,7 @@ export default function Dashboard() {
     
     toast({
       title: "Automation Started",
-      description: `LP Autopilot is now running in ${mode} mode`,
+      description: `LP Autopilot is now running in ${mode.label}`,
     });
   };
 
@@ -43,7 +43,7 @@ export default function Dashboard() {
   };
 
   const getModeLabel = () => {
-    switch (mode) {
+    switch (mode.current) {
       case "demo": return "Demo";
       case "shadow": return "Shadow";
       case "live": return "Live";
@@ -52,7 +52,7 @@ export default function Dashboard() {
   };
 
   const getModeVariant = () => {
-    switch (mode) {
+    switch (mode.current) {
       case "demo": return "secondary" as const;
       case "shadow": return "outline" as const;
       case "live": return "default" as const;
@@ -99,7 +99,7 @@ export default function Dashboard() {
               <div className="flex-1">
                 <h3 className="font-semibold text-success">Automation Active</h3>
                 <p className="text-sm text-muted-foreground">
-                  LP Autopilot is monitoring opportunities and executing policies in {mode} mode
+                  LP Autopilot is monitoring opportunities and executing policies in {mode.label}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -111,7 +111,7 @@ export default function Dashboard() {
         )}
 
         {/* Mode Warning for Demo */}
-        {mode === "demo" && (
+        {mode.current === "demo" && (
           <div className="rounded-lg border border-accent bg-accent/10 p-4">
             <div className="flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-accent flex-shrink-0" />
@@ -123,7 +123,7 @@ export default function Dashboard() {
         )}
 
         {/* Metrics */}
-        <PortfolioMetrics mode={mode} />
+        <PortfolioMetrics mode={mode.current} />
 
         {/* Main Content Grid */}
         <div className="grid gap-6 md:grid-cols-2">
