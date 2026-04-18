@@ -128,10 +128,10 @@ export class CodeImpactEngine {
       // Add directly affected modules
       sourceModule.affectedBy.forEach((mod) => {
         affectedModules.add(mod);
-        const module = this.dependencyMap.get(mod);
-        if (module) {
-          module.pages.forEach((page) => affectedPages.add(page));
-          module.components.forEach((comp) => affectedComponents.add(comp));
+        const depModule = this.dependencyMap.get(mod);
+        if (depModule) {
+          depModule.pages.forEach((page) => affectedPages.add(page));
+          depModule.components.forEach((comp) => affectedComponents.add(comp));
         }
       });
 
@@ -172,13 +172,13 @@ export class CodeImpactEngine {
 
   // ==================== DEPENDENCY QUERIES ====================
   getModuleDependencies(moduleName: string): string[] {
-    const module = this.dependencyMap.get(moduleName);
-    return module ? module.dependsOn : [];
+    const depModule = this.dependencyMap.get(moduleName);
+    return depModule ? depModule.dependsOn : [];
   }
 
   getAffectedModules(moduleName: string): string[] {
-    const module = this.dependencyMap.get(moduleName);
-    return module ? module.affectedBy : [];
+    const depModule = this.dependencyMap.get(moduleName);
+    return depModule ? depModule.affectedBy : [];
   }
 
   getAllDependencies(): Map<string, ModuleDependency> {
@@ -209,15 +209,15 @@ export class CodeImpactEngine {
     issues: string[];
   } {
     const issues: string[] = [];
-    const module = this.findModuleByName(changeSource);
+    const depModule = this.findModuleByName(changeSource);
 
-    if (!module) {
+    if (!depModule) {
       issues.push(`Module ${changeSource} not found in dependency map`);
       return { valid: false, issues };
     }
 
     // Check if all dependencies are registered
-    module.dependsOn.forEach((dep) => {
+    depModule.dependsOn.forEach((dep) => {
       if (!this.dependencyMap.has(dep)) {
         issues.push(`Dependency ${dep} is missing`);
       }
@@ -241,11 +241,11 @@ export class CodeImpactEngine {
     }
 
     visited.add(moduleName);
-    const module = this.dependencyMap.get(moduleName);
+    const depModule = this.dependencyMap.get(moduleName);
 
-    if (!module) return [];
+    if (!depModule) return [];
 
-    for (const dep of module.dependsOn) {
+    for (const dep of depModule.dependsOn) {
       const circular = this.detectCircularDependencies(dep, new Set(visited));
       if (circular.length > 0) {
         return [moduleName, ...circular];
