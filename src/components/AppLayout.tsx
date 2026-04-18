@@ -11,6 +11,7 @@ import {
   Beaker,
   Settings,
   Activity,
+  LogOut,
 } from "lucide-react";
 import { ModeSelector } from "./ModeSelector";
 import { WalletButton } from "./WalletButton";
@@ -27,6 +28,7 @@ import {
   SidebarInset,
   SidebarHeader,
   SidebarFooter,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 
 const navItems = [
