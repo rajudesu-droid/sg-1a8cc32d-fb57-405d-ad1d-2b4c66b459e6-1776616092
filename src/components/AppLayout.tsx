@@ -1,13 +1,33 @@
 import { ReactNode } from "react";
-import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { LayoutDashboard, Search, Layers, Settings, Wallet, LogOut, TrendingUp, FileText, Target, Zap, ArrowDownToLine, Beaker } from "lucide-react";
 import Link from "next/link";
-import { ModeSelector } from "@/components/ModeSelector";
-import { WalletButton } from "@/components/WalletButton";
-
-interface AppLayoutProps {
-  children: ReactNode;
-}
+import { useRouter } from "next/router";
+import {
+  LayoutDashboard,
+  TrendingUp,
+  Target,
+  Zap,
+  ArrowDownToLine,
+  Wallet,
+  Beaker,
+  Settings,
+  Activity,
+} from "lucide-react";
+import { ModeSelector } from "./ModeSelector";
+import { WalletButton } from "./WalletButton";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarInset,
+  SidebarHeader,
+  SidebarFooter,
+} from "@/components/ui/sidebar";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -18,9 +38,15 @@ const navItems = [
   { href: "/wallets", label: "Wallets", icon: Wallet },
   { href: "/demo", label: "Demo Portfolio", icon: Beaker },
   { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/admin", label: "System Monitor", icon: Activity },
 ];
 
+interface AppLayoutProps {
+  children: ReactNode;
+}
+
 export function AppLayout({ children }: AppLayoutProps) {
+  const router = useRouter();
   return (
     <SidebarProvider>
       <div className="flex h-screen w-full bg-background">
@@ -39,14 +65,13 @@ export function AppLayout({ children }: AppLayoutProps) {
 
           <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel>Navigation</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   {navItems.map((item) => (
                     <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild>
+                      <SidebarMenuButton asChild isActive={router.pathname === item.href}>
                         <Link href={item.href}>
-                          <item.icon className="h-4 w-4" />
+                          <item.icon />
                           <span>{item.label}</span>
                         </Link>
                       </SidebarMenuButton>
