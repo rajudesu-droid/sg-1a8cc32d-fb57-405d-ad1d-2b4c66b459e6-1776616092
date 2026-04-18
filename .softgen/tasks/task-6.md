@@ -1,6 +1,6 @@
 ---
 title: Withdrawal Optimizer
-status: todo
+status: done
 priority: medium
 type: feature
 tags: [frontend, withdrawal, optimizer]
@@ -13,10 +13,10 @@ position: 6
 Intelligent withdrawal planning that analyzes all positions and generates the optimal unwind strategy minimizing gas, slippage, and yield destruction.
 
 ## Checklist
-- [ ] Create Withdraw page with amount input and optimizer
-- [ ] Build WithdrawalInput component: desired amount, receive token selector
-- [ ] Add UnwindPlan component: positions to close (full/partial), execution order
-- [ ] Create CostBreakdown component: total gas, slippage estimate, final amount
-- [ ] Build PortfolioImpact component: before/after state comparison
-- [ ] Add ConfirmWithdrawal modal with step-by-step preview
-- [ ] Create withdrawal optimizer service with scoring logic
+- [x] Create Withdraw page with amount input and optimizer
+- [x] Build WithdrawalInput component: desired amount, receive token selector
+- [x] Add UnwindPlan component: positions to close (full/partial), execution order
+- [x] Create CostBreakdown component: total gas, slippage estimate, final amount
+- [x] Build PortfolioImpact component: before/after state comparison
+- [x] Add ConfirmWithdrawal modal with step-by-step preview
+- [x] Create withdrawal optimizer service with scoring logic

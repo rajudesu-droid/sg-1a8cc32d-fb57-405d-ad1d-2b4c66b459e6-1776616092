@@ -1,6 +1,6 @@
 ---
 title: Demo Portfolio & Simulation
-status: todo
+status: done
 priority: medium
 type: feature
 tags: [frontend, demo, simulation]
@@ -13,10 +13,10 @@ position: 7
 Demo mode interface for manual asset management, balance editing, and full LP lifecycle simulation. Uses identical strategy engine as live mode with simulated ledger.
 
 ## Checklist
-- [ ] Create DemoPortfolio page with asset list and manual controls
-- [ ] Build AddAsset modal: multi-chain asset search and manual entry form
-- [ ] Add AssetSearch component: search by symbol, show chain-specific results
-- [ ] Create BalanceEditor component: edit quantity, price override
-- [ ] Build SimulationLedger component: chronological action log with replay
-- [ ] Add ImportSample component: prebuilt demo portfolios
-- [ ] Create simulation engine service: track virtual positions, fees, rewards
+- [x] Create DemoPortfolio page with asset list and manual controls
+- [x] Build AddAsset modal: multi-chain asset search and manual entry form
+- [x] Add AssetSearch component: search by symbol, show chain-specific results
+- [x] Create BalanceEditor component: edit quantity, price override
+- [x] Build SimulationLedger component: chronological action log with replay
+- [x] Add ImportSample component: prebuilt demo portfolios
+- [x] Create simulation engine service: track virtual positions, fees, rewards
