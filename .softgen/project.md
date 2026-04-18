@@ -47,13 +47,17 @@ Professional DeFi terminal aesthetic. Grid-based layouts, precision data display
 - ✅ RLS policies for all tables
 - ✅ Professional design system with custom color palette
 - ✅ Complete navigation and layout structure
-- ✅ Enhanced dashboard with comprehensive earnings metrics:
-  * Daily/Monthly realized vs projected earnings
-  * 30-day projected earnings with explanatory tooltips
-  * Portfolio value, deployed capital, idle capital
+- ✅ Enhanced dashboard with comprehensive earnings KPIs:
+  * Daily Earnings: Realized + Projected breakdown
+  * Monthly Earnings: Current month realized + projected
+  * Realized Earnings: All-time claimed fees/rewards
+  * Projected 30-Day: Forward-looking estimate
+  * Mode-aware labeling: Demo (Simulated) / Shadow (Estimated) / Live (Realized + Projected)
+  * Calculation notes under each KPI explaining data source
+  * Portfolio value, deployed capital, idle capital, net APY
   * Network-grouped balances with asset breakdown
   * Connected wallets summary
-  * Mode-specific labeling (Demo/Shadow/Live)
+  * Info tooltips with methodology explanations
 - ✅ Opportunities explorer with filtering and risk scoring
 - ✅ Position management with health tracking
 - ✅ Automation & policy configuration interface

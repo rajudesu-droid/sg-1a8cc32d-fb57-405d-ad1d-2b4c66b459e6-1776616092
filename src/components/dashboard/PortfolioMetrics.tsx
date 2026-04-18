@@ -1,153 +1,209 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Wallet, DollarSign, Coins, Calendar, TrendingDown, Info } from "lucide-react";
+import { TrendingUp, Wallet, DollarSign, TrendingDown, Info, CalendarDays, Clock, Target, Sparkles } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-export function PortfolioMetrics() {
-  const metrics = [
-    {
-      label: "Total Portfolio Value",
-      value: "$28,085.93",
-      change: "+$405.90",
-      changePercent: "+1.47%",
-      icon: Wallet,
-      colorClass: "text-primary",
-    },
-    {
-      label: "Deployed Capital",
-      value: "$18,400.00",
-      sublabel: "65.5% of portfolio",
-      icon: TrendingUp,
-      colorClass: "text-success",
-    },
-    {
-      label: "Idle Capital",
-      value: "$9,685.93",
-      sublabel: "Available for deployment",
-      icon: Coins,
-      colorClass: "text-muted-foreground",
-    },
-    {
-      label: "Total Claimable Rewards",
-      value: "$351.30",
-      sublabel: "Across all positions",
-      icon: DollarSign,
-      colorClass: "text-primary",
-    },
-  ];
+interface PortfolioMetricsProps {
+  mode: "demo" | "shadow" | "live";
+}
 
-  const earningsMetrics = [
+export function PortfolioMetrics({ mode }: PortfolioMetricsProps) {
+  const getModeLabel = () => {
+    if (mode === "demo") return { text: "Simulated", color: "bg-muted text-muted-foreground" };
+    if (mode === "shadow") return { text: "Estimated", color: "bg-accent/20 text-accent" };
+    return { text: "Live", color: "bg-success/20 text-success" };
+  };
+
+  const modeLabel = getModeLabel();
+
+  // Earnings KPIs
+  const earningsKPIs = [
     {
       label: "Daily Earnings",
+      value: "$24.80",
       realized: "$12.40",
-      projected: "$24.80",
-      icon: Calendar,
-      tooltip: "Realized: Actual fees/rewards earned today. Projected: Estimated based on current APY.",
+      projected: "$12.40",
+      icon: Clock,
+      note: mode === "demo" 
+        ? "Simulated fees + rewards for today"
+        : mode === "shadow"
+        ? "Estimated based on current positions"
+        : "Today's realized + projected fees",
+      color: "text-primary",
     },
     {
-      label: "Monthly Earnings (Apr)",
+      label: "Monthly Earnings",
+      value: "$744.00",
       realized: "$186.50",
-      projected: "$744.00",
+      projected: "$557.50",
+      icon: CalendarDays,
+      note: mode === "demo"
+        ? "Simulated Apr 2026 total"
+        : mode === "shadow"
+        ? "Estimated Apr 2026 total"
+        : "Apr realized ($186.50) + projected to month-end",
+      color: "text-primary",
+    },
+    {
+      label: "Realized Earnings",
+      value: "$351.30",
+      realized: "$351.30",
+      projected: "$0.00",
       icon: TrendingUp,
-      tooltip: "Realized: Actual fees/rewards earned this calendar month. Projected: Estimated month-end total based on current positions.",
+      note: mode === "demo"
+        ? "Simulated claimed fees + rewards"
+        : mode === "shadow"
+        ? "N/A - no execution in Shadow mode"
+        : "Actually claimed fees + rewards (all-time)",
+      color: "text-success",
     },
     {
       label: "Projected 30-Day",
       value: "$744.00",
-      sublabel: "Based on current positions",
-      icon: TrendingUp,
-      colorClass: "text-accent",
-      tooltip: "Estimated earnings over the next 30 days assuming current positions, APY, and market conditions remain constant. Not guaranteed.",
+      realized: "$0.00",
+      projected: "$744.00",
+      icon: Target,
+      note: mode === "demo"
+        ? "Simulated 30-day projection"
+        : "Estimated based on current APYs (not guaranteed)",
+      color: "text-accent",
+    },
+  ];
+
+  // Portfolio KPIs
+  const portfolioKPIs = [
+    {
+      label: "Total Portfolio Value",
+      value: "$18,805.60",
+      change: "+$405.90",
+      changePercent: "+2.21%",
+      icon: Wallet,
+      note: "Deployed positions + idle balances",
+      color: "text-foreground",
+    },
+    {
+      label: "Deployed Capital",
+      value: "$18,400.00",
+      change: "+3.2%",
+      icon: Sparkles,
+      note: "Active in LP positions across 3 chains",
+      color: "text-primary",
+    },
+    {
+      label: "Idle Capital",
+      value: "$405.60",
+      change: "2.2%",
+      icon: DollarSign,
+      note: "Available for deployment",
+      color: "text-muted-foreground",
     },
     {
       label: "Estimated Net APY",
       value: "11.8%",
-      sublabel: "Weighted across positions",
+      change: "Weighted",
       icon: TrendingUp,
-      colorClass: "text-success",
-      tooltip: "Portfolio-weighted average APY across all active positions, net of estimated gas costs.",
+      note: mode === "demo"
+        ? "Simulated weighted average APY"
+        : "Weighted average across active positions",
+      color: "text-success",
     },
   ];
 
   return (
     <TooltipProvider>
       <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {metrics.map((metric) => (
-            <Card key={metric.label} className="card-gradient border-border/50">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2 flex-1">
-                    <p className="text-xs text-muted-foreground font-medium">{metric.label}</p>
-                    <p className="text-2xl font-semibold">{metric.value}</p>
-                    {metric.change && (
-                      <p className={`text-xs ${metric.change.startsWith('+') ? 'metric-positive' : 'metric-negative'}`}>
-                        {metric.change} ({metric.changePercent})
-                      </p>
-                    )}
-                    {metric.sublabel && (
-                      <p className="text-xs text-muted-foreground">{metric.sublabel}</p>
-                    )}
-                  </div>
-                  <div className={`rounded-lg bg-card/50 p-2 ${metric.colorClass}`}>
-                    <metric.icon className="h-5 w-5" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        {/* Mode Badge */}
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className={`text-xs ${modeLabel.color}`}>
+            {mode === "demo" ? "Demo Mode" : mode === "shadow" ? "Shadow Mode" : "Live Mode"} - {modeLabel.text}
+          </Badge>
+          {mode !== "live" && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p className="text-xs">
+                  {mode === "demo" 
+                    ? "All values are simulated. No real funds or transactions."
+                    : "Read-only mode. Showing estimates based on current positions. No execution."}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
 
+        {/* Earnings KPIs */}
         <div>
-          <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-lg font-semibold">Earnings Metrics</h2>
-            <Badge variant="outline" className="text-xs bg-muted/50">
-              Demo Mode - Simulated
-            </Badge>
-          </div>
-
+          <h3 className="text-sm font-semibold text-muted-foreground mb-3">Earnings Overview</h3>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {earningsMetrics.map((metric) => (
-              <Card key={metric.label} className="card-gradient border-border/50">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
+            {earningsKPIs.map((metric, index) => (
+              <Card key={index} className="card-gradient border-border/50">
+                <CardContent className="p-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <metric.icon className={`h-4 w-4 ${metric.color}`} />
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p className="text-xs">{metric.note}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <div>
                       <p className="text-xs text-muted-foreground font-medium">{metric.label}</p>
-                      {metric.tooltip && (
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <Info className="h-3.5 w-3.5 text-muted-foreground" />
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-xs">
-                            <p className="text-xs">{metric.tooltip}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
+                      <p className={`text-2xl font-semibold ${metric.color} font-mono`}>
+                        {metric.value}
+                      </p>
                     </div>
-                    <div className={`rounded-lg bg-card/50 p-1.5 ${metric.colorClass || 'text-primary'}`}>
-                      <metric.icon className="h-4 w-4" />
-                    </div>
+                    {mode === "live" && parseFloat(metric.realized.replace(/[$,]/g, "")) > 0 && (
+                      <div className="pt-2 border-t border-border/30 space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Realized</span>
+                          <span className="font-mono text-success">{metric.realized}</span>
+                        </div>
+                        {parseFloat(metric.projected.replace(/[$,]/g, "")) > 0 && (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Projected</span>
+                            <span className="font-mono text-accent">{metric.projected}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground/70 pt-1">{metric.note}</p>
                   </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
 
-                  {metric.realized !== undefined ? (
-                    <div className="space-y-2">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Realized</p>
-                        <p className="text-xl font-semibold metric-positive">{metric.realized}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Projected</p>
-                        <p className="text-lg font-mono text-accent">{metric.projected}</p>
-                      </div>
+        {/* Portfolio KPIs */}
+        <div>
+          <h3 className="text-sm font-semibold text-muted-foreground mb-3">Portfolio Metrics</h3>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {portfolioKPIs.map((metric, index) => (
+              <Card key={index} className="card-gradient border-border/50">
+                <CardContent className="p-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <metric.icon className={`h-4 w-4 ${metric.color}`} />
                     </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <p className="text-2xl font-semibold">{metric.value}</p>
-                      {metric.sublabel && (
-                        <p className="text-xs text-muted-foreground">{metric.sublabel}</p>
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium">{metric.label}</p>
+                      <p className={`text-2xl font-semibold ${metric.color}`}>
+                        {metric.value}
+                      </p>
+                      {metric.change && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {metric.change} {metric.changePercent && `(${metric.changePercent})`}
+                        </p>
                       )}
                     </div>
-                  )}
+                    <p className="text-xs text-muted-foreground/70 pt-1">{metric.note}</p>
+                  </div>
                 </CardContent>
               </Card>
             ))}
