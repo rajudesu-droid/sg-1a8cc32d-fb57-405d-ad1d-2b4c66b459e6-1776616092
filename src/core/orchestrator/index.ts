@@ -11,6 +11,7 @@ export class CentralOrchestrator extends EventEmitter {
   private engineRegistry: Map<string, any> = new Map();
   private eventQueue: AppEvent[] = [];
   private isProcessing = false;
+  private subscribers: Set<(event: AppEvent) => void> = new Set();
 
   private constructor() {
     super();
@@ -36,6 +37,12 @@ export class CentralOrchestrator extends EventEmitter {
 
   getAllEngines(): string[] {
     return Array.from(this.engineRegistry.keys());
+  }
+
+  // ==================== EVENT SUBSCRIPTION ====================
+  subscribe(callback: (event: AppEvent) => void): () => void {
+    this.subscribers.add(callback);
+    return () => this.subscribers.delete(callback);
   }
 
   // ==================== EVENT COORDINATION ====================
@@ -119,26 +126,18 @@ export class CentralOrchestrator extends EventEmitter {
   }
 
   // ==================== HEALTH CHECK ====================
-  getSystemHealth(): {
-    healthy: boolean;
-    engines: Record<string, boolean>;
-    queueLength: number;
-  } {
-    const engines: Record<string, boolean> = {};
+  async healthCheck(): Promise<Record<string, boolean>> {
+    const status: Record<string, boolean> = {};
     
-    this.engineRegistry.forEach((engine, name) => {
-      engines[name] = typeof engine.isHealthy === "function" 
-        ? engine.isHealthy() 
-        : true;
-    });
-
-    const allHealthy = Object.values(engines).every((h) => h);
-
-    return {
-      healthy: allHealthy,
-      engines,
-      queueLength: this.eventQueue.length,
-    };
+    for (const [name, engine] of this.engineRegistry.entries()) {
+      if (typeof engine.isHealthy === "function") {
+        status[name] = await engine.isHealthy();
+      } else {
+        status[name] = true; // Assume healthy if no health check method
+      }
+    }
+    
+    return status;
   }
 
   // ==================== SHUTDOWN ====================
