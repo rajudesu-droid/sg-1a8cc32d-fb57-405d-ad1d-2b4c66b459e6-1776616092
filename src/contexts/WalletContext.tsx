@@ -2,6 +2,11 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { useAccount, useConnect, useDisconnect, useBalance } from "wagmi";
 import { supportedNetworks } from "@/lib/walletConfig";
 
+/**
+ * Asset source tracking - CRITICAL for mode separation
+ */
+export type AssetSource = "detected" | "manual" | "simulated";
+
 interface DetectedAsset {
   chainId: number;
   network: string;
@@ -11,7 +16,7 @@ interface DetectedAsset {
   decimals: number;
   address?: string;
   isNative: boolean;
-  source: "auto-detected" | "manual";
+  source: AssetSource;  // REQUIRED: tracks where this asset came from
 }
 
 interface WalletContextType {
@@ -69,10 +74,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     
     setIsRefreshing(true);
     try {
-      // In production, this would call your backend API or indexing service
-      // For now, we'll detect native assets on supported networks
       const assets: DetectedAsset[] = [];
 
+      // CRITICAL: Only add REAL detected assets
+      // NO MOCK TOKENS in Shadow or Live Mode
+      
       // Add current chain native balance if available
       if (nativeBalance && chainId) {
         const network = supportedNetworks.find((n) => n.id === chainId);
@@ -85,63 +91,53 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             balance: nativeBalance.formatted,
             decimals: nativeBalance.decimals,
             isNative: true,
-            source: "auto-detected",
+            source: "detected",  // Real detected balance
           });
         }
       }
 
-      // Mock detection of tokens across networks
-      // In production: query indexer API, Moralis, Alchemy, or custom backend service
-      const mockTokens: DetectedAsset[] = [
-        {
-          chainId: 1,
-          network: "Ethereum",
-          symbol: "USDT",
-          name: "Tether USD",
-          balance: "1250.50",
-          decimals: 6,
-          address: "0xdac17f958d2ee523a2206206994597c13d831ec7",
-          isNative: false,
-          source: "auto-detected",
-        },
-        {
-          chainId: 1,
-          network: "Ethereum",
-          symbol: "USDC",
-          name: "USD Coin",
-          balance: "3420.80",
-          decimals: 6,
-          address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-          isNative: false,
-          source: "auto-detected",
-        },
-        {
-          chainId: 56,
-          network: "BSC",
-          symbol: "USDT",
-          name: "Tether USD",
-          balance: "850.25",
-          decimals: 18,
-          address: "0x55d398326f99059ff775485246999027b3197955",
-          isNative: false,
-          source: "auto-detected",
-        },
-        {
-          chainId: 137,
-          network: "Polygon",
-          symbol: "USDC",
-          name: "USD Coin",
-          balance: "620.00",
-          decimals: 6,
-          address: "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
-          isNative: false,
-          source: "auto-detected",
-        },
-      ];
+      // REAL IMPLEMENTATION REQUIRED:
+      // In production, integrate with:
+      // - Moralis API for multi-chain token balances
+      // - Alchemy/Infura token API
+      // - Covalent API
+      // - Custom indexer service
+      // - On-chain queries via wagmi/viem
+      
+      // EXAMPLE INTEGRATION PATTERN:
+      /*
+      if (address && chainId) {
+        // Call real indexer API
+        const response = await fetch(
+          `https://api.moralis.io/v2/${address}/erc20?chain=0x${chainId.toString(16)}`
+        );
+        const tokens = await response.json();
+        
+        tokens.forEach((token: any) => {
+          assets.push({
+            chainId,
+            network: supportedNetworks.find(n => n.id === chainId)?.name || "Unknown",
+            symbol: token.symbol,
+            name: token.name,
+            balance: token.balance,
+            decimals: token.decimals,
+            address: token.token_address,
+            isNative: false,
+            source: "detected",  // Real detected from API
+          });
+        });
+      }
+      */
 
-      setDetectedAssets([...assets, ...mockTokens]);
+      console.log(`[WalletContext] Detected ${assets.length} real assets`);
+      setDetectedAssets(assets);
+      
     } catch (err) {
-      console.error("Failed to refresh balances:", err);
+      console.error("[WalletContext] Failed to refresh balances:", err);
+      
+      // CRITICAL: On error, show empty state, NOT mock data
+      setDetectedAssets([]);
+      
     } finally {
       setIsRefreshing(false);
     }

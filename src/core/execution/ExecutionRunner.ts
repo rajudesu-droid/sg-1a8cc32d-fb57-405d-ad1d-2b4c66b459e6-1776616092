@@ -11,7 +11,7 @@ export class ExecutionRunner {
     auth: ExecutionAuthorization,
     context: ExecutionContext
   ): Promise<ExecutionResult> {
-    console.log(`[ExecutionRunner] Starting execution of plan ${plan.planId}`);
+    console.log(`[ExecutionRunner] Starting execution of plan ${plan.planId} in ${context.mode} mode`);
 
     const result: ExecutionResult = {
       executionId: `exec-${Date.now()}`,
@@ -61,23 +61,50 @@ export class ExecutionRunner {
       step.startTime = new Date();
 
       try {
-        // Execute the single step (simulated delay for demo/live stub)
-        await this.executeStep(step, context);
-        
-        step.status = "completed";
-        step.endTime = new Date();
-        result.completedSteps++;
-        
-        if (context.mode === "live" && !["verify_balances", "sync_state", "fetch_position_state"].includes(step.operation)) {
-          const mockTxHash = `0x${Math.random().toString(16).slice(2, 66)}`;
-          step.txHash = mockTxHash;
+        // MODE-SPECIFIC EXECUTION
+        if (context.mode === "demo") {
+          // Demo Mode: Simulate execution
+          await this.simulateStep(step, context);
+          step.status = "completed";
+          step.endTime = new Date();
+          result.completedSteps++;
+          
+          // Generate simulated tx hash for demo mode only
+          const simulatedTxHash = `0xSIM${Math.random().toString(16).slice(2, 62)}`;
+          step.txHash = simulatedTxHash;
           result.transactions.push({
             stepId: step.id,
-            txHash: mockTxHash,
+            txHash: simulatedTxHash,
             gasUsed: step.estimatedGas,
             status: "confirmed",
           });
-          result.logs.push(`[Runner] Step confirmed: Tx ${mockTxHash.substring(0, 10)}...`);
+          result.logs.push(`[Runner] Step simulated: Tx ${simulatedTxHash.substring(0, 10)}...`);
+          
+        } else if (context.mode === "live") {
+          // Live Mode: Execute real transactions
+          const txResult = await this.executeLiveStep(step, context);
+          
+          if (!txResult.success) {
+            throw new Error(txResult.error || "Transaction failed");
+          }
+          
+          // CRITICAL: Only mark complete if we have a real transaction hash
+          if (!txResult.txHash || !txResult.txHash.startsWith("0x") || txResult.txHash.includes("SIM")) {
+            throw new Error("Invalid transaction hash - real blockchain transaction required");
+          }
+          
+          step.status = "completed";
+          step.endTime = new Date();
+          step.txHash = txResult.txHash;
+          result.completedSteps++;
+          
+          result.transactions.push({
+            stepId: step.id,
+            txHash: txResult.txHash,
+            gasUsed: txResult.gasUsed || step.estimatedGas,
+            status: "confirmed",
+          });
+          result.logs.push(`[Runner] Step confirmed: Tx ${txResult.txHash.substring(0, 10)}...`);
         }
       } catch (error: any) {
         step.status = "failed";
@@ -93,6 +120,12 @@ export class ExecutionRunner {
             recoverable: step.retryable,
           };
           result.completedAt = new Date();
+          
+          // CRITICAL: Live mode failures must not be marked as completed
+          if (context.mode === "live") {
+            result.logs.push("[Runner] Live execution failed - action remains pending/failed, NOT completed");
+          }
+          
           return result;
         } else {
           result.logs.push(`[Runner] Step is optional. Continuing execution...`);
@@ -108,19 +141,90 @@ export class ExecutionRunner {
   }
 
   /**
-   * Internal processor for a single plan substep
+   * Simulate step execution (Demo Mode only)
    */
-  private async executeStep(step: ExecutionSubstep, context: ExecutionContext): Promise<void> {
-    // Artificial delay to simulate processing or on-chain waiting
-    const delay = context.mode === "demo" ? 500 : 1500;
+  private async simulateStep(step: ExecutionSubstep, context: ExecutionContext): Promise<void> {
+    // Artificial delay to simulate processing
+    const delay = 500;
     await new Promise(resolve => setTimeout(resolve, delay));
+    
+    console.log(`[Runner] Simulated step: ${step.operation}`);
+  }
 
-    // Here we would dynamically call Protocol Adapters based on step.protocolAdapter & step.methodName
-    if (step.operation === "approve_token") {
-       // logic for token approvals...
-    } else if (step.operation === "add_liquidity") {
-       // logic for providing liquidity...
+  /**
+   * Execute real blockchain transaction (Live Mode only)
+   * 
+   * CRITICAL: This method must ONLY return success with a real transaction hash
+   * from a real wallet-signed blockchain transaction.
+   * 
+   * Implementation requirements:
+   * 1. Connect to user's wallet (MetaMask, WalletConnect, etc.)
+   * 2. Build real transaction parameters
+   * 3. Request wallet signature
+   * 4. Submit transaction to blockchain
+   * 5. Wait for transaction confirmation
+   * 6. Return ONLY real transaction hash
+   * 
+   * NEVER return simulated/mock data in Live Mode.
+   */
+  private async executeLiveStep(
+    step: ExecutionSubstep, 
+    context: ExecutionContext
+  ): Promise<{
+    success: boolean;
+    txHash?: string;
+    gasUsed?: number;
+    error?: string;
+  }> {
+    // STUB: Real wallet integration required
+    // This is where you would:
+    // 1. Call the protocol adapter method (step.protocolAdapter, step.methodName)
+    // 2. Use wagmi/viem/ethers to send real transaction
+    // 3. Wait for receipt
+    // 4. Return real tx hash
+    
+    console.log(`[Runner] Live execution stub - wallet integration required`);
+    console.log(`[Runner] Step: ${step.operation}, Protocol: ${step.protocolAdapter}, Method: ${step.methodName}`);
+    
+    // TEMPORARY: For now, return failure until real wallet integration is implemented
+    // This ensures Live Mode never accidentally uses mock data
+    return {
+      success: false,
+      error: "Live execution requires wallet integration - not yet implemented. Use Demo Mode for testing."
+    };
+    
+    /* REAL IMPLEMENTATION TEMPLATE:
+    
+    try {
+      // Get wallet client from context
+      const { walletClient, publicClient } = context.wallet;
+      
+      // Get protocol adapter
+      const adapter = protocolRegistry.getAdapter(step.protocolAdapter);
+      
+      // Call adapter method to build transaction
+      const txParams = await adapter[step.methodName](step.params);
+      
+      // Sign and send transaction
+      const txHash = await walletClient.sendTransaction(txParams);
+      
+      // Wait for confirmation
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+      
+      return {
+        success: receipt.status === 'success',
+        txHash: receipt.transactionHash,
+        gasUsed: Number(receipt.gasUsed),
+      };
+      
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Transaction failed'
+      };
     }
+    
+    */
   }
 }
 

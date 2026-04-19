@@ -29,8 +29,16 @@ interface AppState {
   setWallet: (wallet: Partial<WalletState>) => void;
 
   // ==================== PORTFOLIO ====================
-  portfolio: PortfolioMetrics | null;
+  // Mode-specific portfolio states
+  portfolio: PortfolioMetrics | null;  // Current active mode portfolio
+  demoPortfolio: PortfolioMetrics | null;  // Demo mode only
+  shadowPortfolio: PortfolioMetrics | null;  // Shadow mode only
+  livePortfolio: PortfolioMetrics | null;  // Live mode only
+  
   setPortfolio: (portfolio: PortfolioMetrics) => void;
+  setDemoPortfolio: (portfolio: PortfolioMetrics | null) => void;
+  setShadowPortfolio: (portfolio: PortfolioMetrics | null) => void;
+  setLivePortfolio: (portfolio: PortfolioMetrics | null) => void;
 
   // ==================== OPPORTUNITIES ====================
   opportunities: Opportunity[];
@@ -39,8 +47,16 @@ interface AppState {
   removeOpportunity: (id: string) => void;
 
   // ==================== POSITIONS ====================
-  positions: Position[];
+  // Mode-specific positions
+  positions: Position[];  // Current active mode positions
+  demoPositions: Position[];  // Demo mode only
+  shadowPositions: Position[];  // Shadow mode only (read-only)
+  livePositions: Position[];  // Live mode only
+  
   setPositions: (positions: Position[]) => void;
+  setDemoPositions: (positions: Position[]) => void;
+  setShadowPositions: (positions: Position[]) => void;
+  setLivePositions: (positions: Position[]) => void;
   addPosition: (position: Position) => void;
   updatePosition: (id: string, updates: Partial<Position>) => void;
   removePosition: (id: string) => void;
@@ -148,13 +164,32 @@ export const useAppStore = create<AppState>()(
           label: "Demo Mode",
         },
         setMode: (mode) =>
-          set((state) => ({
-            mode: {
-              current: mode,
-              canExecute: mode === "live",
-              label: mode === "demo" ? "Demo Mode" : mode === "shadow" ? "Shadow Mode" : "Live Mode",
-            },
-          })),
+          set((state) => {
+            // When mode changes, load mode-specific data
+            let portfolio = null;
+            let positions: Position[] = [];
+            
+            if (mode === "demo") {
+              portfolio = state.demoPortfolio;
+              positions = state.demoPositions;
+            } else if (mode === "shadow") {
+              portfolio = state.shadowPortfolio;
+              positions = state.shadowPositions;
+            } else if (mode === "live") {
+              portfolio = state.livePortfolio;
+              positions = state.livePositions;
+            }
+            
+            return {
+              mode: {
+                current: mode,
+                canExecute: mode === "live",
+                label: mode === "demo" ? "Demo Mode" : mode === "shadow" ? "Shadow Mode" : "Live Mode",
+              },
+              portfolio,
+              positions,
+            };
+          }),
 
         // ==================== WALLET ====================
         wallet: {
@@ -171,7 +206,14 @@ export const useAppStore = create<AppState>()(
 
         // ==================== PORTFOLIO ====================
         portfolio: null,
+        demoPortfolio: null,
+        shadowPortfolio: null,
+        livePortfolio: null,
+        
         setPortfolio: (portfolio) => set({ portfolio }),
+        setDemoPortfolio: (portfolio) => set({ demoPortfolio: portfolio }),
+        setShadowPortfolio: (portfolio) => set({ shadowPortfolio: portfolio }),
+        setLivePortfolio: (portfolio) => set({ livePortfolio: portfolio }),
 
         // ==================== OPPORTUNITIES ====================
         opportunities: [],
@@ -185,19 +227,94 @@ export const useAppStore = create<AppState>()(
 
         // ==================== POSITIONS ====================
         positions: [],
+        demoPositions: [],
+        shadowPositions: [],
+        livePositions: [],
+        
         setPositions: (positions) => set({ positions }),
-        addPosition: (position) =>
-          set((state) => ({
-            positions: [...state.positions, position],
-          })),
-        updatePosition: (id, updates) =>
-          set((state) => ({
-            positions: state.positions.map((p) => (p.id === id ? { ...p, ...updates } : p)),
-          })),
-        removePosition: (id) =>
-          set((state) => ({
-            positions: state.positions.filter((p) => p.id !== id),
-          })),
+        setDemoPositions: (positions) => set({ demoPositions: positions }),
+        setShadowPositions: (positions) => set({ shadowPositions: positions }),
+        setLivePositions: (positions) => set({ livePositions: positions }),
+        
+        addPosition: (position) => {
+          const mode = useAppStore.getState().mode.current;
+          set((state) => {
+            const newPositions = [...state.positions, position];
+            
+            // Update mode-specific positions
+            if (mode === "demo") {
+              return { 
+                positions: newPositions,
+                demoPositions: newPositions
+              };
+            } else if (mode === "shadow") {
+              return { 
+                positions: newPositions,
+                shadowPositions: newPositions
+              };
+            } else if (mode === "live") {
+              return { 
+                positions: newPositions,
+                livePositions: newPositions
+              };
+            }
+            return { positions: newPositions };
+          });
+        },
+        
+        updatePosition: (id, updates) => {
+          const mode = useAppStore.getState().mode.current;
+          set((state) => {
+            const updatedPositions = state.positions.map((p) => 
+              p.id === id ? { ...p, ...updates } : p
+            );
+            
+            // Update mode-specific positions
+            if (mode === "demo") {
+              return { 
+                positions: updatedPositions,
+                demoPositions: updatedPositions
+              };
+            } else if (mode === "shadow") {
+              return { 
+                positions: updatedPositions,
+                shadowPositions: updatedPositions
+              };
+            } else if (mode === "live") {
+              return { 
+                positions: updatedPositions,
+                livePositions: updatedPositions
+              };
+            }
+            return { positions: updatedPositions };
+          });
+        },
+        
+        removePosition: (id) => {
+          const mode = useAppStore.getState().mode.current;
+          set((state) => {
+            const filteredPositions = state.positions.filter((p) => p.id !== id);
+            
+            // Update mode-specific positions
+            if (mode === "demo") {
+              return { 
+                positions: filteredPositions,
+                demoPositions: filteredPositions
+              };
+            } else if (mode === "shadow") {
+              return { 
+                positions: filteredPositions,
+                shadowPositions: filteredPositions
+              };
+            } else if (mode === "live") {
+              return { 
+                positions: filteredPositions,
+                livePositions: filteredPositions
+              };
+            }
+            return { positions: filteredPositions };
+          });
+        },
 
         // ==================== REWARDS ====================
         rewards: {
