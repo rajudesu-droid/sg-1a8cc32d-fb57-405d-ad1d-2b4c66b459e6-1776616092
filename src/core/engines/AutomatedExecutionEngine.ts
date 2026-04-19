@@ -1,258 +1,351 @@
 // ============================================================================
 // AUTOMATED EXECUTION ENGINE
-// Orchestrates the complete action lifecycle from trigger to completion
+// Orchestrates the complete action lifecycle with job queues and recovery
 // ============================================================================
 
-import type { ActionTrigger, ActionLifecycle, ActionStatus } from "../contracts/actions";
+import type {
+  ActionTrigger,
+  ActionStatus,
+  ValidationResult,
+} from "../contracts/actions";
+import type { ExecutionJob, JobPriority } from "../execution/ExecutionJob";
+import type { ActionPlan, ExecutionResult } from "../execution/types";
+import { orchestrator } from "../orchestrator";
 import { validationEngine } from "./ValidationEngine";
 import { actionPlanner } from "../execution/ActionPlanner";
 import { previewEngine } from "../execution/PreviewEngine";
 import { authorizationEngine } from "../execution/AuthorizationEngine";
 import { executionRunner } from "../execution/ExecutionRunner";
-import type { ExecutionContext, ExecutionResult } from "../execution/types";
-import { orchestrator } from "../orchestrator";
+import { createExecutionJob, getPriorityForAction, getTargetEntity } from "../execution/ExecutionJob";
+import { recoveryHandler } from "../execution/RecoveryHandler";
+import { postExecutionSync } from "../execution/PostExecutionSync";
+import { executionLogService } from "../execution/ExecutionLogService";
+import { concurrencyController } from "../execution/ConcurrencyController";
 import { useAppStore } from "@/store";
 
 export class AutomatedExecutionEngine {
   private engineId = "execution-engine";
-  private activeExecutions: Map<string, ActionLifecycle> = new Map();
+  private engineVersion = "2.0.0";
+  
+  // Job queue (priority-based)
+  private jobQueue: ExecutionJob[] = [];
+  
+  // Active jobs (currently executing)
+  private activeJobs = new Map<string, ExecutionJob>();
+  
+  // Processing lock
+  private isProcessing = false;
 
   constructor() {
     this.registerWithOrchestrator();
+    console.log(`[ExecutionEngine] Initialized v${this.engineVersion}`);
   }
 
   // ============================================================================
-  // MAIN EXECUTION PIPELINE
+  // PUBLIC API
   // ============================================================================
 
-  async processTrigger(trigger: ActionTrigger): Promise<ActionLifecycle> {
-    console.log(`[ExecutionEngine] Processing trigger: ${trigger.id}`);
+  /**
+   * Submit a new execution trigger
+   */
+  async submitTrigger(trigger: ActionTrigger): Promise<ExecutionJob> {
+    console.log(`[ExecutionEngine] Received trigger: ${trigger.actionType} from ${trigger.source}`);
 
-    // Initialize lifecycle tracking
-    const lifecycle: ActionLifecycle = {
-      id: `lifecycle-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      trigger,
-      status: "triggered",
-      history: [
-        {
-          timestamp: new Date(),
-          status: "triggered",
-          message: `Action triggered from ${trigger.source}`,
-          metadata: { reason: trigger.reason },
-        },
-      ],
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    // Create execution job
+    const priority = getPriorityForAction(trigger.actionType);
+    const { type: targetType, id: targetId } = getTargetEntity(trigger);
+    
+    const job = createExecutionJob(trigger, priority, targetType, targetId);
+
+    // Check for conflicts
+    if (concurrencyController.hasConflict(job)) {
+      console.warn(`[ExecutionEngine] Job ${job.id} conflicts with active execution`);
+      job.status = "paused";
+      job.errorInfo = {
+        category: "sync_mismatch",
+        message: "Conflicting execution in progress. Job paused.",
+        recoverable: true,
+        retryCount: 0,
+      };
+    }
+
+    // Add to queue (priority-sorted)
+    this.enqueueJob(job);
+
+    // Start processing if not already running
+    if (!this.isProcessing) {
+      this.processQueue();
+    }
+
+    return job;
+  }
+
+  /**
+   * Get all active jobs
+   */
+  getActiveJobs(): ExecutionJob[] {
+    return Array.from(this.activeJobs.values());
+  }
+
+  /**
+   * Get specific job by ID
+   */
+  getJob(jobId: string): ExecutionJob | undefined {
+    return this.activeJobs.get(jobId) || this.jobQueue.find(j => j.id === jobId);
+  }
+
+  /**
+   * Cancel a pending or paused job
+   */
+  cancelJob(jobId: string): boolean {
+    const job = this.getJob(jobId);
+    if (!job) return false;
+
+    if (job.status === "queued" || job.status === "paused") {
+      job.status = "cancelled";
+      job.completedAt = new Date();
+      this.removeFromQueue(jobId);
+      console.log(`[ExecutionEngine] Job ${jobId} cancelled`);
+      return true;
+    }
+
+    console.warn(`[ExecutionEngine] Cannot cancel job ${jobId} in status ${job.status}`);
+    return false;
+  }
+
+  // ============================================================================
+  // QUEUE MANAGEMENT
+  // ============================================================================
+
+  private enqueueJob(job: ExecutionJob): void {
+    // Insert job in priority order
+    const priorityOrder: Record<JobPriority, number> = {
+      emergency: 0,
+      critical: 1,
+      high: 2,
+      normal: 3,
+      low: 4,
     };
 
-    this.activeExecutions.set(lifecycle.id, lifecycle);
+    const insertIndex = this.jobQueue.findIndex(
+      (existingJob) => priorityOrder[existingJob.priority] > priorityOrder[job.priority]
+    );
+
+    if (insertIndex === -1) {
+      this.jobQueue.push(job);
+    } else {
+      this.jobQueue.splice(insertIndex, 0, job);
+    }
+
+    console.log(`[ExecutionEngine] Job ${job.id} queued with priority ${job.priority}`);
+  }
+
+  private removeFromQueue(jobId: string): void {
+    this.jobQueue = this.jobQueue.filter((j) => j.id !== jobId);
+  }
+
+  private async processQueue(): Promise<void> {
+    if (this.isProcessing) return;
+    this.isProcessing = true;
+
+    while (this.jobQueue.length > 0) {
+      const job = this.jobQueue.shift();
+      if (!job) break;
+
+      // Skip cancelled or expired jobs
+      if (job.status === "cancelled" || new Date() > job.expiresAt) {
+        console.log(`[ExecutionEngine] Skipping ${job.status} job ${job.id}`);
+        continue;
+      }
+
+      // Skip paused jobs
+      if (job.status === "paused") {
+        console.log(`[ExecutionEngine] Job ${job.id} is paused. Re-queueing.`);
+        this.jobQueue.push(job);
+        continue;
+      }
+
+      // Process job
+      await this.processJob(job);
+    }
+
+    this.isProcessing = false;
+  }
+
+  // ============================================================================
+  // JOB PROCESSING
+  // ============================================================================
+
+  private async processJob(job: ExecutionJob): Promise<void> {
+    console.log(`[ExecutionEngine] Processing job ${job.id} (${job.actionType})`);
+
+    // Add to active jobs
+    this.activeJobs.set(job.id, job);
+
+    // Acquire lock
+    if (!concurrencyController.acquireLock(job)) {
+      console.warn(`[ExecutionEngine] Could not acquire lock for job ${job.id}`);
+      job.status = "paused";
+      this.jobQueue.push(job); // Re-queue
+      this.activeJobs.delete(job.id);
+      return;
+    }
 
     try {
       // STEP 1: VALIDATION
-      await this.updateStatus(lifecycle, "validating");
-      const validation = await validationEngine.validateAction(trigger);
-      lifecycle.validation = validation;
+      job.status = "validating";
+      job.updatedAt = new Date();
+      const validation = await validationEngine.validateAction(job.trigger);
+      job.validationSnapshot = validation;
 
       if (!validation.allowed) {
-        await this.updateStatus(lifecycle, "validation_failed");
-        this.logAudit(trigger, "validation_failed", `Blocked: ${validation.blockingReasons.join(", ")}`);
-        return lifecycle;
+        job.status = "validation_failed";
+        job.errorInfo = {
+          category: "stale_state",
+          message: validation.blockingReasons.join("; "),
+          recoverable: false,
+          retryCount: 0,
+        };
+        await this.handleJobCompletion(job);
+        return;
       }
 
       // STEP 2: PLANNING
-      await this.updateStatus(lifecycle, "planning");
-      const context = this.buildExecutionContext(trigger);
-      const plan = await actionPlanner.generatePlan(trigger, context);
-      lifecycle.plan = plan;
+      job.status = "planning";
+      job.updatedAt = new Date();
+      const context = this.buildExecutionContext(job.trigger);
+      const plan = await actionPlanner.generatePlan(job.trigger, context);
+      job.actionPlan = plan;
 
       // STEP 3: PREVIEW
-      await this.updateStatus(lifecycle, "previewing");
+      job.status = "previewing";
+      job.updatedAt = new Date();
       const preview = await previewEngine.generatePreview(plan, context);
-      
-      // Broadcast preview for UI display
+      job.previewSnapshot = preview;
+
+      // Broadcast preview for UI
       orchestrator.publishEvent({
         type: "action_triggered" as any,
         timestamp: new Date(),
         source: this.engineId,
-        data: { lifecycle, preview },
+        data: { job, preview },
         affectedModules: ["dashboard", "positions-page"],
       });
 
       // STEP 4: AUTHORIZATION
-      await this.updateStatus(lifecycle, "awaiting_authorization");
+      job.status = "awaiting_authorization";
+      job.updatedAt = new Date();
       const auth = await authorizationEngine.requestAuthorization(plan, preview, context);
-      
+
       if (!auth.authorized) {
-        await this.updateStatus(lifecycle, "awaiting_authorization");
-        // Wait for manual approval or policy auto-approval
-        return lifecycle;
+        console.log(`[ExecutionEngine] Job ${job.id} awaiting authorization`);
+        // For now, auto-approve demo/shadow. Live requires manual approval.
+        if (job.mode !== "live") {
+          const approved = await authorizationEngine.approveAuthorization(auth);
+          if (!approved.authorized) {
+            job.status = "failed";
+            job.errorInfo = {
+              category: "user_rejected",
+              message: "Authorization failed",
+              recoverable: false,
+              retryCount: 0,
+            };
+            await this.handleJobCompletion(job);
+            return;
+          }
+        } else {
+          // Live mode requires explicit user approval (not implemented here)
+          job.status = "awaiting_authorization";
+          this.activeJobs.delete(job.id);
+          concurrencyController.releaseLock(job);
+          return;
+        }
       }
 
       // STEP 5: EXECUTION
-      await this.updateStatus(lifecycle, "executing");
+      job.status = "executing";
+      job.startedAt = new Date();
+      job.updatedAt = new Date();
       const result = await executionRunner.execute(plan, auth, context);
-      lifecycle.execution = result;
+      job.executionResult = result;
 
-      // STEP 6: CONFIRMATION & POST-SYNC
+      // STEP 6: RESULT HANDLING
       if (result.status === "completed") {
-        await this.updateStatus(lifecycle, "completed");
-        await this.postExecutionSync(trigger, result);
-        this.logAudit(trigger, "completed", "Action completed successfully");
+        job.status = "completed";
+        console.log(`[ExecutionEngine] Job ${job.id} completed successfully`);
       } else if (result.status === "failed") {
-        await this.updateStatus(lifecycle, "failed");
-        this.logAudit(trigger, "failed", result.error?.message || "Execution failed");
+        job.status = "failed";
+        console.log(`[ExecutionEngine] Job ${job.id} failed`);
+        
+        // STEP 7: RECOVERY
+        const recoveryStrategy = await recoveryHandler.handleFailure(job, result);
+        await recoveryHandler.executeRecovery(job, recoveryStrategy);
+      } else {
+        job.status = "partially_completed";
+        console.log(`[ExecutionEngine] Job ${job.id} partially completed`);
       }
 
-      // STEP 7: CLEANUP
-      setTimeout(() => {
-        this.activeExecutions.delete(lifecycle.id);
-      }, 60000); // Keep in memory for 1 minute for UI display
+      // STEP 8: POST-EXECUTION SYNC
+      await postExecutionSync.syncAfterExecution(job);
 
-      return lifecycle;
+      // STEP 9: AUDIT LOGGING
+      executionLogService.logJobResult(job);
+
+      // STEP 10: CLEANUP
+      await this.handleJobCompletion(job);
+
     } catch (error: any) {
-      await this.updateStatus(lifecycle, "failed");
-      this.logAudit(trigger, "failed", error.message);
-      lifecycle.execution = {
-        executionId: `exec-${Date.now()}`,
-        planId: lifecycle.plan?.planId || "unknown",
-        actionType: trigger.actionType,
-        status: "failed",
-        completedSteps: 0,
-        totalSteps: 0,
-        transactions: [],
-        stateChanges: {
-          balancesBefore: {},
-          balancesAfter: {},
-          positionsAffected: [],
-          portfolioValueChange: 0,
-        },
-        startedAt: new Date(),
-        completedAt: new Date(),
-        error: {
-          stepId: "engine",
-          message: error.message,
-          recoverable: false,
-        },
-        logs: [error.message],
+      console.error(`[ExecutionEngine] Unexpected error in job ${job.id}:`, error);
+      job.status = "failed";
+      job.errorInfo = {
+        category: "unknown_error",
+        message: error.message || "Unknown execution error",
+        recoverable: false,
+        retryCount: 0,
       };
-      return lifecycle;
+      await this.handleJobCompletion(job);
     }
   }
 
+  private async handleJobCompletion(job: ExecutionJob): Promise<void> {
+    job.completedAt = new Date();
+    job.updatedAt = new Date();
+
+    // Release lock
+    concurrencyController.releaseLock(job);
+
+    // Keep in active jobs for 1 minute for UI display
+    setTimeout(() => {
+      this.activeJobs.delete(job.id);
+    }, 60000);
+
+    console.log(`[ExecutionEngine] Job ${job.id} completed with status: ${job.status}`);
+  }
+
   // ============================================================================
-  // HELPER METHODS
+  // HELPERS
   // ============================================================================
 
-  private buildExecutionContext(trigger: ActionTrigger): ExecutionContext {
+  private buildExecutionContext(trigger: ActionTrigger): any {
     const store = useAppStore.getState();
+
     return {
       mode: trigger.mode,
-      walletAddress: trigger.walletAddress,
-      portfolioId: trigger.portfolioId,
-      preferences: {
-        autoApprove: store.policy.autoHarvest, // Use policy settings
-        maxSlippage: 0.5,
-        maxGasPrice: 100,
-        confirmationBlocks: 2,
-      },
-      simulationState: trigger.mode === "demo" ? {
-        balances: {},
-        positions: store.positions,
-        portfolio: store.portfolio,
-      } : undefined,
+      wallet: store.wallet,
+      portfolio: store.portfolio,
+      positions: store.positions,
+      policy: store.policy,
     };
-  }
-
-  private async updateStatus(lifecycle: ActionLifecycle, status: ActionStatus): Promise<void> {
-    lifecycle.status = status;
-    lifecycle.updatedAt = new Date();
-    lifecycle.history.push({
-      timestamp: new Date(),
-      status,
-      message: `Status changed to ${status}`,
-    });
-
-    // Update store for UI reactivity
-    const store = useAppStore.getState();
-    store.addAlert({
-      id: `status-${Date.now()}`,
-      type: status === "failed" ? "error" : status === "completed" ? "success" : "info",
-      title: `Action ${status}`,
-      message: `${lifecycle.trigger.actionType}: ${status}`,
-      timestamp: new Date(),
-    });
-
-    console.log(`[ExecutionEngine] Lifecycle ${lifecycle.id} -> ${status}`);
-  }
-
-  private async postExecutionSync(trigger: ActionTrigger, result: ExecutionResult): Promise<void> {
-    console.log(`[ExecutionEngine] Running post-execution sync`);
-
-    // Determine which modules need to refresh
-    const affectedModules: string[] = [];
-
-    switch (trigger.actionType) {
-      case "ADD_LIQUIDITY":
-      case "STAKE":
-        affectedModules.push("portfolio-engine", "position-engine", "wallet-engine");
-        break;
-      case "HARVEST_REWARDS":
-      case "CONVERT_REWARDS":
-      case "COMPOUND":
-        affectedModules.push("rewards-engine", "portfolio-engine", "position-engine");
-        break;
-      case "EXIT_POSITION":
-      case "REMOVE_LIQUIDITY":
-        affectedModules.push("position-engine", "portfolio-engine", "wallet-engine");
-        break;
-      case "WITHDRAW_FUNDS":
-        affectedModules.push("portfolio-engine", "wallet-engine", "withdrawal-engine");
-        break;
-      case "REBALANCE":
-        affectedModules.push("position-engine", "portfolio-engine");
-        break;
-    }
-
-    // Trigger sync via orchestrator
-    orchestrator.coordinateUpdate(
-      this.engineId,
-      "sync_required" as any,
-      { result },
-      affectedModules
-    );
-  }
-
-  private logAudit(trigger: ActionTrigger, status: ActionStatus, message: string) {
-    const store = useAppStore.getState();
-    const isError = status === "failed" || status === "validation_failed";
-    
-    store.addAuditLog({
-      id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      timestamp: new Date() as any,
-      mode: trigger.mode,
-      actionType: "simulation" as any,
-      actor: "system",
-      details: { 
-        status,
-        message,
-        triggerId: trigger.id, 
-        protocol: trigger.protocol,
-        chain: trigger.chain,
-        action: trigger.actionType
-      },
-      success: !isError,
-      error: isError ? message : undefined
-    });
   }
 
   private registerWithOrchestrator() {
     orchestrator.registerEngine(this.engineId, this);
-    
+
     // Listen for new triggers from any source
     orchestrator.subscribe(async (event) => {
       if (event.type === ("action_triggered" as any) && event.source !== this.engineId) {
         if (event.data && event.data.trigger) {
-          await this.processTrigger(event.data.trigger);
+          await this.submitTrigger(event.data.trigger);
         }
       }
     });
@@ -261,44 +354,21 @@ export class AutomatedExecutionEngine {
   }
 
   // ============================================================================
-  // PUBLIC API
+  // ENGINE INTERFACE
   // ============================================================================
 
-  getActiveExecutions(): ActionLifecycle[] {
-    return Array.from(this.activeExecutions.values());
+  getName(): string {
+    return "Automated Execution Engine";
   }
 
-  getExecution(id: string): ActionLifecycle | undefined {
-    return this.activeExecutions.get(id);
-  }
-
-  async cancelExecution(id: string): Promise<boolean> {
-    const lifecycle = this.activeExecutions.get(id);
-    if (!lifecycle) return false;
-
-    if (lifecycle.status === "executing") {
-      console.warn(`[ExecutionEngine] Cannot cancel execution ${id} - already in progress`);
-      return false;
-    }
-
-    await this.updateStatus(lifecycle, "cancelled");
-    this.activeExecutions.delete(id);
-    return true;
-  }
-
-  async pauseExecution(id: string): Promise<boolean> {
-    const lifecycle = this.activeExecutions.get(id);
-    if (!lifecycle) return false;
-
-    await this.updateStatus(lifecycle, "paused");
-    return true;
-  }
-
-  // Health check for orchestrator
-  async healthCheck(): Promise<{ healthy: boolean; message: string }> {
+  getStatus(): Record<string, any> {
     return {
-      healthy: true,
-      message: `ExecutionEngine operational. ${this.activeExecutions.size} active executions`,
+      engineId: this.engineId,
+      version: this.engineVersion,
+      queueLength: this.jobQueue.length,
+      activeJobs: this.activeJobs.size,
+      isProcessing: this.isProcessing,
+      status: "operational",
     };
   }
 }
