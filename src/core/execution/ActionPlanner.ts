@@ -57,9 +57,9 @@ export class ActionPlanner {
       substeps,
       totalSteps: substeps.length,
       
-      protocol: trigger.protocol,
-      chain: trigger.chain,
-      poolAddress: trigger.poolAddress,
+      protocol: trigger.protocol || "unknown",
+      chain: trigger.chain || "unknown",
+      poolAddress: trigger.poolAddress || "",
       
       totalEstimatedGas,
       totalEstimatedTime,
@@ -88,17 +88,17 @@ export class ActionPlanner {
     context: ExecutionContext
   ): Promise<ExecutionSubstep[]> {
     switch (trigger.actionType) {
-      case "ENTER_POSITION":
+      case "ADD_LIQUIDITY":
         return this.planEnterPosition(trigger, context);
-      case "STAKE_POSITION":
+      case "STAKE":
         return this.planStakePosition(trigger, context);
       case "HARVEST_REWARDS":
         return this.planHarvestRewards(trigger, context);
       case "CONVERT_REWARDS":
         return this.planConvertRewards(trigger, context);
-      case "COMPOUND_POSITION":
+      case "COMPOUND":
         return this.planCompoundPosition(trigger, context);
-      case "REBALANCE_POSITION":
+      case "REBALANCE":
         return this.planRebalancePosition(trigger, context);
       case "EXIT_POSITION":
         return this.planExitPosition(trigger, context);
@@ -139,8 +139,8 @@ export class ActionPlanner {
       retryable: true,
       requiredApproval: {
         token: "TOKEN_A",
-        spender: trigger.poolAddress,
-        amount: trigger.targetAmount || 0,
+        spender: trigger.poolAddress || "",
+        amount: trigger.amount || 0,
       },
     }));
 
@@ -154,8 +154,8 @@ export class ActionPlanner {
       retryable: true,
       requiredApproval: {
         token: "TOKEN_B",
-        spender: trigger.poolAddress,
-        amount: trigger.targetAmount || 0,
+        spender: trigger.poolAddress || "",
+        amount: trigger.amount || 0,
       },
     }));
 
@@ -243,7 +243,7 @@ export class ActionPlanner {
     }));
 
     // Step 3: Swap rewards if policy requires
-    if (policy.autoConvertRewards) {
+    if (trigger.metadata?.autoConvertRewards) {
       steps.push(this.createSubstep({
         sequence: 3,
         operation: "swap_token",
@@ -623,8 +623,8 @@ export class ActionPlanner {
       tokensOut: [],
       portfolioImpact: {
         totalValueChange: 0,
-        deployedCapitalChange: trigger.targetAmount || 0,
-        idleCapitalChange: -(trigger.targetAmount || 0),
+        deployedCapitalChange: trigger.amount || 0,
+        idleCapitalChange: -(trigger.amount || 0),
       },
     };
   }
