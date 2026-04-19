@@ -146,6 +146,79 @@ export class WalletEngine {
     }
   }
 
+  /**
+   * Detect assets from connected wallet
+   */
+  async detectAssets(walletAddress: string, chain: string): Promise<void> {
+    console.log(`[WalletEngine] Detecting assets for ${walletAddress} on ${chain}`);
+    
+    const mode = useAppStore.getState().mode.current;
+
+    try {
+      // CRITICAL: Mode-specific asset detection
+      if (mode === "demo") {
+        // Demo mode: No real detection, user adds assets manually via UI
+        console.log("[WalletEngine] Demo mode: Skipping real asset detection");
+        return;
+      }
+
+      // Shadow/Live mode: Real asset detection only
+      const detectedAssets: Asset[] = [];
+
+      // STUB: Real blockchain integration required
+      // This is where you would:
+      // 1. Call Moralis/Alchemy/Covalent API for token balances
+      // 2. Query on-chain contract calls for NFT ownership
+      // 3. Fetch native token balances
+      // 4. Get LP position token balances
+      
+      console.log("[WalletEngine] Asset detection stub - integration required");
+      console.log("[WalletEngine] Mode:", mode);
+      console.log("[WalletEngine] In Shadow/Live mode, only real detected assets are shown");
+      
+      // Example of what real detection would return:
+      /*
+      const response = await fetch(`https://api.moralis.io/v2/${walletAddress}/erc20?chain=${chain}`);
+      const tokens = await response.json();
+      
+      tokens.forEach((token: any) => {
+        detectedAssets.push({
+          chainFamily: "evm",
+          network: chain,
+          assetKind: "token",
+          tokenStandard: "ERC20",
+          contractAddress: token.token_address,
+          symbol: token.symbol,
+          name: token.name,
+          decimals: token.decimals,
+          quantity: parseFloat(token.balance),
+          source: "detected",  // CRITICAL: Real detected asset
+        });
+      });
+      */
+
+      // Update store with real detected assets (or empty if none detected)
+      useAppStore.getState().setWallet({
+        assets: detectedAssets,
+        totalValueUsd: 0,  // Calculate from real price feeds
+        isLoading: false,
+      });
+
+      console.log(`[WalletEngine] Detected ${detectedAssets.length} real assets`);
+
+    } catch (error) {
+      console.error("[WalletEngine] Asset detection failed:", error);
+      
+      // CRITICAL: On error, show empty state, NOT mock data
+      useAppStore.getState().setWallet({
+        assets: [],
+        totalValueUsd: 0,
+        isLoading: false,
+        error: error instanceof Error ? error.message : "Asset detection failed",
+      });
+    }
+  }
+
   // ==================== REFRESH BALANCES TASK ====================
   async refreshBalances(): Promise<EngineResult<Asset[]>> {
     console.log("[WalletEngine] Refreshing balances");

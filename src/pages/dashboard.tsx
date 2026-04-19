@@ -30,6 +30,7 @@ import { PerformanceMonitorWidget } from "@/components/PerformanceMonitor";
 import { ModeBanner } from "@/components/ModeBanner";
 import { orchestrator } from "@/core/orchestrator";
 import { useRouter } from "next/router";
+import { assertNoSimulatedDataInLiveMode, getPortfolioForMode } from "@/core/utils/modeGuards";
 
 export default function Dashboard() {
   const mode = useAppStore((state) => state.mode);
@@ -50,6 +51,22 @@ export default function Dashboard() {
     realizedEarnings: 0,
     projected30Day: 0,
   });
+
+  const [modeErrors, setModeErrors] = useState<string[]>([]);
+
+  // CRITICAL: Validate mode data integrity
+  useEffect(() => {
+    if (mode.current === "live") {
+      const validation = assertNoSimulatedDataInLiveMode();
+      setModeErrors(validation.errors);
+      
+      if (!validation.valid) {
+        console.error("[Dashboard] Live mode data validation failed:", validation.errors);
+      }
+    } else {
+      setModeErrors([]);
+    }
+  }, [mode.current, wallet, portfolio, positions]);
 
   // Listen for mode changes
   useEffect(() => {
@@ -91,9 +108,11 @@ export default function Dashboard() {
         });
       }
     } else if (mode.current === "shadow") {
-      // Shadow mode - estimated values from connected wallet
+      // Shadow mode - real wallet data (read-only)
       if (wallet.wallet) {
-        const totalValue = wallet.assets.reduce(
+        // CRITICAL: Only use real detected assets
+        const realAssets = wallet.assets.filter((a: any) => a.source === "detected");
+        const totalValue = realAssets.reduce(
           (sum, asset) => sum + (parseFloat(asset.balance) || 0) * (asset.priceUsd || 0),
           0
         );
@@ -122,16 +141,33 @@ export default function Dashboard() {
       }
     } else if (mode.current === "live") {
       // Live mode - real data from portfolio
-      setPortfolioData({
-        totalValue: portfolio?.totalValue || 0,
-        deployedCapital: portfolio?.deployedCapital || 0,
-        idleCapital: portfolio?.idleCapital || 0,
-        netApy: portfolio?.netApy || 0,
-        dailyEarnings: portfolio?.dailyEarnings || 0,
-        monthlyEarnings: portfolio?.monthlyEarnings || 0,
-        realizedEarnings: portfolio?.realizedEarnings || 0,
-        projected30Day: portfolio?.projected30Day || 0,
-      });
+      // CRITICAL: Use mode-specific portfolio data
+      const livePortfolio = getPortfolioForMode("live");
+      
+      if (livePortfolio) {
+        setPortfolioData({
+          totalValue: livePortfolio.totalValue || 0,
+          deployedCapital: livePortfolio.deployedCapital || 0,
+          idleCapital: livePortfolio.idleCapital || 0,
+          netApy: livePortfolio.netApy || 0,
+          dailyEarnings: livePortfolio.dailyEarnings || 0,
+          monthlyEarnings: livePortfolio.monthlyEarnings || 0,
+          realizedEarnings: livePortfolio.realizedEarnings || 0,
+          projected30Day: livePortfolio.projected30Day || 0,
+        });
+      } else {
+        // No live portfolio data available yet
+        setPortfolioData({
+          totalValue: 0,
+          deployedCapital: 0,
+          idleCapital: 0,
+          netApy: 0,
+          dailyEarnings: 0,
+          monthlyEarnings: 0,
+          realizedEarnings: 0,
+          projected30Day: 0,
+        });
+      }
     }
   }, [mode.current, wallet.wallet, wallet.assets, portfolio, paperWallets]);
 
@@ -199,6 +235,24 @@ export default function Dashboard() {
               : "Real blockchain execution. Policy rules are enforced. Emergency pause available."}
           </AlertDescription>
         </Alert>
+
+        {/* CRITICAL: Live mode data integrity warning */}
+        {mode.current === "live" && modeErrors.length > 0 && (
+          <Alert className="border-red-500/50 bg-red-500/10">
+            <AlertTriangle className="h-4 w-4 text-red-500" />
+            <AlertDescription>
+              <strong className="text-red-500">Live Mode Data Integrity Error:</strong>
+              <ul className="mt-2 ml-4 list-disc text-sm">
+                {modeErrors.map((error, idx) => (
+                  <li key={idx}>{error}</li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs">
+                Live mode must use only real detected assets and positions. No simulated or manual data is allowed.
+              </p>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Portfolio Metrics Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

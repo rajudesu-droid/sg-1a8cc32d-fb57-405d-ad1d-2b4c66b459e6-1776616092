@@ -28,9 +28,57 @@ export class ValidationEngine {
   // CORE VALIDATION
   // ============================================================================
 
+  /**
+   * Validate action trigger
+   */
   async validateAction(trigger: ActionTrigger): Promise<ValidationResult> {
-    console.log(`[ValidationEngine] Validating action: ${trigger.actionType}`);
-    
+    console.log(`[ValidationEngine] Validating action: ${trigger.actionType} in ${trigger.mode} mode`);
+
+    const result: ValidationResult = {
+      allowed: false,
+      blockingReasons: [],
+      warnings: [],
+      timestamp: new Date(),
+    };
+
+    const mode = trigger.mode || "demo";
+    const store = useAppStore.getState();
+
+    // CRITICAL: Reject simulated data in Live Mode
+    if (mode === "live") {
+      const wallet = store.wallet;
+      
+      // Check for simulated assets
+      const hasSimulatedAssets = wallet.assets.some((asset: any) => 
+        asset.source === "simulated" || asset.source === "manual"
+      );
+      
+      if (hasSimulatedAssets) {
+        result.blockingReasons.push("Live Mode cannot use simulated or manually added assets");
+        return result;
+      }
+      
+      // Verify real wallet connection
+      if (!wallet.wallet) {
+        result.blockingReasons.push("Live Mode requires real wallet connection");
+        return result;
+      }
+    }
+
+    // Check 1: Mode validation
+    if (!["demo", "shadow", "live"].includes(mode)) {
+      result.blockingReasons.push(`Invalid mode: ${mode}`);
+      return result;
+    }
+
+    // Check 2: Wallet connection (Shadow and Live modes)
+    if (mode === "shadow" || mode === "live") {
+      if (!store.wallet.wallet) {
+        result.blockingReasons.push("Wallet not connected - required for Shadow/Live mode");
+        return result;
+      }
+    }
+
     const checks: ValidationCheck[] = [];
     const blockingReasons: string[] = [];
     const warningFlags: string[] = [];
