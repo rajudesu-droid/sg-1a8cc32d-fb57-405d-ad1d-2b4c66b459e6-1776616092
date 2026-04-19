@@ -54,7 +54,8 @@ export type ActionStatus =
   | "confirming"
   | "completed"
   | "failed"
-  | "cancelled";
+  | "cancelled"
+  | "paused";
 
 /**
  * Execution mode
@@ -74,6 +75,7 @@ export interface ActionTrigger {
   
   // Target context
   walletAddress?: string;
+  portfolioId?: string;
   chain?: string;
   protocol?: string;
   poolAddress?: string;
@@ -188,8 +190,8 @@ export interface ActionLifecycle {
   id: string;
   trigger: ActionTrigger;
   validation?: ValidationResult;
-  plan?: ActionPlan;
-  execution?: ExecutionResult;
+  plan?: any;
+  execution?: any;
   
   // Current state
   status: ActionStatus;

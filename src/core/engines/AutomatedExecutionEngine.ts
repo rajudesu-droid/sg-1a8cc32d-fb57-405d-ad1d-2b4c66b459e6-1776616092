@@ -50,7 +50,7 @@ export class AutomatedExecutionEngine {
     try {
       // STEP 1: VALIDATION
       await this.updateStatus(lifecycle, "validating");
-      const validation = await validationEngine.validate(trigger);
+      const validation = await validationEngine.validateAction(trigger);
       lifecycle.validation = validation;
 
       if (!validation.allowed) {
@@ -70,7 +70,7 @@ export class AutomatedExecutionEngine {
       const preview = await previewEngine.generatePreview(plan, context);
       
       // Broadcast preview for UI display
-      orchestrator.publish({
+      orchestrator.publishEvent({
         type: "action_triggered" as any,
         timestamp: new Date(),
         source: this.engineId,
