@@ -22,14 +22,15 @@ import {
   Loader2,
   DollarSign,
   Coins,
-  Network
+  Network,
+  Activity
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAppStore } from "@/store";
 import { ModeBanner } from "@/components/ModeBanner";
 import { orchestrator } from "@/core/orchestrator";
-import { fetchTokenPrice, getFallbackPrice } from "@/lib/cryptoPriceService";
+import { fetchTokenPrice, getFallbackPrice, fetchMultipleTokenPrices } from "@/lib/cryptoPriceService";
 
 // Supported chains with colors
 const SUPPORTED_CHAINS = [
@@ -147,6 +148,8 @@ export default function Wallets() {
   const [showAddToken, setShowAddToken] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [expandedWallets, setExpandedWallets] = useState<Set<string>>(new Set());
+  const [autoRefreshCountdown, setAutoRefreshCountdown] = useState(60);
+  const [isAutoRefreshEnabled, setIsAutoRefreshEnabled] = useState(true);
   
   // Paper wallet creation state
   const [walletName, setWalletName] = useState("");
@@ -171,6 +174,7 @@ export default function Wallets() {
   const addPaperWallet = useAppStore((state) => state.addPaperWallet);
   const updatePaperWallet = useAppStore((state) => state.updatePaperWallet);
   const deletePaperWallet = useAppStore((state) => state.deletePaperWallet);
+  const refreshPaperWalletPrices = useAppStore((state) => state.refreshPaperWalletPrices);
   
   // Custom update helper to bridge the string balance to number quantity in global store
   const updateWallet = (id: string, updatedTokens: TokenHolding[]) => {
@@ -251,14 +255,55 @@ export default function Wallets() {
 
   const handleRefreshBalances = async () => {
     setIsRefreshing(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsRefreshing(false);
     
-    const modeLabel = mode.current === "demo" ? "simulated" : mode.current === "shadow" ? "read-only" : "live";
-    toast({
-      title: "Balances Refreshed",
-      description: `Updated ${modeLabel} wallet balances`,
-    });
+    try {
+      if (mode.current === "demo") {
+        // Collect all unique token symbols
+        const allSymbols = new Set<string>();
+        paperWallets.forEach((wallet) => {
+          wallet.tokens.forEach((token) => {
+            allSymbols.add(token.symbol);
+          });
+        });
+
+        if (allSymbols.size === 0) {
+          toast({
+            title: "No Tokens to Refresh",
+            description: "Add tokens to your paper wallets first",
+          });
+          setIsRefreshing(false);
+          return;
+        }
+
+        // Batch fetch all prices
+        const priceMap = await fetchMultipleTokenPrices(Array.from(allSymbols));
+        
+        // Update all wallets with new prices
+        refreshPaperWalletPrices(priceMap);
+        
+        // Reset countdown
+        setAutoRefreshCountdown(60);
+        
+        toast({
+          title: "Prices Refreshed",
+          description: `Updated ${priceMap.size} token prices successfully`,
+        });
+      } else {
+        // For shadow/live mode - refresh wallet connection
+        toast({
+          title: "Refreshing Balances",
+          description: "Fetching latest data from blockchain...",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Refresh Failed",
+        description: "Could not update prices. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const toggleChain = (chainId: string) => {
@@ -415,6 +460,68 @@ export default function Wallets() {
     }
   };
 
+  // Auto-refresh prices every 60 seconds
+  useEffect(() => {
+    if (!isAutoRefreshEnabled || mode.current !== "demo" || paperWallets.length === 0) {
+      return;
+    }
+
+    // Countdown timer
+    const countdownInterval = setInterval(() => {
+      setAutoRefreshCountdown((prev) => {
+        if (prev <= 1) {
+          return 60; // Reset to 60 when it hits 0
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // Price refresh timer
+    const refreshInterval = setInterval(async () => {
+      console.log("[Auto-Refresh] Updating portfolio prices...");
+      
+      // Collect all unique token symbols across all wallets
+      const allSymbols = new Set<string>();
+      paperWallets.forEach((wallet) => {
+        wallet.tokens.forEach((token) => {
+          allSymbols.add(token.symbol);
+        });
+      });
+
+      if (allSymbols.size === 0) return;
+
+      // Batch fetch all prices
+      const priceMap = await fetchMultipleTokenPrices(Array.from(allSymbols));
+      
+      // Update all wallets with new prices
+      refreshPaperWalletPrices(priceMap);
+      
+      console.log(`[Auto-Refresh] Updated ${priceMap.size} token prices`);
+    }, 60000); // 60 seconds
+
+    return () => {
+      clearInterval(countdownInterval);
+      clearInterval(refreshInterval);
+    };
+  }, [isAutoRefreshEnabled, mode.current, paperWallets, refreshPaperWalletPrices]);
+
+  // Pause auto-refresh when page is hidden (saves API calls)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setIsAutoRefreshEnabled(false);
+        console.log("[Auto-Refresh] Paused (page hidden)");
+      } else {
+        setIsAutoRefreshEnabled(true);
+        setAutoRefreshCountdown(60); // Reset countdown
+        console.log("[Auto-Refresh] Resumed (page visible)");
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -434,15 +541,23 @@ export default function Wallets() {
           </div>
           <div className="flex gap-3">
             {mode.current === "demo" && (
-              <Button onClick={() => setShowCreateWallet(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Paper Wallet
-              </Button>
+              <>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 text-sm">
+                  <Activity className={`h-4 w-4 ${isAutoRefreshEnabled ? "text-cyan-400 animate-pulse" : "text-muted-foreground"}`} />
+                  <span className="text-muted-foreground">
+                    {isAutoRefreshEnabled ? `Auto-refresh in ${autoRefreshCountdown}s` : "Auto-refresh paused"}
+                  </span>
+                </div>
+                <Button onClick={() => setShowCreateWallet(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Paper Wallet
+                </Button>
+              </>
             )}
             {mode.current !== "demo" && (
               <>
-                <Button variant="outline" onClick={handleRefreshBalances}>
-                  <RefreshCw className="mr-2 h-4 w-4" />
+                <Button variant="outline" onClick={handleRefreshBalances} disabled={isRefreshing}>
+                  <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
                   Refresh Balances
                 </Button>
                 <Button onClick={connectWallet}>

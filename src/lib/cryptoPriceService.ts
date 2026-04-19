@@ -102,49 +102,97 @@ export async function fetchTokenPrice(symbol: string): Promise<number> {
 }
 
 /**
- * Fetch prices for multiple tokens in a single batch request
+ * Fetch prices for multiple tokens at once (batch operation)
  */
-export async function fetchMultipleTokenPrices(symbols: string[]): Promise<Record<string, number>> {
-  const coinIds = symbols
-    .map(symbol => COINGECKO_ID_MAP[symbol.toUpperCase()])
-    .filter(Boolean);
+export async function fetchMultipleTokenPrices(
+  symbols: string[]
+): Promise<Map<string, number>> {
+  const priceMap = new Map<string, number>();
+  
+  if (symbols.length === 0) return priceMap;
+
+  // Filter out duplicates
+  const uniqueSymbols = Array.from(new Set(symbols));
+  
+  // Check cache first
+  const now = Date.now();
+  const uncachedSymbols: string[] = [];
+  
+  uniqueSymbols.forEach((symbol) => {
+    const cached = priceCache.get(symbol);
+    if (cached && now - cached.timestamp < CACHE_DURATION) {
+      priceMap.set(symbol, cached.price);
+    } else {
+      uncachedSymbols.push(symbol);
+    }
+  });
+
+  // If all cached, return immediately
+  if (uncachedSymbols.length === 0) {
+    return priceMap;
+  }
+
+  // Batch fetch uncached prices
+  const coinIds = uncachedSymbols
+    .map((symbol) => symbolToCoinId[symbol.toLowerCase()])
+    .filter((id): id is string => id !== undefined);
 
   if (coinIds.length === 0) {
-    return {};
+    // All symbols unmapped, use fallbacks
+    uncachedSymbols.forEach((symbol) => {
+      const fallback = getFallbackPrice(symbol);
+      priceMap.set(symbol, fallback);
+      priceCache.set(symbol, { price: fallback, timestamp: now });
+    });
+    return priceMap;
   }
 
   try {
+    const idsParam = coinIds.join(",");
     const response = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?ids=${coinIds.join(',')}&vs_currencies=usd`,
-      {
-        headers: {
-          'Accept': 'application/json',
-        },
-      }
+      `https://api.coingecko.com/api/v3/simple/price?ids=${idsParam}&vs_currencies=usd`
     );
 
     if (!response.ok) {
-      throw new Error(`CoinGecko API error: ${response.status}`);
+      throw new Error(`HTTP ${response.status}`);
     }
 
-    const data: CoinGeckoSimplePrice = await response.json();
-    
-    // Map back to symbols
-    const prices: Record<string, number> = {};
-    symbols.forEach(symbol => {
-      const coinId = COINGECKO_ID_MAP[symbol.toUpperCase()];
-      if (coinId && data[coinId]) {
-        prices[symbol] = data[coinId].usd;
-        // Also cache individual prices
-        priceCache.set(symbol, { price: data[coinId].usd, timestamp: Date.now() });
+    const data = await response.json();
+
+    // Map results back to symbols
+    uncachedSymbols.forEach((symbol) => {
+      const coinId = symbolToCoinId[symbol.toLowerCase()];
+      if (coinId && data[coinId]?.usd) {
+        const price = data[coinId].usd;
+        priceMap.set(symbol, price);
+        priceCache.set(symbol, { price, timestamp: now });
+      } else {
+        const fallback = getFallbackPrice(symbol);
+        priceMap.set(symbol, fallback);
+        priceCache.set(symbol, { price: fallback, timestamp: now });
       }
     });
 
-    return prices;
+    return priceMap;
   } catch (error) {
-    console.error('[CryptoPriceService] Error fetching batch prices:', error);
-    return {};
+    console.error("Batch price fetch error:", error);
+    
+    // Use fallbacks for all uncached
+    uncachedSymbols.forEach((symbol) => {
+      const fallback = getFallbackPrice(symbol);
+      priceMap.set(symbol, fallback);
+      priceCache.set(symbol, { price: fallback, timestamp: now });
+    });
+    
+    return priceMap;
   }
+}
+
+/**
+ * Clear the price cache (useful for forcing fresh data)
+ */
+export function clearPriceCache(): void {
+  priceCache.clear();
 }
 
 /**

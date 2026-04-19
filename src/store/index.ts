@@ -134,6 +134,7 @@ interface AppState {
     totalValue: number;
   }>) => void;
   deletePaperWallet: (id: string) => void;
+  refreshPaperWalletPrices: (priceMap: Map<string, number>) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -296,6 +297,31 @@ export const useAppStore = create<AppState>()(
         deletePaperWallet: (id) => set((state) => ({
           paperWallets: state.paperWallets.filter((w) => w.id !== id),
         })),
+        refreshPaperWalletPrices: (priceMap) => set((state) => {
+          const updatedWallets = state.paperWallets.map((wallet) => {
+            const updatedTokens = wallet.tokens.map((token) => {
+              const newPrice = priceMap.get(token.symbol);
+              if (newPrice !== undefined && newPrice > 0) {
+                return {
+                  ...token,
+                  priceUsd: newPrice,
+                  totalValue: token.quantity * newPrice,
+                };
+              }
+              return token;
+            });
+            
+            const newTotalValue = updatedTokens.reduce((sum, t) => sum + t.totalValue, 0);
+            
+            return {
+              ...wallet,
+              tokens: updatedTokens,
+              totalValue: newTotalValue,
+            };
+          });
+          
+          return { paperWallets: updatedWallets };
+        }),
       }),
       {
         name: "lp-yield-autopilot-storage",
