@@ -76,14 +76,14 @@ interface AppState {
     type: "info" | "success" | "warning" | "error";
     title: string;
     message: string;
-    timestamp: Date;
+    timestamp: Date | string; // Support both Date and string for serialization
   }>;
   addAlert: (alert: {
     id: string;
     type: "info" | "success" | "warning" | "error";
     title: string;
     message: string;
-    timestamp: Date;
+    timestamp: Date | string;
   }) => void;
   clearAlerts: () => void;
 
@@ -216,7 +216,12 @@ export const useAppStore = create<AppState>()(
 
         // ==================== STORE STATE ====================
         alerts: [],
-        addAlert: (alert) => set((state) => ({ alerts: [alert, ...state.alerts] })),
+        addAlert: (alert) => set((state) => ({ 
+          alerts: [{
+            ...alert,
+            timestamp: alert.timestamp instanceof Date ? alert.timestamp.toISOString() : alert.timestamp
+          }, ...state.alerts] 
+        })),
         clearAlerts: () => set({ alerts: [] }),
 
         // ==================== BOT STATUS ====================
@@ -227,9 +232,12 @@ export const useAppStore = create<AppState>()(
         name: "lp-yield-autopilot-storage",
         partialize: (state) => ({
           mode: state.mode,
+          wallet: state.wallet,
+          portfolio: state.portfolio,
           policy: state.policy,
           simulation: state.simulation,
-          botRunning: state.botRunning, // Persist bot running state
+          botRunning: state.botRunning,
+          // Don't persist alerts - they should be fresh on each session
         }),
       }
     )

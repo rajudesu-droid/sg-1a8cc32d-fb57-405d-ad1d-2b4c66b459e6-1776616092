@@ -90,7 +90,6 @@ export default function Dashboard() {
         timestamp: new Date(),
       });
       
-      // Update bot running state in store
       setBotRunning(true);
       
       toast({
@@ -111,7 +110,6 @@ export default function Dashboard() {
   };
 
   const handleStopBot = () => {
-    // Update bot running state in store
     setBotRunning(false);
     
     useAppStore.getState().addAlert({

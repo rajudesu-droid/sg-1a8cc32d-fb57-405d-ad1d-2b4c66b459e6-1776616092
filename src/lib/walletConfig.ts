@@ -2,15 +2,17 @@ import { createConfig, http } from "wagmi";
 import { mainnet, bsc, polygon, avalanche } from "wagmi/chains";
 import { walletConnect, injected } from "wagmi/connectors";
 
-// WalletConnect project ID - IMPORTANT: Replace with your actual project ID from https://cloud.walletconnect.com
-export const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "REPLACE_WITH_YOUR_PROJECT_ID";
+// WalletConnect project ID - Read from environment variable
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "afebef3f2899f188bedb692a0fba05c0";
+
+console.log("[WalletConfig] WalletConnect Project ID:", projectId ? "✓ Configured" : "✗ Missing");
 
 // Public RPC endpoints - no API keys in frontend
 export const walletConfig = createConfig({
   chains: [mainnet, bsc, polygon, avalanche],
   connectors: [
     walletConnect({
-      projectId: walletConnectProjectId,
+      projectId: projectId,
       metadata: {
         name: "LP Yield Autopilot",
         description: "Professional-grade LP yield automation platform",
@@ -28,6 +30,9 @@ export const walletConfig = createConfig({
     [avalanche.id]: http(),
   },
 });
+
+// Export the project ID for reference
+export const walletConnectProjectId = projectId;
 
 // Supported networks for asset detection
 export const supportedNetworks = [
