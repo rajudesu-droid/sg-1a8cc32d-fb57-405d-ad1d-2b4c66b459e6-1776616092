@@ -1,5 +1,5 @@
 import { AppLayout } from "@/components/AppLayout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -21,89 +21,144 @@ import {
   TrendingUp,
   Target,
   Wallet,
-  Globe
+  Globe,
+  Eye
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAppStore } from "@/store";
+import { ModeBanner } from "@/components/ModeBanner";
+import { orchestrator } from "@/core/orchestrator";
 
 export default function Automation() {
-  const { toast } = useToast();
-
-  // Policy toggles
   const [autoHarvest, setAutoHarvest] = useState(true);
   const [autoCompound, setAutoCompound] = useState(true);
   const [autoRebalance, setAutoRebalance] = useState(false);
   const [autoDeploy, setAutoDeploy] = useState(false);
+  const [emergencyPause, setEmergencyPause] = useState(false);
+  const { toast } = useToast();
+  const mode = useAppStore((state) => state.mode);
+  const policy = useAppStore((state) => state.policy);
+  const setPolicy = useAppStore((state) => state.setPolicy);
 
-  // Thresholds
-  const [minHarvestAmount, setMinHarvestAmount] = useState("50");
-  const [minRebalanceEdge, setMinRebalanceEdge] = useState("5");
-  const [maxDailyGas, setMaxDailyGas] = useState("100");
-  const [minScoreThreshold, setMinScoreThreshold] = useState([65]);
+  // Listen for mode changes
+  useEffect(() => {
+    const unsubscribe = orchestrator.subscribe((event) => {
+      if (event.type === "mode_changed") {
+        console.log("[Automation] Mode changed, updating policy view");
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
-  // Capital limits
-  const [maxPerPool, setMaxPerPool] = useState("10000");
-  const [maxPerChain, setMaxPerChain] = useState("50000");
-  const [maxTotalDeployed, setMaxTotalDeployed] = useState("100000");
+  const handleSavePolicy = () => {
+    setPolicy({
+      autoHarvest,
+      autoCompound,
+      autoRebalance,
+      autoDeploy,
+      emergencyPause,
+    });
 
-  // Emergency controls
-  const [emergencyPauseAll, setEmergencyPauseAll] = useState(false);
-  const [pausedChains, setPausedChains] = useState<string[]>([]);
-  const [pausedDexes, setPausedDexes] = useState<string[]>([]);
-
-  // Action frequency
-  const [harvestFrequency, setHarvestFrequency] = useState("daily");
-  const [rebalanceFrequency, setRebalanceFrequency] = useState("weekly");
-
-  const handleSaveChanges = () => {
+    const modeLabel = mode.current === "demo" ? "simulated" : mode.current === "shadow" ? "shadow" : "live";
     toast({
-      title: "Policy saved",
-      description: "Automation rules have been updated successfully.",
+      title: `Policy Saved (${mode.label})`,
+      description: `Automation rules updated for ${modeLabel} mode`,
     });
   };
 
-  const handleTestPolicy = () => {
+  const handleTestRules = () => {
+    if (mode.current === "shadow") {
+      toast({
+        title: "Shadow Mode - Preview Only",
+        description: "Policy rules are shown for preview. Switch to Demo or Live to test execution.",
+        variant: "default",
+      });
+      return;
+    }
+
     toast({
-      title: "Policy test initiated",
-      description: "Simulating policy behavior with current settings...",
+      title: mode.current === "demo" ? "Testing Simulated Rules" : "Testing Policy Rules",
+      description: `${mode.current === "demo" ? "Simulating" : "Running"} policy validation checks`,
     });
   };
 
   const handleEmergencyStop = () => {
-    setEmergencyPauseAll(true);
-    setAutoHarvest(false);
-    setAutoCompound(false);
-    setAutoRebalance(false);
-    setAutoDeploy(false);
+    if (mode.current === "shadow") {
+      toast({
+        title: "Shadow Mode - No Active Automation",
+        description: "No automation is running in Shadow mode.",
+        variant: "default",
+      });
+      return;
+    }
+
+    setEmergencyPause(true);
     toast({
-      title: "Emergency stop activated",
-      description: "All automation has been paused. Manual approval required to resume.",
+      title: "Emergency Stop Activated",
+      description: mode.current === "demo" 
+        ? "All simulated automation has been paused" 
+        : "All automated actions have been paused",
       variant: "destructive",
     });
   };
 
-  const toggleChainPause = (chain: string) => {
-    setPausedChains(prev => 
-      prev.includes(chain) 
-        ? prev.filter(c => c !== chain)
-        : [...prev, chain]
-    );
+  const getPageTitle = () => {
+    switch (mode.current) {
+      case "demo": return "Simulated Automation Rules";
+      case "shadow": return "Automation Rules (Preview)";
+      case "live": return "Automation & Policy Configuration";
+    }
   };
 
-  const toggleDexPause = (dex: string) => {
-    setPausedDexes(prev => 
-      prev.includes(dex) 
-        ? prev.filter(d => d !== dex)
-        : [...prev, dex]
-    );
+  const getPageDescription = () => {
+    switch (mode.current) {
+      case "demo": return "Configure simulated automation behavior and policy guardrails";
+      case "shadow": return "Preview automation rules (no execution in Shadow mode)";
+      case "live": return "Configure automation behavior and policy guardrails for live execution";
+    }
   };
 
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Automation & Policies</h1>
-          <p className="text-muted-foreground mt-1">Configure automation rules and risk guardrails</p>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight">{getPageTitle()}</h1>
+            <p className="text-muted-foreground mt-1">
+              {getPageDescription()}
+            </p>
+          </div>
+          <Button 
+            variant="destructive" 
+            className="gap-2"
+            onClick={handleEmergencyStop}
+            disabled={mode.current === "shadow" || emergencyPause}
+          >
+            <AlertTriangle className="h-4 w-4" />
+            {mode.current === "shadow" ? "Shadow Mode" : emergencyPause ? "Paused" : "Emergency Stop All"}
+          </Button>
         </div>
+
+        {/* Mode Banner */}
+        <ModeBanner />
+
+        {/* Shadow Mode Notice */}
+        {mode.current === "shadow" && (
+          <Card className="card-gradient border-accent/20 border">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4">
+                <Eye className="h-5 w-5 text-accent flex-shrink-0" />
+                <div>
+                  <p className="font-semibold">Shadow Mode - Preview Only</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Automation rules are displayed for preview. No actions will be executed in Shadow mode. Switch to Demo or Live to enable automation.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {emergencyPauseAll && (
           <Alert className="border-destructive/50 bg-destructive/10">
@@ -470,15 +525,15 @@ export default function Automation() {
         </Tabs>
 
         <div className="flex items-center justify-end gap-3">
-          <Button variant="outline" onClick={handleTestPolicy}>
-            Test Policy Rules
+          <Button 
+            variant="outline" 
+            onClick={handleTestRules}
+            disabled={mode.current === "shadow"}
+          >
+            {mode.current === "shadow" ? "Preview Only" : "Test Policy Rules"}
           </Button>
-          <Button onClick={handleSaveChanges}>
+          <Button onClick={handleSavePolicy}>
             Save Policy Changes
-          </Button>
-          <Button variant="destructive" className="gap-2" onClick={handleEmergencyStop}>
-            <AlertTriangle className="h-4 w-4" />
-            Emergency Stop All
           </Button>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { AppLayout } from "@/components/AppLayout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,12 +10,40 @@ import { Wallet, RefreshCw, Plus, Search, Shield, ExternalLink, Copy } from "luc
 import { useWallet } from "@/contexts/WalletContext";
 import { WalletConnectionModal } from "@/components/WalletConnectionModal";
 import { supportedNetworks } from "@/lib/walletConfig";
+import { useAppStore } from "@/store";
+import { ModeBanner } from "@/components/ModeBanner";
+import { orchestrator } from "@/core/orchestrator";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function Wallets() {
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { isConnected, address, chainId, detectedAssets, refreshBalances } = useWallet();
+  const mode = useAppStore((state) => state.mode);
+
+  // Listen for mode changes
+  useEffect(() => {
+    const unsubscribe = orchestrator.subscribe((event) => {
+      if (event.type === "mode_changed") {
+        console.log("[Wallets] Mode changed, updating wallet view");
+        handleRefreshBalances();
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleRefreshBalances = async () => {
+    setIsRefreshing(true);
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    setIsRefreshing(false);
+    
+    const modeLabel = mode.current === "demo" ? "simulated" : mode.current === "shadow" ? "read-only" : "live";
+    toast({
+      title: "Balances Refreshed",
+      description: `Updated ${modeLabel} wallet balances`,
+    });
+  };
 
   const currentNetwork = supportedNetworks.find((n) => n.id === chainId);
 
@@ -43,42 +71,54 @@ export default function Wallets() {
     }
   };
 
+  const getPageTitle = () => {
+    switch (mode.current) {
+      case "demo": return "Simulated Wallets";
+      case "shadow": return "Connected Wallets (Read-Only)";
+      case "live": return "Connected Wallets";
+    }
+  };
+
+  const getPageDescription = () => {
+    switch (mode.current) {
+      case "demo": return "Manage simulated wallet balances and assets";
+      case "shadow": return "View real wallet balances in read-only mode";
+      case "live": return "Manage connected wallet balances and execute transactions";
+    }
+  };
+
   return (
     <AppLayout>
       <div className="space-y-6">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight">Wallets</h1>
-            <p className="text-muted-foreground mt-1">Manage wallet connections and assets</p>
+            <h1 className="text-3xl font-semibold tracking-tight">{getPageTitle()}</h1>
+            <p className="text-muted-foreground mt-1">
+              {getPageDescription()}
+            </p>
           </div>
           <div className="flex items-center gap-3">
-            {!isConnected ? (
-              <Button onClick={() => setShowConnectionModal(true)} className="gap-2">
+            {!isConnected && mode.current !== "demo" && (
+              <Button onClick={connectWallet} className="gap-2">
                 <Wallet className="h-4 w-4" />
                 Connect Wallet
               </Button>
-            ) : (
-              <>
-                <Button 
-                  onClick={async () => {
-                    setIsRefreshing(true);
-                    await refreshBalances();
-                    setIsRefreshing(false);
-                  }} 
-                  className="gap-2" 
-                  disabled={isRefreshing}
-                >
-                  <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-                  Refresh Balances
-                </Button>
-                <Button variant="outline" className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Token Manually
-                </Button>
-              </>
             )}
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={handleRefreshBalances}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+              Refresh Balances
+            </Button>
           </div>
         </div>
+
+        {/* Mode Banner */}
+        <ModeBanner />
 
         {!isConnected ? (
           <Card>

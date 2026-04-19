@@ -1,5 +1,5 @@
 import { AppLayout } from "@/components/AppLayout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ArrowRight, TrendingDown, AlertCircle, CheckCircle2, Play, ArrowDownToLine } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAppStore } from "@/store";
+import { ModeBanner } from "@/components/ModeBanner";
+import { orchestrator } from "@/core/orchestrator";
 
 const mockUnwindPlan = [
   {
@@ -42,6 +45,18 @@ export default function Withdraw() {
   const [targetToken, setTargetToken] = useState("USDC");
   const [planGenerated, setPlanGenerated] = useState(false);
   const { toast } = useToast();
+  const mode = useAppStore((state) => state.mode);
+
+  // Listen for mode changes
+  useEffect(() => {
+    const unsubscribe = orchestrator.subscribe((event) => {
+      if (event.type === "mode_changed") {
+        console.log("[Withdraw] Mode changed, clearing withdrawal plan");
+        setPlanGenerated(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const totalNetProceeds = mockUnwindPlan.reduce(
     (sum, plan) => sum + parseFloat(plan.netProceeds.replace(/[$,]/g, "")),
@@ -60,23 +75,33 @@ export default function Withdraw() {
 
   const handleGeneratePlan = () => {
     setPlanGenerated(true);
+    const modeLabel = mode.current === "demo" ? "simulated" : mode.current === "shadow" ? "estimated" : "optimized";
     toast({
-      title: "Plan Generated",
-      description: `Optimized withdrawal plan created for $${targetAmount} ${targetToken}`,
+      title: `Plan Generated (${mode.label})`,
+      description: `${mode.current === "demo" ? "Simulated" : mode.current === "shadow" ? "Estimated" : "Optimized"} withdrawal plan created for $${targetAmount} ${targetToken}`,
     });
   };
 
   const handlePreviewPlan = () => {
     toast({
-      title: "Previewing Withdrawal",
+      title: `Previewing ${mode.label} Withdrawal`,
       description: "Opening detailed preview of withdrawal plan",
     });
   };
 
   const handleExecuteWithdrawal = () => {
+    if (mode.current === "shadow") {
+      toast({
+        title: "Shadow Mode - Read Only",
+        description: "Cannot execute withdrawals in Shadow mode. Switch to Demo or Live.",
+        variant: "default",
+      });
+      return;
+    }
+
     toast({
-      title: "Executing Withdrawal",
-      description: "Processing withdrawal plan across selected positions",
+      title: mode.current === "demo" ? "Simulating Withdrawal" : "Executing Withdrawal",
+      description: `${mode.current === "demo" ? "Simulating" : "Processing"} withdrawal plan across selected positions`,
       variant: "destructive",
     });
   };
@@ -97,15 +122,28 @@ export default function Withdraw() {
     });
   };
 
+  const getPageTitle = () => {
+    switch (mode.current) {
+      case "demo": return "Simulated Withdrawal Optimizer";
+      case "shadow": return "Estimated Withdrawal Plan";
+      case "live": return "Optimized Withdrawal";
+    }
+  };
+
   return (
     <AppLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Optimized Withdrawal</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">{getPageTitle()}</h1>
           <p className="text-muted-foreground mt-1">
-            Intelligent unwind planning to minimize costs and yield destruction
+            {mode.current === "shadow" 
+              ? "Preview withdrawal planning (read-only)" 
+              : "Intelligent unwind planning to minimize costs and yield destruction"}
           </p>
         </div>
+
+        {/* Mode Banner */}
+        <ModeBanner />
 
         <div className="grid gap-6 lg:grid-cols-3">
           <Card className="card-gradient border-border/50 lg:col-span-2">
@@ -311,9 +349,14 @@ export default function Withdraw() {
               <Button variant="outline" onClick={handleModifyPlan}>
                 Modify Plan
               </Button>
-              <Button variant="destructive" className="gap-2" onClick={handleExecuteWithdrawal}>
+              <Button 
+                variant="destructive" 
+                className="gap-2" 
+                onClick={handleExecuteWithdrawal}
+                disabled={mode.current === "shadow"}
+              >
                 <ArrowDownToLine className="h-4 w-4" />
-                Execute Withdrawal Plan
+                {mode.current === "shadow" ? "Read Only" : "Execute Withdrawal Plan"}
               </Button>
             </div>
           </>

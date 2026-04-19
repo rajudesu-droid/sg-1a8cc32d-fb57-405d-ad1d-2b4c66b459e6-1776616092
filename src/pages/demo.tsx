@@ -1,5 +1,5 @@
 import { AppLayout } from "@/components/AppLayout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Pencil, Trash2, Download, Upload, RefreshCw } from "lucide-react";
+import { Plus, Pencil, Trash2, Download, Upload, RefreshCw, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAppStore } from "@/store";
+import { ModeBanner } from "@/components/ModeBanner";
+import { orchestrator } from "@/core/orchestrator";
 
 const mockAssets = [
   {
@@ -84,6 +87,17 @@ export default function DemoPortfolio() {
   const [showAddAsset, setShowAddAsset] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
+  const mode = useAppStore((state) => state.mode);
+
+  // Listen for mode changes
+  useEffect(() => {
+    const unsubscribe = orchestrator.subscribe((event) => {
+      if (event.type === "mode_changed") {
+        console.log("[Demo] Mode changed");
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const handleAddAsset = () => {
     setShowAddAsset(false);
@@ -130,32 +144,84 @@ export default function DemoPortfolio() {
     });
   };
 
+  const getPageTitle = () => {
+    switch (mode.current) {
+      case "demo": return "Demo Portfolio";
+      case "shadow": return "Shadow Portfolio (Read-Only)";
+      case "live": return "Live Portfolio";
+    }
+  };
+
+  const getPageDescription = () => {
+    switch (mode.current) {
+      case "demo": return "Manual asset management and simulation ledger";
+      case "shadow": return "View wallet assets in read-only mode";
+      case "live": return "Real wallet balances and transaction history";
+    }
+  };
+
   return (
     <AppLayout>
       <div className="space-y-6">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight">Demo Portfolio</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">{getPageTitle()}</h1>
             <p className="text-muted-foreground mt-1">
-              Manual asset management and simulation ledger
+              {getPageDescription()}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <Button onClick={() => setShowAddAsset(true)} className="gap-2">
+            <Button 
+              onClick={() => setShowAddAsset(true)} 
+              className="gap-2"
+              disabled={mode.current !== "demo"}
+            >
               <Plus className="h-4 w-4" />
-              Add Asset
+              {mode.current === "demo" ? "Add Asset" : "Demo Mode Only"}
             </Button>
-            <Button variant="outline" className="gap-2" onClick={handleImportSample}>
+            <Button 
+              variant="outline" 
+              className="gap-2" 
+              onClick={handleImportSample}
+              disabled={mode.current !== "demo"}
+            >
               <Download className="h-4 w-4" />
               Import Sample Portfolio
             </Button>
-            <Button variant="outline" className="gap-2" onClick={handleResetSimulation}>
+            <Button 
+              variant="outline" 
+              className="gap-2" 
+              onClick={handleResetSimulation}
+              disabled={mode.current !== "demo"}
+            >
               <RefreshCw className="h-4 w-4" />
               Reset Simulation
             </Button>
           </div>
         </div>
+
+        {/* Mode Banner */}
+        <ModeBanner />
+
+        {/* Demo Mode Warning */}
+        {mode.current !== "demo" && (
+          <Card className="card-gradient border-accent/20 border">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4">
+                <AlertCircle className="h-5 w-5 text-accent flex-shrink-0" />
+                <div>
+                  <p className="font-semibold">Demo Portfolio is only available in Demo Mode</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {mode.current === "shadow" 
+                      ? "Switch to Demo Mode to manually manage simulated assets."
+                      : "Switch to Demo Mode to use the simulation portfolio."}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="card-gradient border-border/50">
           <CardHeader>
