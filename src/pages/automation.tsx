@@ -22,7 +22,9 @@ import {
   Target,
   Wallet,
   Globe,
-  Eye
+  Eye,
+  Save,
+  Info
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store";
@@ -144,20 +146,76 @@ export default function Automation() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight">{getPageTitle()}</h1>
-            <p className="text-muted-foreground mt-1">
-              {getPageDescription()}
-            </p>
+            <h1 className="text-3xl font-bold">Automation & Policy</h1>
+            <p className="text-muted-foreground">Configure automated LP management rules and guardrails</p>
           </div>
-          <Button 
-            variant="destructive" 
-            className="gap-2"
-            onClick={handleEmergencyStop}
-            disabled={mode.current === "shadow" || emergencyPauseAll}
-          >
-            <AlertTriangle className="h-4 w-4" />
-            {mode.current === "shadow" ? "Shadow Mode" : emergencyPauseAll ? "Paused" : "Emergency Stop All"}
+          <Button onClick={savePolicy} disabled={!hasChanges}>
+            <Save className="mr-2 h-4 w-4" />
+            Save Changes
           </Button>
+        </div>
+
+        {/* Summary Report */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Policies</CardTitle>
+              <Zap className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {[
+                  policy.autoHarvest,
+                  policy.autoCompound,
+                  policy.autoRebalance,
+                  policy.autoDeploy,
+                ].filter(Boolean).length}
+                /4
+              </div>
+              <p className="text-xs text-muted-foreground">Automation enabled</p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Emergency Status</CardTitle>
+              <Shield className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {policy.emergencyPause ? (
+                  <span className="text-amber-400">PAUSED</span>
+                ) : (
+                  <span className="text-emerald-400">ACTIVE</span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">System state</p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Daily Gas Budget</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">${policy.maxDailyGasBudget}</div>
+              <p className="text-xs text-muted-foreground">Maximum spend</p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Risk Controls</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-cyan-400">
+                {policy.minPoolScore}%
+              </div>
+              <p className="text-xs text-muted-foreground">Min pool score</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Mode Banner */}

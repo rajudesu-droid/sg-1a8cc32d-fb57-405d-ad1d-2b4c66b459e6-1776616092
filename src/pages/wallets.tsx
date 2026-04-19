@@ -13,11 +13,16 @@ import {
   Wallet,
   Plus,
   RefreshCw,
-  X,
-  AlertCircle,
   ChevronDown,
   ChevronUp,
-  Loader2
+  Trash2,
+  AlertTriangle,
+  AlertCircle,
+  X,
+  Loader2,
+  DollarSign,
+  Coins,
+  Network
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/contexts/WalletContext";
@@ -400,32 +405,103 @@ export default function Wallets() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight">{getPageTitle()}</h1>
-            <p className="text-muted-foreground mt-1">{getPageDescription()}</p>
+            <h1 className="text-3xl font-bold">
+              Wallets {mode.current === "demo" ? "(Paper Wallets)" : ""}
+            </h1>
+            <p className="text-muted-foreground">
+              {mode.current === "demo"
+                ? "Create and manage simulated paper wallets for testing strategies"
+                : mode.current === "shadow"
+                ? "Connect wallets for read-only monitoring"
+                : "Connect and manage your Web3 wallets"}
+            </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex gap-3">
             {mode.current === "demo" && (
-              <Button onClick={() => setShowCreateWallet(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
+              <Button onClick={() => setShowCreateDialog(true)}>
+                <Plus className="mr-2 h-4 w-4" />
                 Create Paper Wallet
               </Button>
             )}
-            {!isConnected && mode.current !== "demo" && (
-              <Button onClick={connectWallet} className="gap-2">
-                <Wallet className="h-4 w-4" />
-                Connect Wallet
-              </Button>
+            {mode.current !== "demo" && (
+              <>
+                <Button variant="outline" onClick={handleRefreshBalances}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh Balances
+                </Button>
+                <Button onClick={handleWalletConnect}>
+                  <Wallet className="mr-2 h-4 w-4" />
+                  Connect Wallet
+                </Button>
+              </>
             )}
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={handleRefreshBalances}
-              disabled={isRefreshing}
-            >
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-              Refresh Balances
-            </Button>
           </div>
+        </div>
+
+        {/* Summary Report */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Wallets</CardTitle>
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {mode.current === "demo" ? paperWallets.length : wallet.wallet ? 1 : 0}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {mode.current === "demo" ? "Paper wallets" : "Connected wallets"}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                $
+                {mode.current === "demo"
+                  ? paperWallets.reduce((sum, w) => sum + w.totalValue, 0).toLocaleString()
+                  : wallet.assets
+                      .reduce((sum, a) => sum + (parseFloat(a.balance) || 0) * (a.priceUsd || 0), 0)
+                      .toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground">Combined balance</p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Tokens</CardTitle>
+              <Coins className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {mode.current === "demo"
+                  ? paperWallets.reduce((sum, w) => sum + w.tokens.length, 0)
+                  : wallet.assets.length}
+              </div>
+              <p className="text-xs text-muted-foreground">Assets held</p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Networks</CardTitle>
+              <Network className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {mode.current === "demo"
+                  ? new Set(paperWallets.flatMap((w) => w.chains)).size
+                  : new Set(wallet.assets.map((a) => a.network)).size}
+              </div>
+              <p className="text-xs text-muted-foreground">Active chains</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Mode Banner */}

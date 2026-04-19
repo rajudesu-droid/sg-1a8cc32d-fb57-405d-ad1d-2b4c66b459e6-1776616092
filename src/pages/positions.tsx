@@ -6,11 +6,21 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { TrendingUp, TrendingDown, Coins, Target, Activity, AlertTriangle, RefreshCw, Search } from "lucide-react";
+import { TrendingUp, TrendingDown, Coins, Target, Activity, AlertTriangle, RefreshCw, Search, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store";
 import { ModeBanner } from "@/components/ModeBanner";
 import { orchestrator } from "@/core/orchestrator";
+import {
+  Target,
+  Filter,
+  ExternalLink,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  DollarSign,
+  Coins,
+} from "lucide-react";
 
 type PositionStatus = "active" | "out_of_range" | "closed";
 
@@ -214,17 +224,68 @@ export default function Positions() {
     <AppLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">{getPageTitle()}</h1>
-            <p className="text-muted-foreground mt-1">
-              {mode.current === "shadow" ? "Read-only view of recommended positions" : "Monitor and manage your LP positions"}
-            </p>
-          </div>
-          <Button className="gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Refresh Positions
-          </Button>
+        <div>
+          <h1 className="text-3xl font-bold">Active Positions</h1>
+          <p className="text-muted-foreground">Monitor and manage your liquidity provider positions</p>
+        </div>
+
+        {/* Summary Report */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Positions</CardTitle>
+              <Target className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{filteredPositions.length}</div>
+              <p className="text-xs text-muted-foreground">Open LP positions</p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Value Locked</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${filteredPositions.reduce((sum, p) => sum + p.currentValue, 0).toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground">Deployed capital</p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Accrued Fees</CardTitle>
+              <Coins className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-cyan-400">
+                +${filteredPositions.reduce((sum, p) => sum + p.accruedFees, 0).toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground">Pending harvest</p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Net PnL</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-emerald-400">
+                +${filteredPositions
+                  .reduce(
+                    (sum, p) =>
+                      sum + (p.currentValue - p.initialValue + p.accruedFees + p.accruedRewards),
+                    0
+                  )
+                  .toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground">Profit & loss</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Mode Banner */}

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { TrendingUp, TrendingDown, Search, RefreshCw, ArrowUpDown, AlertCircle, Info } from "lucide-react";
+import { TrendingUp, TrendingDown, Search, RefreshCw, ArrowUpDown, AlertCircle, Info, Percent, Activity, DollarSign, Filter, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store";
 import { ModeBanner } from "@/components/ModeBanner";
@@ -188,17 +188,73 @@ export default function Opportunities() {
     <AppLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">Opportunities</h1>
-            <p className="text-muted-foreground mt-1">
-              {getModeLabel()} - Discover and rank LP pools by risk-adjusted score
-            </p>
-          </div>
-          <Button className="gap-2" onClick={handleRefreshPools}>
-            <RefreshCw className="h-4 w-4" />
-            Refresh Pools
-          </Button>
+        <div>
+          <h1 className="text-3xl font-bold">LP Opportunities</h1>
+          <p className="text-muted-foreground">
+            Discover and compare liquidity pool opportunities across supported DEXes
+          </p>
+        </div>
+
+        {/* Summary Report */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Opportunities</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{filteredOpportunities.length}</div>
+              <p className="text-xs text-muted-foreground">Available pools</p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Average APY</CardTitle>
+              <Percent className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-cyan-400">
+                {filteredOpportunities.length > 0
+                  ? (
+                      filteredOpportunities.reduce((sum, o) => sum + o.estimatedApy, 0) /
+                      filteredOpportunities.length
+                    ).toFixed(2)
+                  : "0.00"}
+                %
+              </div>
+              <p className="text-xs text-muted-foreground">Across all pools</p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Highest Yield</CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-emerald-400">
+                {filteredOpportunities.length > 0
+                  ? Math.max(...filteredOpportunities.map((o) => o.estimatedApy)).toFixed(2)
+                  : "0.00"}
+                %
+              </div>
+              <p className="text-xs text-muted-foreground">Best opportunity</p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total TVL</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${(filteredOpportunities.reduce((sum, o) => sum + o.tvl, 0) / 1000000).toFixed(1)}M
+              </div>
+              <p className="text-xs text-muted-foreground">Combined liquidity</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Mode Banner */}

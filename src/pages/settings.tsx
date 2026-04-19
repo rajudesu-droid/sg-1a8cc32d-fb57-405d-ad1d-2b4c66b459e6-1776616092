@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Settings as SettingsIcon, Wallet, Bell, Shield } from "lucide-react";
+import { Settings as SettingsIcon, Wallet, Bell, Shield, Save, Network, Activity, Palette } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -73,11 +73,76 @@ export default function Settings() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground mt-1">
-            Configure platform preferences and integrations
-          </p>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Settings</h1>
+            <p className="text-muted-foreground">
+              Configure chains, DEXes, notifications, and preferences
+            </p>
+          </div>
+          <Button onClick={saveSettings} disabled={!hasChanges}>
+            <Save className="mr-2 h-4 w-4" />
+            Save Changes
+          </Button>
+        </div>
+
+        {/* Summary Report */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Chains</CardTitle>
+              <Network className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {supportedChains.filter((c) => c.enabled).length}
+              </div>
+              <p className="text-xs text-muted-foreground">Networks enabled</p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active DEXes</CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {supportedDexes.filter((d) => d.enabled).length}
+              </div>
+              <p className="text-xs text-muted-foreground">Protocols enabled</p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Notifications</CardTitle>
+              <Bell className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {[
+                  notificationSettings.emailAlerts,
+                  notificationSettings.pushAlerts,
+                  notificationSettings.discordAlerts,
+                ].filter(Boolean).length}
+                /3
+              </div>
+              <p className="text-xs text-muted-foreground">Channels active</p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Policy Status</CardTitle>
+              <Shield className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-emerald-400">ACTIVE</div>
+              <p className="text-xs text-muted-foreground">Automation state</p>
+            </CardContent>
+          </Card>
         </div>
 
         <Tabs defaultValue="chains" className="space-y-6">

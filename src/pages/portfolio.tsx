@@ -3,10 +3,19 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Wallet, TrendingUp, AlertCircle } from "lucide-react";
+import { DollarSign, Wallet, TrendingUp, AlertCircle, Coins, Network } from "lucide-react";
 import { useAppStore } from "@/store";
 import { ModeBanner } from "@/components/ModeBanner";
 import { orchestrator } from "@/core/orchestrator";
+import {
+  TrendingUp,
+  DollarSign,
+  AlertTriangle,
+  Wallet,
+  ArrowRight,
+  Coins,
+  Network,
+} from "lucide-react";
 
 // Mock data for demonstration
 const mockPortfolioData = {
@@ -246,14 +255,64 @@ export default function Portfolio() {
     <AppLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">{getPageTitle()}</h1>
-            <p className="text-muted-foreground mt-1">{getPageDescription()}</p>
-          </div>
-          <Badge variant={mode.current === "demo" ? "secondary" : mode.current === "shadow" ? "outline" : "default"}>
-            {mode.label}
-          </Badge>
+        <div>
+          <h1 className="text-3xl font-bold">Portfolio</h1>
+          <p className="text-muted-foreground">
+            Comprehensive view of your assets, positions, and performance
+          </p>
+        </div>
+
+        {/* Summary Report */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Value ({mode.current === "demo" ? "Simulated" : mode.current === "shadow" ? "Estimated" : "Live"})
+              </CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">${portfolioData.totalValue.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">Portfolio value</p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Assets Held</CardTitle>
+              <Coins className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{portfolioData.tokens.length}</div>
+              <p className="text-xs text-muted-foreground">Unique tokens</p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Networks</CardTitle>
+              <Network className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{portfolioData.chains.length}</div>
+              <p className="text-xs text-muted-foreground">Active chains</p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Wallets</CardTitle>
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {mode.current === "demo" ? paperWallets.length : wallet.wallet ? 1 : 0}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {mode.current === "demo" ? "Paper wallets" : "Connected"}
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Mode Banner */}
