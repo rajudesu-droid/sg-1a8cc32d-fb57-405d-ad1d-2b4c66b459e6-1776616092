@@ -49,7 +49,7 @@ export class ExecutionLogService {
       
       // Costs
       gasEstimate: job.actionPlan?.totalEstimatedGas,
-      gasActual: job.executionResult?.stateChanges?.gasUsed,
+      gasActual: job.executionResult?.transactions?.reduce((sum, tx) => sum + (tx.gasUsed || 0), 0),
       slippageEstimate: job.actionPlan?.estimatedSlippage,
       
       // Risks
