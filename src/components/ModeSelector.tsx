@@ -34,11 +34,12 @@ export function ModeSelector() {
     setMode(newMode);
 
     // Trigger data refresh via orchestrator
-    orchestrator.emit({
-      type: "MODE_CHANGED",
+    orchestrator.publishEvent({
+      type: "mode_changed",
       source: "ModeSelector",
       data: { newMode, previousMode: mode.current },
-      timestamp: Date.now(),
+      timestamp: new Date(),
+      affectedModules: ["wallet", "portfolio", "opportunities", "positions", "rewards"],
     });
 
     // Show confirmation toast

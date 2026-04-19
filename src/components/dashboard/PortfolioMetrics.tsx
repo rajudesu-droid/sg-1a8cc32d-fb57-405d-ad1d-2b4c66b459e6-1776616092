@@ -66,7 +66,7 @@ export function PortfolioMetrics({ mode }: PortfolioMetricsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            ${Number(portfolio.totalValueUsd || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            ${Number(portfolio.totalValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {mode === "demo" ? "Simulated total" : mode === "shadow" ? "Estimated value" : "Real-time value"}
@@ -130,7 +130,7 @@ export function PortfolioMetrics({ mode }: PortfolioMetricsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold metric-positive">
-            +${Number(portfolio.dailyEarnings || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            +${Number((portfolio.dailyEarnings as any)?.total ?? portfolio.dailyEarnings ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {mode === "demo" ? "Simulated today" : mode === "shadow" ? "Projected per day" : "Realized + Projected"}
@@ -158,7 +158,7 @@ export function PortfolioMetrics({ mode }: PortfolioMetricsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold metric-positive">
-            +${Number(portfolio.monthlyEarnings || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            +${Number((portfolio.monthlyEarnings as any)?.total ?? portfolio.monthlyEarnings ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {mode === "demo" ? "Simulated MTD" : mode === "shadow" ? "Projected 30d" : "MTD + Projected"}
@@ -244,7 +244,7 @@ export function PortfolioMetrics({ mode }: PortfolioMetricsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-primary">
-            +${Number(portfolio.projectedEarnings || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            +${Number(portfolio.projected30Day || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {mode === "demo" ? "Simulated projection" : mode === "shadow" ? "If positions opened" : "Based on current APY"}
