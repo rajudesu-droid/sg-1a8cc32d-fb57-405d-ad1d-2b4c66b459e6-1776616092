@@ -104,6 +104,53 @@ export abstract class BaseProtocolAdapter implements IProtocolAdapter {
     poolAddress: string
   ): Promise<NormalizedOpportunity>;
 
+  // Optional/Default implementations for the rest of IProtocolAdapter interface
+  // This allows rapid integration of new DEXs for discovery/scoring without needing full execution capability right away
+
+  async getEligibleFarms(chain: string, poolAddress: string): Promise<any[]> {
+    return [];
+  }
+
+  async getWalletEligiblePairs(chain: string, walletAddress: string): Promise<string[]> {
+    return [];
+  }
+
+  async quoteEntry(chain: string, poolAddress: string, amounts: { token0: number; token1: number }): Promise<any> {
+    throw new Error("Method not implemented for " + this.protocolName);
+  }
+
+  async quoteExit(chain: string, poolAddress: string, liquidity: string): Promise<any> {
+    throw new Error("Method not implemented for " + this.protocolName);
+  }
+
+  async openPosition(chain: string, poolAddress: string, amounts: { token0: number; token1: number }, slippage: number): Promise<any> {
+    throw new Error("Method not implemented for " + this.protocolName);
+  }
+
+  async addLiquidity(chain: string, positionId: string, amounts: { token0: number; token1: number }, slippage: number): Promise<any> {
+    throw new Error("Method not implemented for " + this.protocolName);
+  }
+
+  async removeLiquidity(chain: string, positionId: string, liquidity: string, slippage: number): Promise<any> {
+    throw new Error("Method not implemented for " + this.protocolName);
+  }
+
+  async stakeIfRequired(chain: string, positionId: string): Promise<any> {
+    throw new Error("Method not implemented for " + this.protocolName);
+  }
+
+  async unstakeIfRequired(chain: string, positionId: string): Promise<any> {
+    throw new Error("Method not implemented for " + this.protocolName);
+  }
+
+  async harvestRewards(chain: string, positionId: string): Promise<any> {
+    throw new Error("Method not implemented for " + this.protocolName);
+  }
+
+  async getPositionState(chain: string, positionId: string): Promise<any> {
+    throw new Error("Method not implemented for " + this.protocolName);
+  }
+
   // ============================================================================
   // HELPER METHODS
   // Shared utilities for all adapters

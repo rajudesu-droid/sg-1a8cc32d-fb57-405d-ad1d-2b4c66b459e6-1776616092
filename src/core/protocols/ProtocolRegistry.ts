@@ -23,6 +23,8 @@ interface ProtocolRegistryEntry {
 
 export class ProtocolRegistry {
   private adapters: Map<string, BaseProtocolAdapter> = new Map();
+  private configs: Map<string, ProtocolConfig> = new Map();
+  private chains: Map<string, ChainConfig> = new Map();
   private registry: ProtocolRegistryEntry[] = [
     {
       name: "Uniswap V3",
@@ -216,19 +218,19 @@ export class ProtocolRegistry {
   // REGISTRATION & MANAGEMENT
   // ============================================================================
 
-  registerAdapter(adapter: IProtocolAdapter) {
+  registerAdapter(adapter: BaseProtocolAdapter) {
     this.adapters.set(adapter.protocolName, adapter);
   }
 
-  getAdapter(protocolName: string): IProtocolAdapter | undefined {
+  getAdapter(protocolName: string): BaseProtocolAdapter | undefined {
     return this.adapters.get(protocolName);
   }
 
-  getEnabledAdapters(): IProtocolAdapter[] {
+  getEnabledAdapters(): BaseProtocolAdapter[] {
     const enabledProtocols = this.getEnabledProtocols();
     return enabledProtocols
       .map(config => this.adapters.get(config.name))
-      .filter((adapter): adapter is IProtocolAdapter => adapter !== undefined);
+      .filter((adapter): adapter is BaseProtocolAdapter => adapter !== undefined);
   }
 
   // ============================================================================

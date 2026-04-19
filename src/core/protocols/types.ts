@@ -124,26 +124,27 @@ export interface IProtocolAdapter {
 }
 
 // ============================================================================
-// SUPPORTING TYPES
+// METRICS & SCORING
 // ============================================================================
 
 export interface PoolMetrics {
-  tvl: number;
-  volume24h: number;
-  fees24h: number;
-  baseApy: number;
-  liquidityDepth: number;
+  tvl: number; // USD
+  volume24h: number; // USD
+  baseYield: number; // APR % (fees)
+  liquidityDepth: number; // USD within +/- 2% price impact
+  estimatedSlippage: number; // % for standard entry size
+  impermanentLossRisk?: number; // 0-100 score
 }
 
 export interface RewardMetrics {
+  farmRewardYield: number; // APR % (farm rewards)
   rewardTokens: Array<{
     symbol: string;
     address: string;
-    emissionRate: number; // per day
     apr: number;
     liquidityUsd: number;
+    emissionRate?: number; // tokens per day
   }>;
-  totalRewardApr: number;
 }
 
 export interface EntryQuote {
