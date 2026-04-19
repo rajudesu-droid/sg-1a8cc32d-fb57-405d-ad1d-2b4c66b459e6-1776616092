@@ -3,13 +3,14 @@
  * Central registry for all domain engines
  */
 
-export * from "./WalletEngine";
-export * from "./PortfolioEngine";
-export * from "./OpportunityEngine";
-export * from "./PositionEngine";
-export * from "./RewardsEngine";
-export * from "./WithdrawalEngine";
-export * from "./PolicyEngine";
+export { WalletEngine } from "./WalletEngine";
+export { PortfolioEngine } from "./PortfolioEngine";
+export { OpportunityEngine } from "./OpportunityEngine";
+export { PositionEngine } from "./PositionEngine";
+export { RewardsEngine } from "./RewardsEngine";
+export { WithdrawalEngine } from "./WithdrawalEngine";
+export { PolicyEngine } from "./PolicyEngine";
+export { MultiProtocolOpportunityEngine, multiProtocolScanner } from "./MultiProtocolOpportunityEngine";
 
 // Initialize all engines by importing them
 // This ensures they register themselves with the orchestrator

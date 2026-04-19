@@ -89,8 +89,13 @@ export class MultiProtocolOpportunityEngine {
       
       console.log(`[MultiProtocolScanner] Scan complete. Found ${this.cachedOpportunities.length} opportunities.`);
       
-      // Sync to global store
-      useAppStore.getState().setOpportunities(this.cachedOpportunities as any); // Cast pending type update in store
+      // Sync to global store (convert Date to string for serialization)
+      const serializedOpportunities = this.cachedOpportunities.map(opp => ({
+        ...opp,
+        lastUpdated: opp.lastUpdated.toISOString(),
+      }));
+      
+      useAppStore.getState().setOpportunities(serializedOpportunities);
       
       return this.cachedOpportunities;
     } catch (error) {

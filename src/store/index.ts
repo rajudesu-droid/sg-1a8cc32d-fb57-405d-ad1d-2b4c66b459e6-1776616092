@@ -36,6 +36,7 @@ interface AppState {
   opportunities: Opportunity[];
   setOpportunities: (opportunities: Opportunity[]) => void;
   addOpportunity: (opportunity: Opportunity) => void;
+  removeOpportunity: (id: string) => void;
 
   // ==================== POSITIONS ====================
   positions: Position[];
@@ -174,10 +175,12 @@ export const useAppStore = create<AppState>()(
         // ==================== OPPORTUNITIES ====================
         opportunities: [],
         setOpportunities: (opportunities) => set({ opportunities }),
-        addOpportunity: (opportunity) =>
-          set((state) => ({
-            opportunities: [...state.opportunities, opportunity],
-          })),
+        addOpportunity: (opportunity) => set((state) => ({ 
+          opportunities: [...state.opportunities, opportunity] 
+        })),
+        removeOpportunity: (id) => set((state) => ({
+          opportunities: state.opportunities.filter((o) => o.id !== id),
+        })),
 
         // ==================== POSITIONS ====================
         positions: [],

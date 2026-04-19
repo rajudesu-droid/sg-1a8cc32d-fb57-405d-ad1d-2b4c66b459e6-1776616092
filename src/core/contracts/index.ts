@@ -80,27 +80,60 @@ export interface NetworkBalance {
   percentage: number;
 }
 
-// ==================== OPPORTUNITY ====================
-export type RiskLevel = "low" | "medium" | "high";
-
+// ==================== OPPORTUNITIES ====================
 export interface Opportunity {
+  // Identity
   id: string;
-  pair: string;
-  token0: string;
-  token1: string;
-  dex: string;
+  protocolName: string;
+  protocolType: "concentrated_liquidity_dex" | "standard_amm_dex" | "farm_staking" | "yield_farming" | "reward_program";
   chain: string;
-  feeTier: string;
-  tvl: string;
-  volume24h: string;
-  feeApy: string;
-  rewardApy: string;
-  netApy: string;
+  poolAddress: string;
+  poolType: "concentrated_liquidity" | "stable_amm" | "weighted_pool" | "volatile_amm" | "farm" | "single_stake";
+  
+  // Token pair
+  token0Symbol: string;
+  token0Address: string;
+  token1Symbol?: string;
+  token1Address?: string;
+  feeTier?: string;
+  
+  // Metrics
+  tvl: number;
+  volume24h: number;
+  baseYield: number;
+  farmRewardYield: number;
+  totalYield: number;
+  
+  // Reward info
+  rewardTokens: Array<{
+    symbol: string;
+    address: string;
+    apr: number;
+    liquidityUsd: number;
+  }>;
+  
+  // Risk metrics
+  liquidityDepth: number;
+  estimatedSlippage: number;
+  gasCostEntry: number;
+  gasCostExit: number;
+  concentrationRisk: number;
+  volatilityRisk: number;
+  impermanentLossRisk: number;
+  contractRisk: number;
+  
+  // Scoring
   riskScore: number;
-  riskLevel: RiskLevel;
-  recommended: boolean;
-  score: number; // Risk-adjusted score
-  poolAddress?: string;
+  qualityScore: number;
+  netScore: number;
+  
+  // Status
+  whitelisted: boolean;
+  enabled: boolean;
+  strategyCompatible: boolean;
+  
+  // Metadata
+  lastUpdated: Date | string;
 }
 
 // ==================== POSITION ====================
