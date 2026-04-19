@@ -86,6 +86,10 @@ interface AppState {
     timestamp: Date;
   }) => void;
   clearAlerts: () => void;
+
+  // ==================== BOT STATUS ====================
+  botRunning: boolean;
+  setBotRunning: (running: boolean) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -214,6 +218,10 @@ export const useAppStore = create<AppState>()(
         alerts: [],
         addAlert: (alert) => set((state) => ({ alerts: [alert, ...state.alerts] })),
         clearAlerts: () => set({ alerts: [] }),
+
+        // ==================== BOT STATUS ====================
+        botRunning: false,
+        setBotRunning: (running) => set({ botRunning: running }),
       }),
       {
         name: "lp-yield-autopilot-storage",
@@ -221,6 +229,7 @@ export const useAppStore = create<AppState>()(
           mode: state.mode,
           policy: state.policy,
           simulation: state.simulation,
+          botRunning: state.botRunning, // Persist bot running state
         }),
       }
     )

@@ -19,7 +19,8 @@ import { portfolioEngine } from "@/core/engines/PortfolioEngine";
 export default function Dashboard() {
   const { toast } = useToast();
   const mode = useAppStore((state) => state.mode);
-  const [botRunning, setBotRunning] = useState(false);
+  const botRunning = useAppStore((state) => state.botRunning);
+  const setBotRunning = useAppStore((state) => state.setBotRunning);
   const [isStarting, setIsStarting] = useState(false);
 
   // Listen for mode changes and refresh data
@@ -89,6 +90,7 @@ export default function Dashboard() {
         timestamp: new Date(),
       });
       
+      // Update bot running state in store
       setBotRunning(true);
       
       toast({
@@ -109,6 +111,7 @@ export default function Dashboard() {
   };
 
   const handleStopBot = () => {
+    // Update bot running state in store
     setBotRunning(false);
     
     useAppStore.getState().addAlert({
