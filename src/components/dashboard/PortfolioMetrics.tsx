@@ -8,7 +8,19 @@ interface PortfolioMetricsProps {
 }
 
 export function PortfolioMetrics({ mode }: PortfolioMetricsProps) {
-  const portfolio = useAppStore((state) => state.portfolio);
+  const portfolioState = useAppStore((state) => state.portfolio);
+  
+  // Safe fallback for initial load when portfolio might be null
+  const portfolio = portfolioState || {
+    totalValue: 0,
+    deployedCapital: 0,
+    idleCapital: 0,
+    dailyEarnings: 0,
+    monthlyEarnings: 0,
+    netApy: 0,
+    realizedEarnings: 0,
+    projected30Day: 0,
+  };
 
   const getModeLabel = (baseLabel: string) => {
     switch (mode) {
