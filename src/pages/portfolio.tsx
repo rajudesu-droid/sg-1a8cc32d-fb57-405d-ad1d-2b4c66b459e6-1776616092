@@ -45,6 +45,7 @@ export default function Portfolio() {
   const wallet = useAppStore((state) => state.wallet);
   const portfolio = useAppStore((state) => state.portfolio);
   const paperWallets = useAppStore((state) => state.paperWallets);
+  const auditLogs = useAppStore((state) => state.auditLogs);
 
   const [portfolioData, setPortfolioData] = useState<{
     totalValue: number;

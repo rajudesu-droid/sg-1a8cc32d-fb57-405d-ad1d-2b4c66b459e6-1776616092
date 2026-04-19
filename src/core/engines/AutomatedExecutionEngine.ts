@@ -244,7 +244,12 @@ export class AutomatedExecutionEngine {
           completedSteps: 0,
           totalSteps: plan.totalSteps,
           transactions: [],
-          stateChanges: {},
+          stateChanges: {
+            balancesBefore: {},
+            balancesAfter: {},
+            positionsAffected: [],
+            portfolioValueChange: 0
+          },
           startedAt: new Date(),
           completedAt: new Date(),
           logs: ["Shadow mode: Preview generated, no execution performed"],

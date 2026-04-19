@@ -9,7 +9,7 @@ export function ActivePositions() {
   const positions = useAppStore((state) => state.positions);
 
   // Show only active positions (not closed)
-  const activePositions = positions.filter(p => p.status === "active" || p.status === "out-of-range");
+  const activePositions = positions.filter((p: any) => p.status === "active" || p.status === "out-of-range" || p.status === "out_of_range");
 
   return (
     <Card className="card-gradient border-border/50">
@@ -26,45 +26,53 @@ export function ActivePositions() {
       <CardContent>
         {activePositions.length > 0 ? (
           <div className="space-y-3">
-            {positions.slice(0, 5).map((position) => (
-              <div
-                key={position.id}
-                className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer"
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <div className="font-semibold mb-1">{position.pair}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {position.protocol} · {position.chain}
+            {activePositions.slice(0, 5).map((position: any) => {
+              const inRange = position.status === "active";
+              const protocol = position.protocol || position.dex || "Unknown";
+              const chain = position.chain || position.network || "Unknown";
+              const value = position.currentValue || position.valueUsd || position.value || 0;
+              const apy = position.currentAPY || position.apy || position.apr || 0;
+              
+              return (
+                <div
+                  key={position.id}
+                  className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <div className="font-semibold mb-1">{position.pair || position.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {protocol} · {chain}
+                      </div>
+                    </div>
+                    <Badge className={inRange ? "bg-emerald-500" : "bg-amber-500"}>
+                      {inRange ? "In Range" : "Out of Range"}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className="text-muted-foreground">Value</div>
+                      <div className="font-mono">${value.toLocaleString()}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">APY</div>
+                      <div className="font-mono text-cyan-400">{apy.toFixed(2)}%</div>
                     </div>
                   </div>
-                  <Badge className={position.inRange ? "bg-emerald-500" : "bg-amber-500"}>
-                    {position.inRange ? "In Range" : "Out of Range"}
-                  </Badge>
-                </div>
 
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <div className="text-muted-foreground">Value</div>
-                    <div className="font-mono">${position.currentValue.toLocaleString()}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground">APY</div>
-                    <div className="font-mono text-cyan-400">{position.currentAPY.toFixed(2)}%</div>
-                  </div>
-                </div>
-
-                {/* Next Planned Action */}
-                {!position.inRange && (
-                  <div className="mt-3 pt-3 border-t border-border">
-                    <div className="flex items-center gap-2 text-xs text-amber-400">
-                      <Activity className="w-3 h-3" />
-                      <span>Next: Rebalance position (pending approval)</span>
+                  {/* Next Planned Action */}
+                  {!inRange && (
+                    <div className="mt-3 pt-3 border-t border-border">
+                      <div className="flex items-center gap-2 text-xs text-amber-400">
+                        <Activity className="w-3 h-3" />
+                        <span>Next: Rebalance position (pending approval)</span>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-8">
