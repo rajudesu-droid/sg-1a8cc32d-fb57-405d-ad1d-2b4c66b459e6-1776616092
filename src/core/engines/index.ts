@@ -24,5 +24,8 @@ import "./PositionEngine";
 import "./RewardsEngine";
 import "./WithdrawalEngine";
 import "./PolicyEngine";
+import "./ValidationEngine";
+import "./TriggerEngine";
+import "./AutomatedExecutionEngine";
 
 console.log("[Engines] All domain engines initialized and registered");

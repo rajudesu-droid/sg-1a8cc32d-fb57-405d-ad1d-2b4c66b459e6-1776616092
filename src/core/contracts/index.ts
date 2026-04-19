@@ -277,7 +277,9 @@ export type EventType =
   | "audit_logged"
   | "simulation_updated"
   | "sync_required"
-  | "settings_changed";
+  | "settings_changed"
+  | "action_triggered"
+  | "validation_completed";
 
 export interface AppEvent {
   type: EventType;

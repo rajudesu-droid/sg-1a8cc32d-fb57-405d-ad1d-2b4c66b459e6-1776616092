@@ -29,8 +29,8 @@ export class AutomatedExecutionEngine {
     orchestrator.subscribe(async (event) => {
       // We expect event.type to be "action_triggered"
       if (event.type === ("action_triggered" as any) && event.source !== this.engineId) {
-        if (event.payload && event.payload.trigger) {
-          await this.processTrigger(event.payload.trigger);
+        if (event.data && event.data.trigger) {
+          await this.processTrigger(event.data.trigger);
         }
       }
     });
@@ -208,17 +208,20 @@ export class AutomatedExecutionEngine {
     
     store.addAuditLog({
       id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      timestamp: new Date().toISOString() as any, // Store handles the string conversion implicitly, but TS expects string based on store definition
-      level: isError ? "error" : status === "completed" ? "success" : "info",
-      category: "execution",
-      action: trigger.actionType,
-      message,
-      metadata: { 
+      timestamp: new Date() as any,
+      mode: trigger.mode,
+      actionType: "simulation" as any, // Map complex actions to simple audit types
+      actor: "system",
+      details: { 
+        status,
+        message,
         triggerId: trigger.id, 
-        mode: trigger.mode,
         protocol: trigger.protocol,
         chain: trigger.chain,
-      }
+        action: trigger.actionType
+      },
+      success: !isError,
+      error: isError ? message : undefined
     });
   }
 
