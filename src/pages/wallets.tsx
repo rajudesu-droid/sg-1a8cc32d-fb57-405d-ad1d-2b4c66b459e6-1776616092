@@ -136,16 +136,6 @@ interface TokenHolding {
   valueUsd: number;
 }
 
-interface PaperWallet {
-  id: string;
-  name: string;
-  address: string;
-  chains: string[];
-  tokens: TokenHolding[];
-  totalValue: number;
-  createdAt: Date;
-}
-
 export default function Wallets() {
   const [showCreateWallet, setShowCreateWallet] = useState(false);
   const [showAddToken, setShowAddToken] = useState(false);
@@ -172,8 +162,35 @@ export default function Wallets() {
   const mode = useAppStore((state) => state.mode);
   const paperWallets = useAppStore((state) => state.paperWallets);
   const addPaperWallet = useAppStore((state) => state.addPaperWallet);
-  const updatePaperWallet = useAppStore((state) => state.updatePaperWallet);
-  const deletePaperWallet = useAppStore((state) => state.deletePaperWallet);
+  
+  // Custom update helper to bridge the string balance to number quantity in global store
+  const updateWallet = (id: string, updatedTokens: TokenHolding[]) => {
+    const storeTokens = updatedTokens.map(t => ({
+      symbol: t.symbol,
+      name: t.name,
+      network: t.network,
+      quantity: parseFloat(t.balance),
+      priceUsd: parseFloat(t.price),
+      totalValue: t.valueUsd
+    }));
+    useAppStore.getState().updatePaperWallet(id, storeTokens);
+  };
+  
+  const deleteWallet = useAppStore((state) => state.deletePaperWallet);
+
+  // Map store wallets to local format for display
+  const displayWallets = paperWallets.map(w => ({
+    ...w,
+    tokens: w.tokens.map((t, idx) => ({
+      id: `token-${w.id}-${idx}`,
+      network: t.network,
+      symbol: t.symbol,
+      name: t.name,
+      balance: t.quantity.toString(),
+      price: t.priceUsd.toString(),
+      valueUsd: t.totalValue
+    }))
+  }));
 
   // Listen for mode changes
   useEffect(() => {
@@ -257,21 +274,14 @@ export default function Wallets() {
 
     if (currentWalletForToken) {
       // Adding to existing wallet
-      setPaperWallets((prev) =>
-        prev.map((w) =>
-          w.id === currentWalletForToken
-            ? {
-                ...w,
-                tokens: [...w.tokens, newToken],
-                totalValue: w.totalValue + newToken.valueUsd,
-              }
-            : w
-        )
-      );
-      toast({
-        title: "Token Added",
-        description: `${newToken.symbol} added to wallet`,
-      });
+      const wallet = displayWallets.find((w) => w.id === currentWalletForToken);
+      if (wallet) {
+        updateWallet(currentWalletForToken, [...wallet.tokens, newToken]);
+        toast({
+          title: "Token Added",
+          description: `${newToken.symbol} added to wallet`,
+        });
+      }
       setShowAddToken(false);
       setCurrentWalletForToken(null);
     } else {
@@ -292,19 +302,11 @@ export default function Wallets() {
 
   const removeToken = (tokenId: string, walletId?: string) => {
     if (walletId) {
-      setPaperWallets((prev) =>
-        prev.map((w) => {
-          if (w.id === walletId) {
-            const tokenToRemove = w.tokens.find((t) => t.id === tokenId);
-            return {
-              ...w,
-              tokens: w.tokens.filter((t) => t.id !== tokenId),
-              totalValue: w.totalValue - (tokenToRemove?.valueUsd || 0),
-            };
-          }
-          return w;
-        })
-      );
+      const wallet = displayWallets.find((w) => w.id === walletId);
+      if (wallet) {
+        const updatedTokens = wallet.tokens.filter((t) => t.id !== tokenId);
+        updateWallet(walletId, updatedTokens);
+      }
     } else {
       setInitialTokens((prev) => prev.filter((t) => t.id !== tokenId));
     }
@@ -320,21 +322,28 @@ export default function Wallets() {
       return;
     }
 
-    const newWallet: PaperWallet = {
+    const totalValue = initialTokens.reduce((sum, t) => sum + t.valueUsd, 0);
+
+    addPaperWallet({
       id: `wallet-${Date.now()}`,
       name: walletName || `Paper Wallet ${paperWallets.length + 1}`,
       address: `0x${Math.random().toString(16).substring(2, 42)}`,
       chains: selectedChains,
-      tokens: initialTokens,
-      totalValue: initialTokens.reduce((sum, t) => sum + t.valueUsd, 0),
+      tokens: initialTokens.map(t => ({
+        symbol: t.symbol,
+        name: t.name,
+        network: t.network,
+        quantity: parseFloat(t.balance),
+        priceUsd: parseFloat(t.price),
+        totalValue: t.valueUsd
+      })),
+      totalValue,
       createdAt: new Date(),
-    };
-
-    setPaperWallets((prev) => [...prev, newWallet]);
+    });
     
     toast({
       title: "Paper Wallet Created",
-      description: `${newWallet.name} created with ${initialTokens.length} tokens`,
+      description: `Wallet created with ${initialTokens.length} tokens`,
     });
 
     // Reset form
@@ -423,10 +432,10 @@ export default function Wallets() {
         <ModeBanner />
 
         {/* Paper Wallets (Demo Mode) */}
-        {mode.current === "demo" && paperWallets.length > 0 && (
+        {mode.current === "demo" && displayWallets.length > 0 && (
           <div className="space-y-4">
             <h2 className="text-xl font-semibold">Your Paper Wallets</h2>
-            {paperWallets.map((wallet) => {
+            {displayWallets.map((wallet) => {
               const isExpanded = expandedWallets.has(wallet.id);
               const tokensByNetwork = wallet.tokens.reduce((acc, token) => {
                 if (!acc[token.network]) acc[token.network] = [];
@@ -471,6 +480,14 @@ export default function Wallets() {
                         >
                           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => deleteWallet(wallet.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </CardHeader>
@@ -489,7 +506,7 @@ export default function Wallets() {
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                                    className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive hover:bg-destructive/10"
                                     onClick={() => removeToken(token.id, wallet.id)}
                                   >
                                     <X className="h-3 w-3" />
@@ -511,6 +528,11 @@ export default function Wallets() {
                             </div>
                           </div>
                         ))}
+                        {wallet.tokens.length === 0 && (
+                          <div className="text-center py-4 text-muted-foreground text-sm">
+                            No tokens in this wallet. Click the + button to add some.
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   )}
@@ -521,7 +543,7 @@ export default function Wallets() {
         )}
 
         {/* Empty State - Demo Mode */}
-        {mode.current === "demo" && paperWallets.length === 0 && (
+        {mode.current === "demo" && displayWallets.length === 0 && (
           <Card className="card-gradient border-border/50">
             <CardContent className="p-12">
               <div className="text-center">
@@ -644,6 +666,7 @@ export default function Wallets() {
                           <Button
                             size="sm"
                             variant="ghost"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
                             onClick={() => removeToken(token.id)}
                           >
                             <X className="h-4 w-4" />

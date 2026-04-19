@@ -125,13 +125,13 @@ export default function Portfolio() {
       }
     } else if (mode.current === "shadow") {
       // Shadow mode - shows data from connected wallet
-      if (wallet.connected) {
+      if (wallet.wallet) {
         const walletTokens = wallet.assets.map((asset) => ({
           symbol: asset.symbol,
           name: asset.name,
           network: asset.network,
-          balance: asset.quantity,
-          value: asset.quantity * (asset.priceUsd || 0),
+          balance: asset.balance,
+          value: asset.balance * (asset.priceUsd || 0),
           price: asset.priceUsd || 0,
           change24h: 0,
         }));
@@ -166,13 +166,13 @@ export default function Portfolio() {
       }
     } else if (mode.current === "live") {
       // Live mode - shows real portfolio
-      if (wallet.connected) {
+      if (wallet.wallet) {
         const walletTokens = wallet.assets.map((asset) => ({
           symbol: asset.symbol,
           name: asset.name,
           network: asset.network,
-          balance: asset.quantity,
-          value: asset.quantity * (asset.priceUsd || 0),
+          balance: asset.balance,
+          value: asset.balance * (asset.priceUsd || 0),
           price: asset.priceUsd || 0,
           change24h: 0,
         }));
@@ -206,7 +206,7 @@ export default function Portfolio() {
         });
       }
     }
-  }, [mode.current, wallet.connected, wallet.assets, portfolio.deployedCapital, paperWallets]);
+  }, [mode.current, wallet.wallet, wallet.assets, portfolio.deployedCapital, paperWallets]);
 
   const getPageTitle = () => {
     switch (mode.current) {
@@ -281,7 +281,9 @@ export default function Portfolio() {
               <Wallet className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{portfolioData.walletCount}</div>
+              <div className="text-2xl font-bold">
+                {mode.current === "demo" ? paperWallets.length : wallet.wallet ? 1 : 0}
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {mode.current === "demo" ? "Paper wallets" : mode.current === "shadow" ? "Read-only wallets" : "Active wallets"}
               </p>
