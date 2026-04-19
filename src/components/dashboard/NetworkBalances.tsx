@@ -1,101 +1,100 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAppStore } from "@/store";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp } from "lucide-react";
-import { useWallet } from "@/contexts/WalletContext";
+import { Coins } from "lucide-react";
+import { getAssetDisplayName, groupAssetsBySymbol } from "@/core/utils/assetIdentity";
 
 export function NetworkBalances() {
-  const { detectedAssets, isConnected } = useWallet();
+  const wallet = useAppStore((state) => state.wallet);
+  const mode = useAppStore((state) => state.mode);
 
-  if (!isConnected || detectedAssets.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Network Balances
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-8">
-            <p className="text-sm text-muted-foreground text-center">
-              {isConnected ? "No assets detected" : "Connect wallet to view balances"}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Group assets by network and calculate totals
-  const networkBalances = detectedAssets.reduce((acc, asset) => {
-    if (!acc[asset.network]) {
-      acc[asset.network] = {
-        network: asset.network,
-        assets: [],
-        totalValue: 0,
-      };
+  // Group assets by network
+  const assetsByNetwork = wallet.assets.reduce((acc, asset) => {
+    const network = asset.network || "unknown";
+    if (!acc[network]) {
+      acc[network] = [];
     }
-    acc[asset.network].assets.push(asset);
-    // Mock USD value calculation (in production, use real price feeds)
-    const mockPrice = asset.symbol === "USDT" || asset.symbol === "USDC" ? 1 : 
-                      asset.symbol === "ETH" ? 3200 :
-                      asset.symbol === "BNB" ? 580 :
-                      asset.symbol === "MATIC" ? 0.85 : 0;
-    acc[asset.network].totalValue += parseFloat(asset.balance) * mockPrice;
+    acc[network].push(asset);
     return acc;
-  }, {} as Record<string, { network: string; assets: typeof detectedAssets; totalValue: number }>);
+  }, {} as Record<string, typeof wallet.assets>);
 
-  const totalPortfolio = Object.values(networkBalances).reduce((sum, n) => sum + n.totalValue, 0);
+  const networkList = Object.keys(assetsByNetwork);
 
   return (
-    <Card>
+    <Card className="card-gradient border-border/50">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <TrendingUp className="h-5 w-5" />
+          <Coins className="w-5 h-5" />
           Network Balances
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {Object.values(networkBalances).map((network) => {
-          const percentage = ((network.totalValue / totalPortfolio) * 100).toFixed(1);
-          return (
-            <div key={network.network} className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-xs">
-                    {network.network}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {network.assets.length} {network.assets.length === 1 ? "asset" : "assets"}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-semibold">
-                    ${network.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </div>
-                  <div className="text-xs text-muted-foreground">{percentage}%</div>
-                </div>
-              </div>
+      <CardContent>
+        {networkList.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            {mode.current === "demo" 
+              ? "Add assets to your demo portfolio to see network balances"
+              : "Connect wallet to see network balances"}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {networkList.map(network => {
+              const networkAssets = assetsByNetwork[network];
+              const networkValue = networkAssets.reduce(
+                (sum, asset) => sum + (asset.valueUsd || 0),
+                0
+              );
 
-              <div className="space-y-1">
-                {network.assets.map((asset, idx) => (
-                  <div key={`${asset.network}-${asset.symbol}-${idx}`} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                      <span className="text-muted-foreground">{asset.symbol}</span>
-                    </div>
-                    <span className="font-mono">
-                      {parseFloat(asset.balance).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 4,
-                      })}
-                    </span>
+              return (
+                <div key={network} className="border border-border rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="font-semibold capitalize">{network}</div>
+                    <Badge variant="outline">
+                      ${networkValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </Badge>
                   </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+
+                  <div className="space-y-2">
+                    {networkAssets.map(asset => {
+                      // CRITICAL: Show full asset identity, not just symbol
+                      const displayName = getAssetDisplayName(asset);
+                      
+                      return (
+                        <div 
+                          key={asset.id}  // Use unique asset ID
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs">
+                              {asset.symbol.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="font-medium">{asset.symbol}</div>
+                              {asset.contractAddress && (
+                                <div className="text-xs text-muted-foreground font-mono">
+                                  {asset.contractAddress.slice(0, 6)}...{asset.contractAddress.slice(-4)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-mono">
+                              {parseFloat(asset.balance).toFixed(4)}
+                            </div>
+                            {asset.valueUsd !== undefined && (
+                              <div className="text-xs text-muted-foreground">
+                                ${asset.valueUsd.toFixed(2)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

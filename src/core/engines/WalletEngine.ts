@@ -1,85 +1,50 @@
 /**
  * Wallet Engine
- * Manages wallet connection, asset detection, and balance tracking
+ * Manages wallet connections, asset detection, and balance tracking
+ * 
+ * CRITICAL: All assets tracked by unique identity, never symbol alone
  */
 
-import { orchestrator } from "@/core/orchestrator";
+import { orchestrator } from "../orchestrator";
 import { useAppStore } from "@/store";
-import type { Asset, Wallet, EngineResult, AppEvent } from "@/core/contracts";
+import type { Wallet, Asset, EngineResult } from "../contracts";
+import { createAssetId, extractIdentity } from "../utils/assetIdentity";
 
+/**
+ * Wallet Engine
+ * Manages wallet connections, asset detection, and balance tracking
+ * 
+ * CRITICAL: All assets tracked by unique identity, never symbol alone
+ */
 export class WalletEngine {
+  private engineId = "wallet";
+
   constructor() {
-    orchestrator.registerEngine("wallet", this);
+    orchestrator.registerEngine(this.engineId, this);
+    console.log("[WalletEngine] Initialized and registered");
   }
 
   // ==================== CONNECT WALLET TASK ====================
-  async connectWallet(address: string, chainId: number): Promise<EngineResult<Wallet>> {
-    console.log("[WalletEngine] Connecting wallet:", address);
-
-    try {
-      const wallet: Wallet = {
-        id: `wallet-${Date.now()}`,
-        address,
-        chainId,
-        network: this.getNetworkName(chainId),
-        isConnected: true,
-        connectedAt: new Date(),
-        sessionId: `session-${Date.now()}`,
-      };
-
-      useAppStore.getState().setWallet({ wallet, isLoading: false, error: null });
-
-      // Detect assets after connection
-      await this.detectAssets(wallet);
-
-      await orchestrator.coordinateUpdate(
-        "wallet",
-        "wallet_updated",
-        { wallet },
-        ["portfolio", "opportunity", "dashboard"]
-      );
-
-      return {
-        success: true,
-        data: wallet,
-        affectedModules: ["portfolio", "opportunity", "dashboard"],
-        events: [],
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to connect wallet";
-      useAppStore.getState().setWallet({ error: errorMessage, isLoading: false });
-
-      return {
-        success: false,
-        error: errorMessage,
-        affectedModules: [],
-        events: [],
-      };
-    }
-  }
-
-  // ==================== DISCONNECT WALLET TASK ====================
-  async disconnectWallet(): Promise<EngineResult<void>> {
-    console.log("[WalletEngine] Disconnecting wallet");
+  async connectWallet(wallet: Wallet): Promise<EngineResult<Wallet>> {
+    console.log("[WalletEngine] Connecting wallet:", wallet.address);
 
     useAppStore.getState().setWallet({
-      wallet: null,
-      assets: [],
-      totalValueUsd: 0,
+      wallet,
       isLoading: false,
       error: null,
     });
 
     await orchestrator.coordinateUpdate(
-      "wallet",
+      this.engineId,
       "wallet_updated",
-      { disconnected: true },
-      ["portfolio", "opportunity", "dashboard"]
+      { wallet },
+      ["portfolio", "dashboard"]
     );
 
     return {
       success: true,
-      affectedModules: ["portfolio", "opportunity", "dashboard"],
+      data: wallet,
+      affectedModules: ["portfolio", "dashboard"],
       events: [],
     };
   }
@@ -105,10 +70,18 @@ export class WalletEngine {
       // Shadow/Live mode: Real asset detection only
       const detectedAssets: Asset[] = [];
 
-      // Add current chain native balance (stubbed for mock)
-      // In a real app this would call Moralis/Alchemy
-      detectedAssets.push({
-        id: `${wallet.network}-native`,
+      // Add current chain native balance (stubbed for now)
+      // In production, this would call Moralis/Alchemy/Covalent
+      const nativeAsset: Asset = {
+        // CRITICAL: Use createAssetId for unique ID
+        id: createAssetId({
+          chainFamily: "evm",
+          network: wallet.network,
+          assetKind: "native",
+          symbol: this.getNativeSymbol(wallet.chainId),
+          name: this.getNativeName(wallet.chainId),
+          decimals: 18,
+        }),
         chainFamily: "evm",
         network: wallet.network,
         assetKind: "native",
@@ -116,10 +89,42 @@ export class WalletEngine {
         name: this.getNativeName(wallet.chainId),
         decimals: 18,
         balance: "2.5",
-        source: "detected", // CRITICAL: Mark as real detected
+        source: "detected",
         isNative: true,
         lastUpdated: new Date(),
-      });
+      };
+
+      detectedAssets.push(nativeAsset);
+
+      // STUB: Real token detection would happen here
+      // Example: Detect ERC20 tokens
+      /*
+      const tokens = await fetchERC20Tokens(wallet.address, wallet.network);
+      for (const token of tokens) {
+        detectedAssets.push({
+          id: createAssetId({
+            chainFamily: "evm",
+            network: wallet.network,
+            assetKind: "token",
+            tokenStandard: "ERC20",
+            contractAddress: token.address,
+            symbol: token.symbol,
+            name: token.name,
+            decimals: token.decimals,
+          }),
+          chainFamily: "evm",
+          network: wallet.network,
+          assetKind: "token",
+          tokenStandard: "ERC20",
+          contractAddress: token.address,
+          symbol: token.symbol,
+          name: token.name,
+          decimals: token.decimals,
+          balance: token.balance,
+          source: "detected",
+        });
+      }
+      */
 
       useAppStore.getState().setWallet({ assets: detectedAssets });
 
@@ -139,7 +144,6 @@ export class WalletEngine {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to detect assets";
       
-      // CRITICAL: On error, show empty state, NOT mock data
       useAppStore.getState().setWallet({
         assets: [],
         totalValueUsd: 0,
@@ -158,9 +162,8 @@ export class WalletEngine {
 
   // ==================== REFRESH BALANCES TASK ====================
   async refreshBalances(): Promise<EngineResult<Asset[]>> {
-    console.log("[WalletEngine] Refreshing balances");
-
-    const { wallet } = useAppStore.getState().wallet;
+    const wallet = useAppStore.getState().wallet.wallet;
+    
     if (!wallet) {
       return {
         success: false,
@@ -170,28 +173,46 @@ export class WalletEngine {
       };
     }
 
-    return await this.detectAssets(wallet);
+    return this.detectAssets(wallet);
   }
 
-  // ==================== UTILITY METHODS ====================
-  private getNetworkName(chainId: number): string {
-    const networks: Record<number, string> = {
-      1: "Ethereum",
-      56: "BSC",
-      137: "Polygon",
-      43114: "Avalanche",
+  // ==================== DISCONNECT WALLET ====================
+  async disconnectWallet(): Promise<EngineResult<void>> {
+    console.log("[WalletEngine] Disconnecting wallet");
+
+    useAppStore.getState().setWallet({
+      wallet: null,
+      assets: [],
+      totalValueUsd: 0,
+      isLoading: false,
+      error: null,
+    });
+
+    await orchestrator.coordinateUpdate(
+      this.engineId,
+      "wallet_updated",
+      { wallet: null },
+      ["portfolio", "dashboard"]
+    );
+
+    return {
+      success: true,
+      affectedModules: ["portfolio", "dashboard"],
+      events: [],
     };
-    return networks[chainId] || "Unknown";
   }
 
+  // ==================== HELPERS ====================
   private getNativeSymbol(chainId: number): string {
     const symbols: Record<number, string> = {
       1: "ETH",
       56: "BNB",
       137: "MATIC",
       43114: "AVAX",
+      42161: "ETH",
+      10: "ETH",
     };
-    return symbols[chainId] || "UNKNOWN";
+    return symbols[chainId] || "ETH";
   }
 
   private getNativeName(chainId: number): string {
@@ -200,32 +221,10 @@ export class WalletEngine {
       56: "BNB",
       137: "Polygon",
       43114: "Avalanche",
+      42161: "Arbitrum ETH",
+      10: "Optimism ETH",
     };
-    return names[chainId] || "Unknown";
-  }
-
-  // ==================== EVENT HANDLER ====================
-  async handleEvent(event: AppEvent): Promise<void> {
-    console.log("[WalletEngine] Handling event:", event.type);
-
-    if (event.type === "mode_changed") {
-      // Re-detect assets when mode changes
-      const { wallet } = useAppStore.getState().wallet;
-      if (wallet) {
-        await this.detectAssets(wallet);
-      }
-    }
-  }
-
-  // ==================== REFRESH ====================
-  async refresh(): Promise<void> {
-    await this.refreshBalances();
-  }
-
-  // ==================== HEALTH ====================
-  isHealthy(): boolean {
-    const { error } = useAppStore.getState().wallet;
-    return error === null;
+    return names[chainId] || "Ethereum";
   }
 }
 

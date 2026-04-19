@@ -1,184 +1,207 @@
+import { orchestrator } from "../orchestrator";
+import { useAppStore } from "@/store";
+import type { WithdrawalPlan, Position, EngineResult } from "../contracts";
+import { createAssetId, assetsMatch, getAssetDisplayName, extractIdentity } from "../utils/assetIdentity";
+
 /**
  * Withdrawal Engine
- * Analyzes positions and generates optimized withdrawal plans
+ * Optimizes position unwinding for withdrawals
+ * 
+ * CRITICAL: Chain-aware withdrawal planning
+ * Never assumes same-symbol assets on different chains are interchangeable
  */
-
-import { orchestrator } from "@/core/orchestrator";
-import { useAppStore } from "@/store";
-import type { 
-  WithdrawalPlan, 
-  PositionWithdrawal, 
-  WithdrawalStep, 
-  Position,
-  EngineResult,
-  AppEvent 
-} from "@/core/contracts";
-
 export class WithdrawalEngine {
-  private cachedPlans: Map<string, WithdrawalPlan> = new Map();
+  private engineId = "withdrawal";
 
   constructor() {
-    orchestrator.registerEngine("withdrawal", this);
+    orchestrator.registerEngine(this.engineId, this);
+    console.log("[WithdrawalEngine] Initialized and registered");
   }
 
-  // ==================== ANALYZE WITHDRAWAL TASK ====================
-  async analyzeWithdrawal(requestedAmount: number): Promise<EngineResult<WithdrawalPlan>> {
-    console.log("[WithdrawalEngine] Analyzing withdrawal for:", requestedAmount);
+  /**
+   * Plan optimal withdrawal
+   * 
+   * CRITICAL: Chain-aware planning
+   * If user requests USDT on Ethereum, cannot satisfy with USDT on BSC
+   */
+  async planWithdrawal(params: {
+    targetAsset: {
+      chainFamily: string;
+      network: string;
+      symbol: string;
+      contractAddress?: string;
+    };
+    amount: number;
+  }): Promise<EngineResult<WithdrawalPlan>> {
+    console.log("[WithdrawalEngine] Planning withdrawal:", params);
 
     const positions = useAppStore.getState().positions;
+    const wallet = useAppStore.getState().wallet;
 
-    // Score positions for withdrawal priority
-    const scoredPositions = positions.map((pos) => ({
-      position: pos,
-      score: this.calculateWithdrawalScore(pos),
-    })).sort((a, b) => b.score - a.score);
-
-    // Build withdrawal plan
-    const selectedPositions: PositionWithdrawal[] = [];
-    let remainingAmount = requestedAmount;
-    let totalGas = 0;
-    let totalSlippage = 0;
-
-    for (const { position } of scoredPositions) {
-      if (remainingAmount <= 0) break;
-
-      const closePercentage = Math.min(1, remainingAmount / position.valueUsd);
-      const expectedAmount = position.valueUsd * closePercentage;
-      const gasEstimate = 50; // Mock gas cost
-      const slippageEstimate = expectedAmount * 0.005; // 0.5% slippage
-
-      selectedPositions.push({
-        positionId: position.id,
-        pair: position.pair,
-        closePercentage: closePercentage * 100,
-        expectedAmount,
-        reason: this.getWithdrawalReason(position),
-      });
-
-      remainingAmount -= expectedAmount;
-      totalGas += gasEstimate;
-      totalSlippage += slippageEstimate;
-    }
-
-    // Generate execution steps
-    const steps: WithdrawalStep[] = selectedPositions.map((sel, idx) => ({
-      order: idx + 1,
-      action: `Close ${sel.closePercentage.toFixed(0)}% of ${sel.pair}`,
-      position: sel.pair,
-      amount: sel.expectedAmount,
-      gas: 50,
-      slippage: sel.expectedAmount * 0.005,
-    }));
-
-    const plan: WithdrawalPlan = {
-      id: `plan-${Date.now()}`,
-      requestedAmount,
-      positions: selectedPositions,
-      totalGas,
-      totalSlippage,
-      estimatedReceived: requestedAmount - totalGas - totalSlippage,
-      steps,
-      createdAt: new Date(),
+    // CRITICAL: Find matching asset by identity, not symbol
+    const targetAssetIdentity = {
+      chainFamily: params.targetAsset.chainFamily as any,
+      network: params.targetAsset.network,
+      assetKind: "token" as const,
+      symbol: params.targetAsset.symbol,
+      contractAddress: params.targetAsset.contractAddress,
+      decimals: 18, // Would come from asset metadata
     };
 
-    this.cachedPlans.set(plan.id, plan);
+    const targetAssetId = createAssetId(targetAssetIdentity);
 
-    await orchestrator.coordinateUpdate(
-      "withdrawal",
-      "withdrawal_planned",
-      { plan },
-      ["withdraw-page"]
+    // Find positions containing the target asset on the TARGET CHAIN
+    const relevantPositions = positions.filter(position => {
+      // CRITICAL: Match both symbol AND chain
+      return (
+        position.chain === params.targetAsset.network &&
+        position.pair.includes(params.targetAsset.symbol)
+      );
+    });
+
+    console.log(
+      `[WithdrawalEngine] Found ${relevantPositions.length} positions on ${params.targetAsset.network} containing ${params.targetAsset.symbol}`
     );
 
-    return {
-      success: true,
-      data: plan,
-      affectedModules: ["withdraw-page"],
-      events: [],
-    };
-  }
+    // Score positions for unwinding priority
+    const scoredPositions = relevantPositions.map(position => {
+      let score = 0;
 
-  // ==================== EXECUTE WITHDRAWAL TASK ====================
-  async executeWithdrawal(planId: string): Promise<EngineResult<void>> {
-    console.log("[WithdrawalEngine] Executing withdrawal plan:", planId);
+      // Prefer out-of-range positions (lower opportunity cost)
+      if (position.status === "out-of-range") {
+        score += 50;
+      }
 
-    const plan = this.cachedPlans.get(planId);
-    if (!plan) {
+      // We use health as a proxy for how good the position is (higher health = keep, lower health = unwind)
+      score += Math.max(0, 100 - position.health);
+
+      // Prefer positions with higher IL risk
+      const ilRisk = position.estimatedIL || 0;
+      score += ilRisk * 10;
+
+      // Prefer larger positions (can satisfy withdrawal in fewer steps)
+      const positionValue = position.valueUsd || 0;
+      score += Math.log(positionValue + 1) * 5;
+
+      return {
+        position,
+        score,
+      };
+    });
+
+    // Sort by score (higher = better to unwind)
+    scoredPositions.sort((a, b) => b.score - a.score);
+
+    // Build withdrawal plan
+    let remainingAmount = params.amount;
+    const positionsToUnwind: Array<{
+      positionId: string;
+      pair: string;
+      chain: string;
+      closePercentage: number;
+      expectedAmount: number;
+      reason: string;
+    }> = [];
+
+    for (const { position, score } of scoredPositions) {
+      if (remainingAmount <= 0) break;
+
+      const positionValue = position.valueUsd || 0;
+      const positionTargetTokenValue = positionValue / 2; // Assume 50/50 split
+
+      if (positionTargetTokenValue >= remainingAmount) {
+        // Partial close
+        const closePercentage = (remainingAmount / positionTargetTokenValue) * 100;
+        positionsToUnwind.push({
+          positionId: position.id,
+          pair: position.pair,
+          chain: position.chain,
+          closePercentage: Math.min(100, closePercentage),
+          expectedAmount: remainingAmount,
+          reason: `Partial close (${closePercentage.toFixed(1)}%) to satisfy withdrawal`,
+        });
+        remainingAmount = 0;
+      } else {
+        // Full close
+        positionsToUnwind.push({
+          positionId: position.id,
+          pair: position.pair,
+          chain: position.chain,
+          closePercentage: 100,
+          expectedAmount: positionTargetTokenValue,
+          reason: `Full close - low opportunity cost (score: ${score.toFixed(0)})`,
+        });
+        remainingAmount -= positionTargetTokenValue;
+      }
+    }
+
+    // Check if withdrawal can be fully satisfied
+    if (remainingAmount > 0) {
       return {
         success: false,
-        error: "Plan not found",
+        error: `Insufficient ${params.targetAsset.symbol} on ${params.targetAsset.network}. Need ${remainingAmount} more.`,
         affectedModules: [],
         events: [],
       };
     }
 
-    // Execute each step (in production, execute real transactions)
-    for (const step of plan.steps) {
-      console.log(`[WithdrawalEngine] Executing step ${step.order}: ${step.action}`);
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
+    // Estimate costs
+    const totalGas = positionsToUnwind.length * 0.015; // $15 per position
+    const totalSlippage = positionsToUnwind.reduce((sum, p) => {
+      return sum + (p.expectedAmount * 0.003); // 0.3% slippage estimate
+    }, 0);
+
+    const plan: WithdrawalPlan = {
+      id: `withdrawal-${Date.now()}`,
+      requestedAmount: params.amount,
+      positions: positionsToUnwind,
+      totalGas,
+      totalSlippage,
+      estimatedReceived: params.amount - totalSlippage,
+      steps: positionsToUnwind.map((p, idx) => ({
+        order: idx + 1,
+        action: p.closePercentage === 100 ? "Full Close" : `Close ${p.closePercentage.toFixed(1)}%`,
+        position: p.pair,
+        chain: p.chain,
+        amount: p.expectedAmount,
+        gas: totalGas / positionsToUnwind.length,
+        slippage: p.expectedAmount * 0.003,
+      })),
+      createdAt: new Date(),
+    };
 
     await orchestrator.coordinateUpdate(
-      "withdrawal",
-      "positions_updated",
-      { withdrawn: true },
-      ["position", "portfolio", "dashboard"]
+      this.engineId,
+      "withdrawal_planned",
+      { plan },
+      ["dashboard", "withdraw-page"]
     );
-
-    this.cachedPlans.delete(planId);
 
     return {
       success: true,
-      affectedModules: ["position", "portfolio", "dashboard"],
+      data: plan,
+      affectedModules: ["dashboard", "withdraw-page"],
       events: [],
     };
   }
 
-  // ==================== HELPER METHODS ====================
-  private calculateWithdrawalScore(position: Position): number {
-    let score = 0;
+  /**
+   * Execute withdrawal plan
+   */
+  async executeWithdrawalPlan(planId: string): Promise<EngineResult<void>> {
+    console.log("[WithdrawalEngine] Executing withdrawal plan:", planId);
 
-    // Prioritize out-of-range positions
-    if (position.status === "out-of-range") score += 100;
+    // STUB: Real execution would:
+    // 1. Remove liquidity from each position (chain-specific)
+    // 2. Swap one side to target asset (on same chain)
+    // 3. Aggregate target asset
+    // 4. Transfer to user wallet
 
-    // Prioritize low health positions
-    score += (100 - position.health);
-
-    // Prioritize high IL positions
-    score += position.estimatedIL * 10;
-
-    // Deprioritize recent positions
-    const ageInDays = (Date.now() - position.openedAt.getTime()) / (1000 * 60 * 60 * 24);
-    if (ageInDays < 7) score -= 20;
-
-    return score;
-  }
-
-  private getWithdrawalReason(position: Position): string {
-    if (position.status === "out-of-range") return "Position out of range";
-    if (position.health < 50) return "Low position health";
-    if (position.estimatedIL > 5) return "High impermanent loss";
-    return "Lowest priority position";
-  }
-
-  // ==================== EVENT HANDLER ====================
-  async handleEvent(event: AppEvent): Promise<void> {
-    console.log("[WithdrawalEngine] Handling event:", event.type);
-
-    if (event.type === "positions_updated") {
-      // Invalidate cached plans
-      this.cachedPlans.clear();
-    }
-  }
-
-  // ==================== INVALIDATE CACHE ====================
-  async invalidateCache(): Promise<void> {
-    this.cachedPlans.clear();
-  }
-
-  // ==================== HEALTH ====================
-  isHealthy(): boolean {
-    return true;
+    return {
+      success: true,
+      affectedModules: ["portfolio", "positions", "wallet"],
+      events: [],
+    };
   }
 }
 
