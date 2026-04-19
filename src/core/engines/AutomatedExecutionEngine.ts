@@ -1,204 +1,224 @@
 // ============================================================================
 // AUTOMATED EXECUTION ENGINE
-// Orchestrates the full lifecycle of automated actions
+// Orchestrates the complete action lifecycle from trigger to completion
 // ============================================================================
 
+import type { ActionTrigger, ActionLifecycle, ActionStatus } from "../contracts/actions";
+import { validationEngine } from "./ValidationEngine";
+import { actionPlanner } from "../execution/ActionPlanner";
+import { previewEngine } from "../execution/PreviewEngine";
+import { authorizationEngine } from "../execution/AuthorizationEngine";
+import { executionRunner } from "../execution/ExecutionRunner";
+import type { ExecutionContext, ExecutionResult } from "../execution/types";
 import { orchestrator } from "../orchestrator";
 import { useAppStore } from "@/store";
-import { validationEngine } from "./ValidationEngine";
-import type {
-  ActionTrigger,
-  ActionPlan,
-  ExecutionResult,
-  ActionStatus,
-} from "../contracts/actions";
 
 export class AutomatedExecutionEngine {
   private engineId = "execution-engine";
-  private activeExecutions = new Map<string, ExecutionResult>();
+  private activeExecutions: Map<string, ActionLifecycle> = new Map();
 
   constructor() {
-    console.log("[ExecutionEngine] Initializing...");
     this.registerWithOrchestrator();
   }
 
-  private registerWithOrchestrator() {
-    orchestrator.registerEngine(this.engineId, this);
-    
-    // Listen for new triggers from any source
-    orchestrator.subscribe(async (event) => {
-      // We expect event.type to be "action_triggered"
-      if (event.type === ("action_triggered" as any) && event.source !== this.engineId) {
-        if (event.data && event.data.trigger) {
-          await this.processTrigger(event.data.trigger);
-        }
-      }
-    });
-
-    console.log("[ExecutionEngine] Registered with orchestrator");
-  }
-
   // ============================================================================
-  // LIFECYCLE MANAGEMENT
+  // MAIN EXECUTION PIPELINE
   // ============================================================================
 
-  async processTrigger(trigger: ActionTrigger) {
-    console.log(`[ExecutionEngine] Processing trigger ${trigger.id} (${trigger.actionType})`);
-    
-    this.logAudit(trigger, "triggered", `Action ${trigger.actionType} triggered by ${trigger.source} in ${trigger.mode} mode`);
+  async processTrigger(trigger: ActionTrigger): Promise<ActionLifecycle> {
+    console.log(`[ExecutionEngine] Processing trigger: ${trigger.id}`);
 
-    try {
-      // 1. Validation Phase
-      const validation = await validationEngine.validateAction(trigger);
-      
-      if (!validation.allowed) {
-        console.warn(`[ExecutionEngine] Trigger ${trigger.id} failed validation`);
-        this.logAudit(
-          trigger, 
-          "validation_failed", 
-          `Validation blocked: ${validation.blockingReasons.join(", ")}`
-        );
-        return;
-      }
-
-      if (validation.warningFlags.length > 0) {
-        this.logAudit(
-          trigger,
-          "validating",
-          `Validation passed with warnings: ${validation.warningFlags.join(", ")}`
-        );
-      }
-
-      // 2. Planning Phase
-      const plan = await this.planAction(trigger);
-      this.logAudit(trigger, "planning", `Generated execution plan with ${plan.steps.length} steps. Gas est: $${plan.totalGasEstimate}`);
-
-      // 3. Execution Phase (Preview & Authorization would happen here if live)
-      if (trigger.mode === "live") {
-        this.logAudit(trigger, "awaiting_authorization", "Awaiting execution authorization for live network");
-        // For now, simulate auto-authorization
-      }
-
-      await this.executePlan(plan, trigger);
-
-    } catch (error: any) {
-      console.error(`[ExecutionEngine] Fatal error processing trigger ${trigger.id}:`, error);
-      this.logAudit(trigger, "failed", `Fatal execution error: ${error.message || "Unknown error"}`);
-    }
-  }
-
-  // ============================================================================
-  // PLANNING
-  // ============================================================================
-
-  private async planAction(trigger: ActionTrigger): Promise<ActionPlan> {
-    // In a full implementation, this queries protocol adapters to build real steps.
-    // We create a generalized plan based on action type.
-    
-    const steps = [];
-    let gasEstimate = 0;
-
-    // Standard sequence: Query -> Approve (if needed) -> Transact -> Confirm
-    if (trigger.actionType === "ADD_LIQUIDITY" || trigger.actionType === "DEPOSIT" || trigger.actionType === "STAKE") {
-      steps.push({
-        stepId: `step-${Date.now()}-1`,
-        stepType: "approval" as const,
-        description: `Approve ${trigger.token || "token"} for protocol`,
-        canRetry: true,
-        maxRetries: 1,
-      });
-      gasEstimate += 5;
-    }
-
-    steps.push({
-      stepId: `step-${Date.now()}-2`,
-      stepType: "transaction" as const,
-      description: `Execute ${trigger.actionType} payload`,
-      canRetry: false,
-      maxRetries: 0,
-    });
-    gasEstimate += 15;
-
-    return {
-      planId: `plan-${trigger.id}`,
-      actionType: trigger.actionType,
-      steps,
-      totalGasEstimate: gasEstimate,
-      estimatedDuration: steps.length * 3000,
-      riskLevel: trigger.amount && trigger.amount > 10000 ? "medium" : "low",
-      reversible: trigger.actionType !== "EXIT_POSITION",
+    // Initialize lifecycle tracking
+    const lifecycle: ActionLifecycle = {
+      id: `lifecycle-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      trigger,
+      status: "triggered",
+      history: [
+        {
+          timestamp: new Date(),
+          status: "triggered",
+          message: `Action triggered from ${trigger.source}`,
+          metadata: { reason: trigger.reason },
+        },
+      ],
       createdAt: new Date(),
+      updatedAt: new Date(),
     };
-  }
 
-  // ============================================================================
-  // EXECUTION
-  // ============================================================================
-
-  private async executePlan(plan: ActionPlan, trigger: ActionTrigger) {
-    this.logAudit(trigger, "executing", `Executing ${plan.actionType} plan...`);
-    
-    const result: ExecutionResult = {
-      executionId: `exec-${trigger.id}`,
-      actionType: trigger.actionType,
-      status: "executing",
-      stepResults: [],
-      success: false,
-      startedAt: new Date(),
-    };
-    
-    this.activeExecutions.set(result.executionId, result);
+    this.activeExecutions.set(lifecycle.id, lifecycle);
 
     try {
-      // Execute steps sequentially
-      for (const step of plan.steps) {
-        console.log(`[ExecutionEngine] Executing step: ${step.description}`);
-        
-        // Simulate execution delay (in real app, this calls protocol adapters)
-        const delay = trigger.mode === "demo" ? 500 : 2000;
-        await new Promise(resolve => setTimeout(resolve, delay));
-        
-        result.stepResults.push({
-          stepId: step.stepId,
-          status: "success",
-          transactionHash: trigger.mode !== "demo" ? `0x${Math.random().toString(16).slice(2, 42)}` : undefined,
-          completedAt: new Date(),
-        });
+      // STEP 1: VALIDATION
+      await this.updateStatus(lifecycle, "validating");
+      const validation = await validationEngine.validate(trigger);
+      lifecycle.validation = validation;
+
+      if (!validation.allowed) {
+        await this.updateStatus(lifecycle, "validation_failed");
+        this.logAudit(trigger, "validation_failed", `Blocked: ${validation.blockingReasons.join(", ")}`);
+        return lifecycle;
       }
+
+      // STEP 2: PLANNING
+      await this.updateStatus(lifecycle, "planning");
+      const context = this.buildExecutionContext(trigger);
+      const plan = await actionPlanner.generatePlan(trigger, context);
+      lifecycle.plan = plan;
+
+      // STEP 3: PREVIEW
+      await this.updateStatus(lifecycle, "previewing");
+      const preview = await previewEngine.generatePreview(plan, context);
       
-      // Mark complete
-      result.status = "completed";
-      result.success = true;
-      result.completedAt = new Date();
-      this.activeExecutions.set(result.executionId, result);
+      // Broadcast preview for UI display
+      orchestrator.publish({
+        type: "action_triggered" as any,
+        timestamp: new Date(),
+        source: this.engineId,
+        data: { lifecycle, preview },
+        affectedModules: ["dashboard", "positions-page"],
+      });
+
+      // STEP 4: AUTHORIZATION
+      await this.updateStatus(lifecycle, "awaiting_authorization");
+      const auth = await authorizationEngine.requestAuthorization(plan, preview, context);
       
-      this.logAudit(trigger, "completed", `Successfully executed ${trigger.actionType} in ${trigger.mode} mode`);
-      
+      if (!auth.authorized) {
+        await this.updateStatus(lifecycle, "awaiting_authorization");
+        // Wait for manual approval or policy auto-approval
+        return lifecycle;
+      }
+
+      // STEP 5: EXECUTION
+      await this.updateStatus(lifecycle, "executing");
+      const result = await executionRunner.execute(plan, auth, context);
+      lifecycle.execution = result;
+
+      // STEP 6: CONFIRMATION & POST-SYNC
+      if (result.status === "completed") {
+        await this.updateStatus(lifecycle, "completed");
+        await this.postExecutionSync(trigger, result);
+        this.logAudit(trigger, "completed", "Action completed successfully");
+      } else if (result.status === "failed") {
+        await this.updateStatus(lifecycle, "failed");
+        this.logAudit(trigger, "failed", result.error?.message || "Execution failed");
+      }
+
+      // STEP 7: CLEANUP
+      setTimeout(() => {
+        this.activeExecutions.delete(lifecycle.id);
+      }, 60000); // Keep in memory for 1 minute for UI display
+
+      return lifecycle;
     } catch (error: any) {
-      result.status = "failed";
-      result.success = false;
-      result.error = error.message;
-      result.completedAt = new Date();
-      this.activeExecutions.set(result.executionId, result);
-      
-      this.logAudit(trigger, "failed", `Execution failed during plan: ${error.message}`);
+      await this.updateStatus(lifecycle, "failed");
+      this.logAudit(trigger, "failed", error.message);
+      lifecycle.execution = {
+        executionId: `exec-${Date.now()}`,
+        planId: lifecycle.plan?.planId || "unknown",
+        actionType: trigger.actionType,
+        status: "failed",
+        completedSteps: 0,
+        totalSteps: 0,
+        transactions: [],
+        stateChanges: {
+          balancesBefore: {},
+          balancesAfter: {},
+          positionsAffected: [],
+          portfolioValueChange: 0,
+        },
+        startedAt: new Date(),
+        completedAt: new Date(),
+        error: {
+          stepId: "engine",
+          message: error.message,
+          recoverable: false,
+        },
+        logs: [error.message],
+      };
+      return lifecycle;
     }
-    
-    // Trigger global synchronization so all pages update
-    this.synchronizeState();
   }
 
   // ============================================================================
-  // SYNCHRONIZATION & LOGGING
+  // HELPER METHODS
   // ============================================================================
 
-  private synchronizeState() {
-    // Tell orchestrator that data has changed and UI needs refresh
+  private buildExecutionContext(trigger: ActionTrigger): ExecutionContext {
+    const store = useAppStore.getState();
+    return {
+      mode: trigger.mode,
+      walletAddress: trigger.walletAddress,
+      portfolioId: trigger.portfolioId,
+      preferences: {
+        autoApprove: store.policy.autoHarvest, // Use policy settings
+        maxSlippage: 0.5,
+        maxGasPrice: 100,
+        confirmationBlocks: 2,
+      },
+      simulationState: trigger.mode === "demo" ? {
+        balances: {},
+        positions: store.positions,
+        portfolio: store.portfolio,
+      } : undefined,
+    };
+  }
+
+  private async updateStatus(lifecycle: ActionLifecycle, status: ActionStatus): Promise<void> {
+    lifecycle.status = status;
+    lifecycle.updatedAt = new Date();
+    lifecycle.history.push({
+      timestamp: new Date(),
+      status,
+      message: `Status changed to ${status}`,
+    });
+
+    // Update store for UI reactivity
+    const store = useAppStore.getState();
+    store.addAlert({
+      id: `status-${Date.now()}`,
+      type: status === "failed" ? "error" : status === "completed" ? "success" : "info",
+      title: `Action ${status}`,
+      message: `${lifecycle.trigger.actionType}: ${status}`,
+      timestamp: new Date(),
+    });
+
+    console.log(`[ExecutionEngine] Lifecycle ${lifecycle.id} -> ${status}`);
+  }
+
+  private async postExecutionSync(trigger: ActionTrigger, result: ExecutionResult): Promise<void> {
+    console.log(`[ExecutionEngine] Running post-execution sync`);
+
+    // Determine which modules need to refresh
+    const affectedModules: string[] = [];
+
+    switch (trigger.actionType) {
+      case "ADD_LIQUIDITY":
+      case "STAKE":
+        affectedModules.push("portfolio-engine", "position-engine", "wallet-engine");
+        break;
+      case "HARVEST_REWARDS":
+      case "CONVERT_REWARDS":
+      case "COMPOUND":
+        affectedModules.push("rewards-engine", "portfolio-engine", "position-engine");
+        break;
+      case "EXIT_POSITION":
+      case "REMOVE_LIQUIDITY":
+        affectedModules.push("position-engine", "portfolio-engine", "wallet-engine");
+        break;
+      case "WITHDRAW_FUNDS":
+        affectedModules.push("portfolio-engine", "wallet-engine", "withdrawal-engine");
+        break;
+      case "REBALANCE":
+        affectedModules.push("position-engine", "portfolio-engine");
+        break;
+    }
+
+    // Trigger sync via orchestrator
     orchestrator.coordinateUpdate(
       this.engineId,
       "sync_required" as any,
-      { affectedModules: ["portfolio", "positions", "wallet", "rewards"] },
-      ["sync-engine"]
+      { result },
+      affectedModules
     );
   }
 
@@ -210,7 +230,7 @@ export class AutomatedExecutionEngine {
       id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       timestamp: new Date() as any,
       mode: trigger.mode,
-      actionType: "simulation" as any, // Map complex actions to simple audit types
+      actionType: "simulation" as any,
       actor: "system",
       details: { 
         status,
@@ -225,22 +245,60 @@ export class AutomatedExecutionEngine {
     });
   }
 
+  private registerWithOrchestrator() {
+    orchestrator.registerEngine(this.engineId, this);
+    
+    // Listen for new triggers from any source
+    orchestrator.subscribe(async (event) => {
+      if (event.type === ("action_triggered" as any) && event.source !== this.engineId) {
+        if (event.data && event.data.trigger) {
+          await this.processTrigger(event.data.trigger);
+        }
+      }
+    });
+
+    console.log("[ExecutionEngine] Registered with orchestrator");
+  }
+
   // ============================================================================
-  // HEALTH CHECK
+  // PUBLIC API
   // ============================================================================
 
-  async healthCheck(): Promise<{ healthy: boolean; message: string }> {
-    // Clean up old executions
-    const now = Date.now();
-    for (const [id, exec] of this.activeExecutions.entries()) {
-      if (exec.completedAt && now - exec.completedAt.getTime() > 3600000) {
-        this.activeExecutions.delete(id);
-      }
+  getActiveExecutions(): ActionLifecycle[] {
+    return Array.from(this.activeExecutions.values());
+  }
+
+  getExecution(id: string): ActionLifecycle | undefined {
+    return this.activeExecutions.get(id);
+  }
+
+  async cancelExecution(id: string): Promise<boolean> {
+    const lifecycle = this.activeExecutions.get(id);
+    if (!lifecycle) return false;
+
+    if (lifecycle.status === "executing") {
+      console.warn(`[ExecutionEngine] Cannot cancel execution ${id} - already in progress`);
+      return false;
     }
 
+    await this.updateStatus(lifecycle, "cancelled");
+    this.activeExecutions.delete(id);
+    return true;
+  }
+
+  async pauseExecution(id: string): Promise<boolean> {
+    const lifecycle = this.activeExecutions.get(id);
+    if (!lifecycle) return false;
+
+    await this.updateStatus(lifecycle, "paused");
+    return true;
+  }
+
+  // Health check for orchestrator
+  async healthCheck(): Promise<{ healthy: boolean; message: string }> {
     return {
       healthy: true,
-      message: `AutomatedExecutionEngine running. Active tracking: ${this.activeExecutions.size}`,
+      message: `ExecutionEngine operational. ${this.activeExecutions.size} active executions`,
     };
   }
 }
