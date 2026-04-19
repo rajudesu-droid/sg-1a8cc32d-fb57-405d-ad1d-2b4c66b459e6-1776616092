@@ -1,481 +1,269 @@
 import { AppLayout } from "@/components/AppLayout";
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Activity,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  RefreshCw,
-  Trash2,
-  Zap,
-  Network,
-  Database,
-  Clock,
-} from "lucide-react";
-import { orchestrator } from "@/core/init";
-import { codeImpactEngine } from "@/core/analysis/CodeImpact";
-import type { AppEvent } from "@/core/contracts";
-
-interface EngineHealth {
-  name: string;
-  healthy: boolean;
-  lastCheck: Date;
-}
-
-interface EventLog extends AppEvent {
-  receivedAt: Date;
-}
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Save, Shield, Network, Activity, AlertTriangle, ShieldCheck } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { protocolRegistry } from "@/core/protocols/ProtocolRegistry";
+import { useAppStore } from "@/store";
+import { orchestrator } from "@/core/orchestrator";
 
 export default function Admin() {
-  const [engineHealth, setEngineHealth] = useState<Record<string, boolean>>({});
-  const [eventLog, setEventLog] = useState<EventLog[]>([]);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [autoRefresh, setAutoRefresh] = useState(false);
+  const { toast } = useToast();
+  const [hasChanges, setHasChanges] = useState(false);
+  const mode = useAppStore((state) => state.mode);
 
-  // Subscribe to orchestrator events
-  useEffect(() => {
-    const unsubscribe = orchestrator.subscribe((event) => {
-      setEventLog((prev) => [
-        { ...event, receivedAt: new Date() },
-        ...prev.slice(0, 99), // Keep last 100 events
-      ]);
+  // Initialize state from protocol registry
+  const [protocols, setProtocols] = useState(
+    protocolRegistry.getAllProtocols().map(p => ({ ...p }))
+  );
+  
+  const [chains, setChains] = useState(
+    protocolRegistry.getAllChains().map(c => ({ ...c }))
+  );
+
+  const handleProtocolToggle = (protocolName: string, field: "enabled" | "whitelisted") => {
+    setProtocols(protocols.map(p => {
+      if (p.name === protocolName) {
+        return { ...p, [field]: !p[field] };
+      }
+      return p;
+    }));
+    setHasChanges(true);
+  };
+
+  const handleChainToggle = (chainName: string, field: "enabled" | "whitelisted") => {
+    setChains(chains.map(c => {
+      if (c.name === chainName) {
+        return { ...c, [field]: !c[field] };
+      }
+      return c;
+    }));
+    setHasChanges(true);
+  };
+
+  const handleSave = () => {
+    // In a real app, this would persist to the backend
+    toast({
+      title: "Admin Settings Saved",
+      description: "Protocol and chain configurations updated successfully",
     });
-
-    return unsubscribe;
-  }, []);
-
-  // Auto-refresh health status
-  useEffect(() => {
-    if (autoRefresh) {
-      const interval = setInterval(checkHealth, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [autoRefresh]);
-
-  // Initial health check
-  useEffect(() => {
-    checkHealth();
-  }, []);
-
-  const checkHealth = async () => {
-    setIsRefreshing(true);
-    const health = await orchestrator.healthCheck();
-    setEngineHealth(health);
-    setIsRefreshing(false);
+    setHasChanges(false);
+    
+    // Trigger a re-sync
+    orchestrator.coordinateUpdate(
+      "admin",
+      "settings_changed",
+      { protocols, chains },
+      ["opportunities-page", "dashboard"]
+    );
   };
-
-  const clearEventLog = () => {
-    setEventLog([]);
-  };
-
-  const engines = Object.entries(engineHealth).map(([name, healthy]) => ({
-    name,
-    healthy,
-    lastCheck: new Date(),
-  }));
-
-  const healthyCount = engines.filter((e) => e.healthy).length;
-  const totalCount = engines.length;
-
-  // Get dependency data
-  const dependencies = codeImpactEngine.getAllDependencies();
-  const dependencyArray = Array.from(dependencies.entries());
 
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight">System Admin</h1>
-            <p className="text-muted-foreground mt-1">
-              Engine health monitoring and event flow visualization
-            </p>
+            <h1 className="text-3xl font-bold">Protocol Management</h1>
+            <p className="text-muted-foreground">Manage whitelists, configure protocols, and set global risk limits</p>
           </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAutoRefresh(!autoRefresh)}
-              className={autoRefresh ? "border-success text-success" : ""}
-            >
-              {autoRefresh ? "Auto-Refresh On" : "Auto-Refresh Off"}
-            </Button>
-            <Button
-              onClick={checkHealth}
-              disabled={isRefreshing}
-              size="sm"
-              className="gap-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-              Refresh Health
-            </Button>
-          </div>
+          <Button onClick={handleSave} disabled={!hasChanges}>
+            <Save className="mr-2 h-4 w-4" />
+            Save Configuration
+          </Button>
         </div>
 
-        {/* System Status Overview */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
+        {/* Summary Cards */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card className="card-gradient border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">System Status</CardTitle>
+              <CardTitle className="text-sm font-medium">Whitelisted DEXs</CardTitle>
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {healthyCount === totalCount ? "Healthy" : "Degraded"}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {healthyCount} of {totalCount} engines operational
-              </p>
+              <div className="text-2xl font-bold">{protocols.filter(p => p.whitelisted).length}</div>
+              <p className="text-xs text-muted-foreground">Approved protocols</p>
             </CardContent>
           </Card>
-
-          <Card>
+          <Card className="card-gradient border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Events Logged</CardTitle>
-              <Zap className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Active Integrations</CardTitle>
+              <ShieldCheck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{eventLog.length}</div>
-              <p className="text-xs text-muted-foreground">
-                Last event:{" "}
-                {eventLog[0]
-                  ? new Date(eventLog[0].receivedAt).toLocaleTimeString()
-                  : "None"}
-              </p>
+              <div className="text-2xl font-bold text-emerald-400">{protocols.filter(p => p.enabled).length}</div>
+              <p className="text-xs text-muted-foreground">Currently scanning</p>
             </CardContent>
           </Card>
-
-          <Card>
+          <Card className="card-gradient border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Dependencies</CardTitle>
+              <CardTitle className="text-sm font-medium">Supported Chains</CardTitle>
               <Network className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{dependencyArray.length}</div>
-              <p className="text-xs text-muted-foreground">Registered modules</p>
+              <div className="text-2xl font-bold">{chains.filter(c => c.enabled).length}</div>
+              <p className="text-xs text-muted-foreground">Active networks</p>
             </CardContent>
           </Card>
-
-          <Card>
+          <Card className="card-gradient border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Uptime</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Risk Controls</CardTitle>
+              <Shield className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">100%</div>
-              <p className="text-xs text-muted-foreground">No downtime detected</p>
+              <div className="text-2xl font-bold text-cyan-400">Strict</div>
+              <p className="text-xs text-muted-foreground">Global policy enforcement</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Content Tabs */}
-        <Tabs defaultValue="health" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="health">Engine Health</TabsTrigger>
-            <TabsTrigger value="events">Event Log</TabsTrigger>
-            <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
+        <Tabs defaultValue="protocols" className="space-y-4">
+          <TabsList className="bg-background/50 border border-border/50">
+            <TabsTrigger value="protocols">DEX & Protocols</TabsTrigger>
+            <TabsTrigger value="chains">Chain Support</TabsTrigger>
+            <TabsTrigger value="limits">Global Limits</TabsTrigger>
           </TabsList>
 
-          {/* Engine Health Tab */}
-          <TabsContent value="health" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {engines.map((engine) => (
-                <Card key={engine.name}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base capitalize">
-                        {engine.name} Engine
-                      </CardTitle>
-                      {engine.healthy ? (
-                        <CheckCircle2 className="h-5 w-5 text-success" />
-                      ) : (
-                        <XCircle className="h-5 w-5 text-destructive" />
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Status</span>
-                      <Badge variant={engine.healthy ? "default" : "destructive"}>
-                        {engine.healthy ? "Healthy" : "Failed"}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Last Check</span>
-                      <span className="text-sm font-mono">
-                        {engine.lastCheck.toLocaleTimeString()}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Response</span>
-                      <span className="text-sm font-mono text-success">
-                        {Math.floor(Math.random() * 50 + 10)}ms
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          {/* Event Log Tab */}
-          <TabsContent value="events" className="space-y-4">
-            <Card>
+          <TabsContent value="protocols" className="space-y-4">
+            <Card className="card-gradient border-border/50">
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Real-time Event Stream</CardTitle>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearEventLog}
-                    className="gap-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Clear Log
-                  </Button>
-                </div>
+                <CardTitle>Protocol Registry</CardTitle>
+                <CardDescription>
+                  Enable or disable scanning and execution for specific DEXs. 
+                  Protocols must be whitelisted before they can be enabled.
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[500px]">
-                  {eventLog.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12">
-                      <Activity className="h-12 w-12 text-muted-foreground mb-3" />
-                      <p className="text-sm text-muted-foreground">
-                        No events logged yet
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {eventLog.map((event, idx) => (
-                        <div
-                          key={idx}
-                          className="rounded-lg border border-border p-3 space-y-2"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">{event.type}</Badge>
-                              <span className="text-xs text-muted-foreground">
-                                from {event.source}
-                              </span>
-                            </div>
-                            <span className="text-xs font-mono text-muted-foreground">
-                              {new Date(event.receivedAt).toLocaleTimeString()}
-                            </span>
-                          </div>
-                          {event.data && (
-                            <pre className="text-xs bg-muted p-2 rounded overflow-x-auto">
-                              {JSON.stringify(event.data, null, 2)}
-                            </pre>
-                          )}
-                          {event.affectedModules.length > 0 && (
-                            <div className="flex items-center gap-2 text-xs">
-                              <span className="text-muted-foreground">
-                                Affected:
-                              </span>
-                              {event.affectedModules.map((mod) => (
-                                <Badge key={mod} variant="secondary" className="text-xs">
-                                  {mod}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Dependencies Tab */}
-          <TabsContent value="dependencies" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Module Dependency Map</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[500px]">
-                  <div className="space-y-4">
-                    {dependencyArray.map(([name, dep]) => (
-                      <div key={name} className="rounded-lg border border-border p-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Database className="h-4 w-4 text-primary" />
-                          <h3 className="font-semibold capitalize">{name}</h3>
-                          <Badge variant="outline" className="text-xs">
-                            Module
+              <CardContent className="space-y-6">
+                {protocols.map((protocol) => (
+                  <div key={protocol.name} className="flex items-center justify-between p-4 rounded-lg bg-background/40 border border-border/50">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-lg">{protocol.name}</span>
+                        {protocol.whitelisted && <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">Whitelisted</Badge>}
+                        {!protocol.whitelisted && <Badge variant="destructive" className="bg-destructive/10 text-destructive border-destructive/20">Unverified</Badge>}
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {protocol.chains.map(chain => (
+                          <Badge key={chain} variant="secondary" className="text-[10px] uppercase">
+                            {chain}
                           </Badge>
-                        </div>
-
-                        <div className="grid gap-3 text-sm">
-                          {dep.dependsOn.length > 0 && (
-                            <div>
-                              <span className="text-muted-foreground">Depends on:</span>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {dep.dependsOn.map((d) => (
-                                  <Badge key={d} variant="secondary" className="text-xs">
-                                    {d}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {dep.affectedBy.length > 0 && (
-                            <div>
-                              <span className="text-muted-foreground">Affected by:</span>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {dep.affectedBy.map((a) => (
-                                  <Badge key={a} variant="secondary" className="text-xs">
-                                    {a}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {dep.pages.length > 0 && (
-                            <div>
-                              <span className="text-muted-foreground">Pages:</span>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {dep.pages.map((p) => (
-                                  <Badge key={p} variant="outline" className="text-xs">
-                                    {p}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {dep.components.length > 0 && (
-                            <div>
-                              <span className="text-muted-foreground">Components:</span>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {dep.components.map((c) => (
-                                  <Badge key={c} variant="outline" className="text-xs">
-                                    {c}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                        ))}
                       </div>
-                    ))}
+                      <p className="text-xs text-muted-foreground mt-2">Adapter: {protocol.adapterClass}</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-6">
+                      <div className="flex items-center space-x-2">
+                        <Label htmlFor={`whitelist-${protocol.name}`} className="text-xs">Whitelist</Label>
+                        <Switch 
+                          id={`whitelist-${protocol.name}`}
+                          checked={protocol.whitelisted}
+                          onCheckedChange={() => handleProtocolToggle(protocol.name, "whitelisted")}
+                        />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Label htmlFor={`enable-${protocol.name}`} className="text-xs">Active</Label>
+                        <Switch 
+                          id={`enable-${protocol.name}`}
+                          checked={protocol.enabled}
+                          disabled={!protocol.whitelisted}
+                          onCheckedChange={() => handleProtocolToggle(protocol.name, "enabled")}
+                        />
+                      </div>
+                    </div>
                   </div>
-                </ScrollArea>
+                ))}
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Performance Tab */}
-          <TabsContent value="performance" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Engine Response Times</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {engines.map((engine) => (
-                      <div key={engine.name} className="space-y-1">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="capitalize">{engine.name}</span>
-                          <span className="font-mono text-success">
-                            {Math.floor(Math.random() * 50 + 10)}ms
-                          </span>
-                        </div>
-                        <div className="h-2 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-success"
-                            style={{
-                              width: `${Math.floor(Math.random() * 40 + 60)}%`,
-                            }}
-                          />
-                        </div>
+          <TabsContent value="chains" className="space-y-4">
+            <Card className="card-gradient border-border/50">
+              <CardHeader>
+                <CardTitle>Network Management</CardTitle>
+                <CardDescription>
+                  Configure which blockchain networks the system is allowed to interact with.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {chains.map((chain) => (
+                  <div key={chain.name} className="flex items-center justify-between p-4 rounded-lg bg-background/40 border border-border/50">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium capitalize text-lg">{chain.name}</span>
                       </div>
-                    ))}
+                      <p className="text-xs text-muted-foreground mt-2">RPC Endpoint: {chain.rpcUrl}</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-6">
+                      <div className="flex items-center space-x-2">
+                        <Label htmlFor={`chain-enable-${chain.name}`} className="text-xs">Active</Label>
+                        <Switch 
+                          id={`chain-enable-${chain.name}`}
+                          checked={chain.enabled}
+                          onCheckedChange={() => handleChainToggle(chain.name, "enabled")}
+                        />
+                      </div>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Event Processing</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Events/minute
-                      </span>
-                      <span className="text-2xl font-bold">
-                        {Math.floor(eventLog.length / 5)}
-                      </span>
+          <TabsContent value="limits" className="space-y-4">
+            <Card className="card-gradient border-border/50">
+              <CardHeader>
+                <CardTitle>Global Risk Limits</CardTitle>
+                <CardDescription>
+                  Set strict maximum exposure limits across protocols and chains.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label>Max Capital Per Protocol (USD)</Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input type="number" defaultValue="50000" className="pl-9" onChange={() => setHasChanges(true)} />
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Avg. processing time
-                      </span>
-                      <span className="text-2xl font-bold">12ms</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Queue depth
-                      </span>
-                      <span className="text-2xl font-bold">0</span>
-                    </div>
+                    <p className="text-xs text-muted-foreground">Hard cap for exposure to any single DEX</p>
                   </div>
-                </CardContent>
-              </Card>
+                  
+                  <div className="space-y-2">
+                    <Label>Max Capital Per Chain (USD)</Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input type="number" defaultValue="100000" className="pl-9" onChange={() => setHasChanges(true)} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Hard cap for exposure to any single network</p>
+                  </div>
 
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle>System Diagnostics</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-3">
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-success" />
-                        <span className="text-sm">No circular dependencies detected</span>
-                      </div>
-                      <Badge variant="outline">Validated</Badge>
+                  <div className="space-y-2">
+                    <Label>Global TVL Minimum (USD)</Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input type="number" defaultValue="1000000" className="pl-9" onChange={() => setHasChanges(true)} />
                     </div>
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-success" />
-                        <span className="text-sm">All type contracts consistent</span>
-                      </div>
-                      <Badge variant="outline">Validated</Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-success" />
-                        <span className="text-sm">Sync engine operational</span>
-                      </div>
-                      <Badge variant="outline">Active</Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
-                      <div className="flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4 text-accent" />
-                        <span className="text-sm">
-                          Impact analysis ready for code changes
-                        </span>
-                      </div>
-                      <Badge variant="outline">Ready</Badge>
-                    </div>
+                    <p className="text-xs text-muted-foreground">Ignore pools with liquidity below this amount</p>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Max Allowable Slippage (%)</Label>
+                    <div className="relative">
+                      <Activity className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input type="number" defaultValue="1.5" step="0.1" className="pl-9" onChange={() => setHasChanges(true)} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">System-wide hard limit for entry/exit slippage</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

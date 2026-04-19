@@ -12,6 +12,12 @@ import {
   Settings,
   Activity,
   LogOut,
+  BarChart2,
+  Shield,
+  ArrowRightLeft,
+  Menu,
+  Bell,
+  X,
 } from "lucide-react";
 import { ModeSelector } from "./ModeSelector";
 import { WalletButton } from "./WalletButton";
