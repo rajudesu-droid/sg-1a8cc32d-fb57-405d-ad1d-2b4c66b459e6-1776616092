@@ -34,13 +34,6 @@ export class ValidationEngine {
   async validateAction(trigger: ActionTrigger): Promise<ValidationResult> {
     console.log(`[ValidationEngine] Validating action: ${trigger.actionType} in ${trigger.mode} mode`);
 
-    const result: ValidationResult = {
-      allowed: false,
-      blockingReasons: [],
-      warnings: [],
-      timestamp: new Date(),
-    };
-
     const mode = trigger.mode || "demo";
     const store = useAppStore.getState();
 
@@ -54,28 +47,52 @@ export class ValidationEngine {
       );
       
       if (hasSimulatedAssets) {
-        result.blockingReasons.push("Live Mode cannot use simulated or manually added assets");
-        return result;
+        return {
+          allowed: false,
+          blockingReasons: ["Live Mode cannot use simulated or manually added assets"],
+          warningFlags: [],
+          checks: [],
+          requiredNextSteps: ["Remove simulated assets"],
+          validatedAt: new Date(),
+        };
       }
       
       // Verify real wallet connection
       if (!wallet.wallet) {
-        result.blockingReasons.push("Live Mode requires real wallet connection");
-        return result;
+        return {
+          allowed: false,
+          blockingReasons: ["Live Mode requires real wallet connection"],
+          warningFlags: [],
+          checks: [],
+          requiredNextSteps: ["Connect your wallet"],
+          validatedAt: new Date(),
+        };
       }
     }
 
     // Check 1: Mode validation
     if (!["demo", "shadow", "live"].includes(mode)) {
-      result.blockingReasons.push(`Invalid mode: ${mode}`);
-      return result;
+      return {
+        allowed: false,
+        blockingReasons: [`Invalid mode: ${mode}`],
+        warningFlags: [],
+        checks: [],
+        requiredNextSteps: [],
+        validatedAt: new Date(),
+      };
     }
 
     // Check 2: Wallet connection (Shadow and Live modes)
     if (mode === "shadow" || mode === "live") {
       if (!store.wallet.wallet) {
-        result.blockingReasons.push("Wallet not connected - required for Shadow/Live mode");
-        return result;
+        return {
+          allowed: false,
+          blockingReasons: ["Wallet not connected - required for Shadow/Live mode"],
+          warningFlags: [],
+          checks: [],
+          requiredNextSteps: ["Connect your wallet"],
+          validatedAt: new Date(),
+        };
       }
     }
 
