@@ -134,7 +134,7 @@ export async function fetchMultipleTokenPrices(
 
   // Batch fetch uncached prices
   const coinIds = uncachedSymbols
-    .map((symbol) => symbolToCoinId[symbol.toLowerCase()])
+    .map((symbol) => COINGECKO_ID_MAP[symbol.toUpperCase()])
     .filter((id): id is string => id !== undefined);
 
   if (coinIds.length === 0) {
@@ -161,7 +161,7 @@ export async function fetchMultipleTokenPrices(
 
     // Map results back to symbols
     uncachedSymbols.forEach((symbol) => {
-      const coinId = symbolToCoinId[symbol.toLowerCase()];
+      const coinId = COINGECKO_ID_MAP[symbol.toUpperCase()];
       if (coinId && data[coinId]?.usd) {
         const price = data[coinId].usd;
         priceMap.set(symbol, price);
