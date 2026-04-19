@@ -193,7 +193,7 @@ export function createExecutionJob(
  */
 export function getPriorityForAction(actionType: ActionType): JobPriority {
   switch (actionType) {
-    case "PAUSE_AUTOMATION":
+    case "EMERGENCY_PAUSE":
       return "emergency";
     case "EXIT_POSITION":
       return "critical";
@@ -242,7 +242,7 @@ export function getTargetEntity(trigger: ActionTrigger): {
   }
   
   // Global actions
-  if (["PAUSE_AUTOMATION", "RESUME_AUTOMATION"].includes(trigger.actionType)) {
+  if (["EMERGENCY_PAUSE", "CANCEL_PENDING"].includes(trigger.actionType)) {
     return {
       type: "global",
       id: "system",
