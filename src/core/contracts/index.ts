@@ -15,7 +15,7 @@ export interface ModeState {
 // ==================== WALLET ====================
 export type ChainFamily = "evm" | "solana" | "tron" | "bitcoin" | "xrpl";
 export type AssetKind = "native" | "token" | "lp" | "position";
-export type AssetSource = "auto-detected" | "manual";
+export type AssetSource = "detected" | "manual" | "simulated";
 
 export interface Asset {
   id: string;
