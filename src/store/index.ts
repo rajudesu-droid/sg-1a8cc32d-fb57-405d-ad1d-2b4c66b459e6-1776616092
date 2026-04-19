@@ -90,6 +90,49 @@ interface AppState {
   // ==================== BOT STATUS ====================
   botRunning: boolean;
   setBotRunning: (running: boolean) => void;
+
+  // ==================== PAPER WALLET ====================
+  paperWallets: Array<{
+    id: string;
+    name: string;
+    address: string;
+    chains: string[];
+    tokens: Array<{
+      symbol: string;
+      name: string;
+      network: string;
+      quantity: number;
+      priceUsd: number;
+      totalValue: number;
+    }>;
+    totalValue: number;
+    createdAt: Date | string;
+  }>;
+  addPaperWallet: (wallet: {
+    id: string;
+    name: string;
+    address: string;
+    chains: string[];
+    tokens: Array<{
+      symbol: string;
+      name: string;
+      network: string;
+      quantity: number;
+      priceUsd: number;
+      totalValue: number;
+    }>;
+    totalValue: number;
+    createdAt: Date | string;
+  }) => void;
+  updatePaperWallet: (id: string, tokens: Array<{
+    symbol: string;
+    name: string;
+    network: string;
+    quantity: number;
+    priceUsd: number;
+    totalValue: number;
+  }>) => void;
+  deletePaperWallet: (id: string) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -227,6 +270,29 @@ export const useAppStore = create<AppState>()(
         // ==================== BOT STATUS ====================
         botRunning: false,
         setBotRunning: (running) => set({ botRunning: running }),
+
+        // ==================== PAPER WALLET ====================
+        paperWallets: [],
+        addPaperWallet: (wallet) => set((state) => ({ 
+          paperWallets: [...state.paperWallets, {
+            ...wallet,
+            createdAt: wallet.createdAt instanceof Date ? wallet.createdAt.toISOString() : wallet.createdAt
+          }] 
+        })),
+        updatePaperWallet: (id, tokens) => set((state) => ({
+          paperWallets: state.paperWallets.map((wallet) =>
+            wallet.id === id
+              ? {
+                  ...wallet,
+                  tokens,
+                  totalValue: tokens.reduce((sum, t) => sum + t.totalValue, 0),
+                }
+              : wallet
+          ),
+        })),
+        deletePaperWallet: (id) => set((state) => ({
+          paperWallets: state.paperWallets.filter((w) => w.id !== id),
+        })),
       }),
       {
         name: "lp-yield-autopilot-storage",
@@ -237,6 +303,7 @@ export const useAppStore = create<AppState>()(
           policy: state.policy,
           simulation: state.simulation,
           botRunning: state.botRunning,
+          paperWallets: state.paperWallets, // Persist paper wallets
           // Don't persist alerts - they should be fresh on each session
         }),
       }

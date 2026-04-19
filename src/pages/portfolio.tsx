@@ -42,37 +42,171 @@ const mockPortfolioData = {
 
 export default function Portfolio() {
   const mode = useAppStore((state) => state.mode);
-  const [portfolioData, setPortfolioData] = useState(mockPortfolioData.demo);
+  const wallet = useAppStore((state) => state.wallet);
+  const portfolio = useAppStore((state) => state.portfolio);
+  const paperWallets = useAppStore((state) => state.paperWallets);
+
+  const [portfolioData, setPortfolioData] = useState<{
+    totalValue: number;
+    deployedCapital: number;
+    idleCapital: number;
+    tokens: Array<{
+      symbol: string;
+      name: string;
+      network: string;
+      balance: number;
+      value: number;
+      price: number;
+      change24h: number;
+    }>;
+    chains: Array<{ name: string; value: number }>;
+  }>({
+    totalValue: 0,
+    deployedCapital: 0,
+    idleCapital: 0,
+    tokens: [],
+    chains: [],
+  });
 
   // Listen for mode changes
   useEffect(() => {
     const unsubscribe = orchestrator.subscribe((event) => {
       if (event.type === "mode_changed") {
         console.log("[Portfolio] Mode changed, updating portfolio view");
-        loadPortfolioData(event.data.newMode);
       }
     });
     return () => unsubscribe();
   }, []);
 
-  // Load portfolio data on mount
+  // Update portfolio data when mode, wallet, or paper wallets change
   useEffect(() => {
-    loadPortfolioData(mode.current);
-  }, [mode.current]);
+    if (mode.current === "demo") {
+      // Demo mode - aggregate data from paper wallets
+      if (paperWallets.length === 0) {
+        setPortfolioData({
+          totalValue: 0,
+          deployedCapital: 0,
+          idleCapital: 0,
+          tokens: [],
+          chains: [],
+        });
+      } else {
+        const allTokens = paperWallets.flatMap((wallet) =>
+          wallet.tokens.map((token) => ({
+            symbol: token.symbol,
+            name: token.name,
+            network: token.network,
+            balance: token.quantity,
+            value: token.totalValue,
+            price: token.priceUsd,
+            change24h: 0,
+          }))
+        );
 
-  const loadPortfolioData = (currentMode: "demo" | "shadow" | "live") => {
-    switch (currentMode) {
-      case "demo":
-        setPortfolioData(mockPortfolioData.demo);
-        break;
-      case "shadow":
-        setPortfolioData(mockPortfolioData.shadow);
-        break;
-      case "live":
-        setPortfolioData(mockPortfolioData.live);
-        break;
+        const chainBalances = allTokens.reduce((acc, token) => {
+          const existing = acc.find((c) => c.name === token.network);
+          if (existing) {
+            existing.value += token.value;
+          } else {
+            acc.push({ name: token.network, value: token.value });
+          }
+          return acc;
+        }, [] as Array<{ name: string; value: number }>);
+
+        const totalValue = allTokens.reduce((sum, t) => sum + t.value, 0);
+
+        setPortfolioData({
+          totalValue,
+          deployedCapital: 0,
+          idleCapital: totalValue,
+          tokens: allTokens,
+          chains: chainBalances,
+        });
+      }
+    } else if (mode.current === "shadow") {
+      // Shadow mode - shows data from connected wallet
+      if (wallet.connected) {
+        const walletTokens = wallet.assets.map((asset) => ({
+          symbol: asset.symbol,
+          name: asset.name,
+          network: asset.network,
+          balance: asset.quantity,
+          value: asset.quantity * (asset.priceUsd || 0),
+          price: asset.priceUsd || 0,
+          change24h: 0,
+        }));
+
+        const chainBalances = walletTokens.reduce((acc, token) => {
+          const existing = acc.find((c) => c.name === token.network);
+          if (existing) {
+            existing.value += token.value;
+          } else {
+            acc.push({ name: token.network, value: token.value });
+          }
+          return acc;
+        }, [] as Array<{ name: string; value: number }>);
+
+        const totalValue = walletTokens.reduce((sum, t) => sum + t.value, 0);
+
+        setPortfolioData({
+          totalValue,
+          deployedCapital: 0,
+          idleCapital: totalValue,
+          tokens: walletTokens,
+          chains: chainBalances,
+        });
+      } else {
+        setPortfolioData({
+          totalValue: 0,
+          deployedCapital: 0,
+          idleCapital: 0,
+          tokens: [],
+          chains: [],
+        });
+      }
+    } else if (mode.current === "live") {
+      // Live mode - shows real portfolio
+      if (wallet.connected) {
+        const walletTokens = wallet.assets.map((asset) => ({
+          symbol: asset.symbol,
+          name: asset.name,
+          network: asset.network,
+          balance: asset.quantity,
+          value: asset.quantity * (asset.priceUsd || 0),
+          price: asset.priceUsd || 0,
+          change24h: 0,
+        }));
+
+        const chainBalances = walletTokens.reduce((acc, token) => {
+          const existing = acc.find((c) => c.name === token.network);
+          if (existing) {
+            existing.value += token.value;
+          } else {
+            acc.push({ name: token.network, value: token.value });
+          }
+          return acc;
+        }, [] as Array<{ name: string; value: number }>);
+
+        const totalValue = walletTokens.reduce((sum, t) => sum + t.value, 0);
+
+        setPortfolioData({
+          totalValue,
+          deployedCapital: portfolio.deployedCapital,
+          idleCapital: totalValue - portfolio.deployedCapital,
+          tokens: walletTokens,
+          chains: chainBalances,
+        });
+      } else {
+        setPortfolioData({
+          totalValue: 0,
+          deployedCapital: 0,
+          idleCapital: 0,
+          tokens: [],
+          chains: [],
+        });
+      }
     }
-  };
+  }, [mode.current, wallet.connected, wallet.assets, portfolio.deployedCapital, paperWallets]);
 
   const getPageTitle = () => {
     switch (mode.current) {

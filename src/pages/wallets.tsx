@@ -156,7 +156,6 @@ export default function Wallets() {
   const [walletName, setWalletName] = useState("");
   const [selectedChains, setSelectedChains] = useState<string[]>([]);
   const [initialTokens, setInitialTokens] = useState<TokenHolding[]>([]);
-  const [paperWallets, setPaperWallets] = useState<PaperWallet[]>([]);
   const [currentWalletForToken, setCurrentWalletForToken] = useState<string | null>(null);
   
   // Add token state
@@ -171,6 +170,10 @@ export default function Wallets() {
   const { isConnected, connectWallet } = useWallet();
   const { toast } = useToast();
   const mode = useAppStore((state) => state.mode);
+  const paperWallets = useAppStore((state) => state.paperWallets);
+  const addPaperWallet = useAppStore((state) => state.addPaperWallet);
+  const updatePaperWallet = useAppStore((state) => state.updatePaperWallet);
+  const deletePaperWallet = useAppStore((state) => state.deletePaperWallet);
 
   // Listen for mode changes
   useEffect(() => {
