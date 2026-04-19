@@ -15,6 +15,7 @@ import type {
   PositionState,
   NormalizedOpportunity,
 } from "./types";
+import { cacheManager } from "../performance/CacheManager";
 
 export abstract class BaseProtocolAdapter implements IProtocolAdapter {
   abstract protocolName: string;

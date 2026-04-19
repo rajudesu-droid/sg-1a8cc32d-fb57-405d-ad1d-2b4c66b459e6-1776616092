@@ -26,6 +26,7 @@ import { RecentAlerts } from "@/components/dashboard/RecentAlerts";
 import { NetworkBalances } from "@/components/dashboard/NetworkBalances";
 import { ConnectedWallets } from "@/components/dashboard/ConnectedWallets";
 import { ExecutionMonitor } from "@/components/ExecutionMonitor";
+import { PerformanceMonitorWidget } from "@/components/PerformanceMonitor";
 import { ModeBanner } from "@/components/ModeBanner";
 import { orchestrator } from "@/core/orchestrator";
 import { useRouter } from "next/router";
@@ -391,6 +392,7 @@ export default function Dashboard() {
         <div className="grid gap-6 md:grid-cols-2">
           <PortfolioMetrics mode={mode.current} />
           <ExecutionMonitor />
+          <PerformanceMonitorWidget />
           <ActivePositions />
           <RecentAlerts />
           <NetworkBalances />
