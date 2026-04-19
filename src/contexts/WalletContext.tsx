@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useAccount, useConnect, useDisconnect, useBalance } from "wagmi";
-import { walletConnect } from "wagmi/connectors";
-import { walletConnectProjectId, supportedNetworks } from "@/lib/walletConfig";
+import { supportedNetworks } from "@/lib/walletConfig";
 
 interface DetectedAsset {
   chainId: number;
@@ -42,11 +41,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   });
 
   const connectWallet = () => {
+    // Use WalletConnect connector
     const walletConnectConnector = connectors.find(
       (c) => c.id === "walletConnect"
     );
+    
     if (walletConnectConnector) {
+      console.log("[WalletContext] Connecting with WalletConnect");
       connect({ connector: walletConnectConnector });
+    } else {
+      console.error("[WalletContext] WalletConnect connector not found");
+      // Fallback to first available connector
+      if (connectors.length > 0) {
+        console.log("[WalletContext] Using first available connector:", connectors[0].id);
+        connect({ connector: connectors[0] });
+      }
     }
   };
 
