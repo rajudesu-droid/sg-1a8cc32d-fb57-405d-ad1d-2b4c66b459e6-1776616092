@@ -29,6 +29,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useAppStore } from "@/store";
 import { ModeBanner } from "@/components/ModeBanner";
 import { orchestrator } from "@/core/orchestrator";
+import { fetchTokenPrice, getFallbackPrice } from "@/lib/cryptoPriceService";
 
 // Supported chains with colors
 const SUPPORTED_CHAINS = [
@@ -47,87 +48,87 @@ const SUPPORTED_CHAINS = [
   { id: "bitcoin", name: "Bitcoin", symbol: "BTC", color: "bg-orange-500" },
 ];
 
-// Network token mapping with simulated market prices
-const networkTokens: Record<string, Array<{ symbol: string; name: string; basePrice: number }>> = {
+// Network token mapping - token metadata without hardcoded prices
+const networkTokens: Record<string, Array<{ symbol: string; name: string }>> = {
   ethereum: [
-    { symbol: "ETH", name: "Ethereum", basePrice: 3100.50 },
-    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
-    { symbol: "WETH", name: "Wrapped Ether", basePrice: 3100.50 },
-    { symbol: "DAI", name: "Dai Stablecoin", basePrice: 1.00 },
-    { symbol: "LINK", name: "Chainlink", basePrice: 14.50 },
-    { symbol: "UNI", name: "Uniswap", basePrice: 6.20 },
+    { symbol: "ETH", name: "Ethereum" },
+    { symbol: "USDT", name: "Tether USD" },
+    { symbol: "USDC", name: "USD Coin" },
+    { symbol: "WETH", name: "Wrapped Ether" },
+    { symbol: "DAI", name: "Dai Stablecoin" },
+    { symbol: "LINK", name: "Chainlink" },
+    { symbol: "UNI", name: "Uniswap" },
   ],
   bsc: [
-    { symbol: "BNB", name: "BNB", basePrice: 610.30 },
-    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
-    { symbol: "BUSD", name: "Binance USD", basePrice: 1.00 },
-    { symbol: "CAKE", name: "PancakeSwap", basePrice: 2.45 },
-    { symbol: "WBNB", name: "Wrapped BNB", basePrice: 610.30 },
+    { symbol: "BNB", name: "BNB" },
+    { symbol: "USDT", name: "Tether USD" },
+    { symbol: "USDC", name: "USD Coin" },
+    { symbol: "BUSD", name: "Binance USD" },
+    { symbol: "CAKE", name: "PancakeSwap" },
+    { symbol: "WBNB", name: "Wrapped BNB" },
   ],
   polygon: [
-    { symbol: "POL", name: "Polygon", basePrice: 0.85 },
-    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
-    { symbol: "WMATIC", name: "Wrapped MATIC", basePrice: 0.85 },
-    { symbol: "DAI", name: "Dai Stablecoin", basePrice: 1.00 },
+    { symbol: "POL", name: "Polygon" },
+    { symbol: "USDT", name: "Tether USD" },
+    { symbol: "USDC", name: "USD Coin" },
+    { symbol: "WMATIC", name: "Wrapped MATIC" },
+    { symbol: "DAI", name: "Dai Stablecoin" },
   ],
   arbitrum: [
-    { symbol: "ETH", name: "Ethereum", basePrice: 3100.50 },
-    { symbol: "ARB", name: "Arbitrum", basePrice: 0.92 },
-    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
+    { symbol: "ETH", name: "Ethereum" },
+    { symbol: "ARB", name: "Arbitrum" },
+    { symbol: "USDT", name: "Tether USD" },
+    { symbol: "USDC", name: "USD Coin" },
   ],
   optimism: [
-    { symbol: "ETH", name: "Ethereum", basePrice: 3100.50 },
-    { symbol: "OP", name: "Optimism", basePrice: 2.15 },
-    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
+    { symbol: "ETH", name: "Ethereum" },
+    { symbol: "OP", name: "Optimism" },
+    { symbol: "USDT", name: "Tether USD" },
+    { symbol: "USDC", name: "USD Coin" },
   ],
   avalanche: [
-    { symbol: "AVAX", name: "Avalanche", basePrice: 38.20 },
-    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
-    { symbol: "WAVAX", name: "Wrapped AVAX", basePrice: 38.20 },
+    { symbol: "AVAX", name: "Avalanche" },
+    { symbol: "USDT", name: "Tether USD" },
+    { symbol: "USDC", name: "USD Coin" },
+    { symbol: "WAVAX", name: "Wrapped AVAX" },
   ],
   base: [
-    { symbol: "ETH", name: "Ethereum", basePrice: 3100.50 },
-    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
-    { symbol: "WETH", name: "Wrapped Ether", basePrice: 3100.50 },
+    { symbol: "ETH", name: "Ethereum" },
+    { symbol: "USDC", name: "USD Coin" },
+    { symbol: "WETH", name: "Wrapped Ether" },
   ],
   fantom: [
-    { symbol: "FTM", name: "Fantom", basePrice: 0.75 },
-    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
-    { symbol: "WFTM", name: "Wrapped Fantom", basePrice: 0.75 },
+    { symbol: "FTM", name: "Fantom" },
+    { symbol: "USDT", name: "Tether USD" },
+    { symbol: "USDC", name: "USD Coin" },
+    { symbol: "WFTM", name: "Wrapped Fantom" },
   ],
   cronos: [
-    { symbol: "CRO", name: "Cronos", basePrice: 0.12 },
-    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
+    { symbol: "CRO", name: "Cronos" },
+    { symbol: "USDT", name: "Tether USD" },
+    { symbol: "USDC", name: "USD Coin" },
   ],
   solana: [
-    { symbol: "SOL", name: "Solana", basePrice: 145.60 },
-    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
-    { symbol: "RAY", name: "Raydium", basePrice: 2.80 },
-    { symbol: "SRM", name: "Serum", basePrice: 0.35 },
+    { symbol: "SOL", name: "Solana" },
+    { symbol: "USDT", name: "Tether USD" },
+    { symbol: "USDC", name: "USD Coin" },
+    { symbol: "RAY", name: "Raydium" },
+    { symbol: "SRM", name: "Serum" },
   ],
   xrp: [
-    { symbol: "XRP", name: "XRP", basePrice: 2.15 },
-    { symbol: "USD", name: "USD (Bitstamp)", basePrice: 1.00 },
-    { symbol: "EUR", name: "EUR (Bitstamp)", basePrice: 1.08 },
-    { symbol: "BTC", name: "BTC (Bitstamp)", basePrice: 95000.00 },
+    { symbol: "XRP", name: "XRP" },
+    { symbol: "USD", name: "USD (Bitstamp)" },
+    { symbol: "EUR", name: "EUR (Bitstamp)" },
+    { symbol: "BTC", name: "BTC (Bitstamp)" },
   ],
   tron: [
-    { symbol: "TRX", name: "TRON", basePrice: 0.24 },
-    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
-    { symbol: "WTRX", name: "Wrapped TRX", basePrice: 0.24 },
+    { symbol: "TRX", name: "TRON" },
+    { symbol: "USDT", name: "Tether USD" },
+    { symbol: "USDC", name: "USD Coin" },
+    { symbol: "WTRX", name: "Wrapped TRX" },
   ],
   bitcoin: [
-    { symbol: "BTC", name: "Bitcoin", basePrice: 95000.00 },
+    { symbol: "BTC", name: "Bitcoin" },
   ],
 };
 
@@ -217,24 +218,36 @@ export default function Wallets() {
       setIsFetchingPrice(true);
       setFetchedPrice(null);
       
-      // Simulate API call to CoinGecko/CoinMarketCap
-      const timer = setTimeout(() => {
-        const token = networkTokens[tokenNetwork]?.find((t) => t.symbol === selectedToken);
-        if (token) {
-          // Add a tiny bit of random variance to simulate real market data
-          const variance = token.basePrice * (Math.random() * 0.002 - 0.001);
-          setFetchedPrice(token.basePrice + variance);
-        } else {
-          setFetchedPrice(0);
-        }
-        setIsFetchingPrice(false);
-      }, 600);
-      
-      return () => clearTimeout(timer);
+      // Fetch real price from CoinGecko API
+      fetchTokenPrice(selectedToken)
+        .then((price) => {
+          if (price > 0) {
+            setFetchedPrice(price);
+          } else {
+            // Fallback to estimated price if API fails
+            const fallbackPrice = getFallbackPrice(selectedToken);
+            setFetchedPrice(fallbackPrice);
+            if (fallbackPrice > 0) {
+              toast({
+                title: "Using Estimated Price",
+                description: "Live price data unavailable. Using fallback estimate.",
+                variant: "default",
+              });
+            }
+          }
+        })
+        .catch((error) => {
+          console.error("Price fetch error:", error);
+          const fallbackPrice = getFallbackPrice(selectedToken);
+          setFetchedPrice(fallbackPrice);
+        })
+        .finally(() => {
+          setIsFetchingPrice(false);
+        });
     } else {
       setFetchedPrice(null);
     }
-  }, [tokenNetwork, selectedToken]);
+  }, [tokenNetwork, selectedToken, toast]);
 
   const handleRefreshBalances = async () => {
     setIsRefreshing(true);
@@ -499,7 +512,7 @@ export default function Wallets() {
             <CardContent>
               <div className="text-2xl font-bold">
                 {mode.current === "demo"
-                  ? new Set(paperWallets.flatMap((w) => w.chains)).size
+                  ? new Set(paperWallets.flatMap((w) => w.tokens.map((t) => t.network))).size
                   : new Set(wallet.assets.map((a) => a.network)).size}
               </div>
               <p className="text-xs text-muted-foreground">Active chains</p>
