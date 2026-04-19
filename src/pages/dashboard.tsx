@@ -1,5 +1,5 @@
 import { AppLayout } from "@/components/AppLayout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Play, Pause, AlertTriangle } from "lucide-react";
@@ -10,6 +10,10 @@ import { ActivePositions } from "@/components/dashboard/ActivePositions";
 import { RecentAlerts } from "@/components/dashboard/RecentAlerts";
 import { NetworkBalances } from "@/components/dashboard/NetworkBalances";
 import { ConnectedWallets } from "@/components/dashboard/ConnectedWallets";
+import { orchestrator } from "@/core/orchestrator";
+import { opportunityEngine } from "@/core/engines/OpportunityEngine";
+import { positionEngine } from "@/core/engines/PositionEngine";
+import { portfolioEngine } from "@/core/engines/PortfolioEngine";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -20,20 +24,74 @@ export default function Dashboard() {
   const handleStartBot = async () => {
     setIsStarting(true);
     
-    // Simulate bot initialization
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setBotRunning(true);
-    setIsStarting(false);
-    
     toast({
-      title: "Automation Started",
-      description: `LP Autopilot is now running in ${mode.label}`,
+      title: "Starting Automation",
+      description: "Initializing engines and scanning for opportunities...",
     });
+
+    try {
+      // Initialize and trigger all engines
+      console.log("[Dashboard] Starting bot - triggering engines");
+      
+      // Scan for opportunities
+      await opportunityEngine.scanPools();
+      
+      // Simulate some initial positions being opened
+      await positionEngine.openPosition("opp-eth-usdt-uniswap-v3", 5000);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await positionEngine.openPosition("opp-bnb-usdt-pancake-v3", 3000);
+      
+      // Recalculate portfolio
+      await portfolioEngine.recalculate();
+      
+      // Add some sample alerts
+      useAppStore.getState().addAlert({
+        id: `alert-${Date.now()}-1`,
+        type: "success",
+        title: "Position Opened",
+        message: "Successfully opened ETH/USDT position on Uniswap V3",
+        timestamp: new Date(),
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      useAppStore.getState().addAlert({
+        id: `alert-${Date.now()}-2`,
+        type: "success",
+        title: "Position Opened",
+        message: "Successfully opened BNB/USDT position on PancakeSwap V3",
+        timestamp: new Date(),
+      });
+      
+      setBotRunning(true);
+      
+      toast({
+        title: "Automation Started",
+        description: `LP Autopilot is now running in ${mode.label}`,
+      });
+      
+    } catch (error) {
+      console.error("[Dashboard] Error starting bot:", error);
+      toast({
+        title: "Failed to Start",
+        description: "Error initializing automation engines",
+        variant: "destructive",
+      });
+    } finally {
+      setIsStarting(false);
+    }
   };
 
   const handleStopBot = () => {
     setBotRunning(false);
+    
+    useAppStore.getState().addAlert({
+      id: `alert-${Date.now()}`,
+      type: "warning",
+      title: "Automation Stopped",
+      message: "All automated actions have been paused",
+      timestamp: new Date(),
+    });
     
     toast({
       title: "Automation Stopped",

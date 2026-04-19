@@ -69,6 +69,23 @@ interface AppState {
   setLastSyncTime: (time: Date) => void;
   isSyncing: boolean;
   setIsSyncing: (syncing: boolean) => void;
+
+  // ==================== STORE STATE ====================
+  alerts: Array<{
+    id: string;
+    type: "info" | "success" | "warning" | "error";
+    title: string;
+    message: string;
+    timestamp: Date;
+  }>;
+  addAlert: (alert: {
+    id: string;
+    type: "info" | "success" | "warning" | "error";
+    title: string;
+    message: string;
+    timestamp: Date;
+  }) => void;
+  clearAlerts: () => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -192,6 +209,11 @@ export const useAppStore = create<AppState>()(
         setLastSyncTime: (time) => set({ lastSyncTime: time }),
         isSyncing: false,
         setIsSyncing: (syncing) => set({ isSyncing: syncing }),
+
+        // ==================== STORE STATE ====================
+        alerts: [],
+        addAlert: (alert) => set((state) => ({ alerts: [alert, ...state.alerts] })),
+        clearAlerts: () => set({ alerts: [] }),
       }),
       {
         name: "lp-yield-autopilot-storage",
