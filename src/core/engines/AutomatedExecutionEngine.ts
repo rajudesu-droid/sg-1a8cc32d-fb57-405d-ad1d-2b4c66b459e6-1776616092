@@ -21,6 +21,7 @@ import { recoveryHandler } from "../execution/RecoveryHandler";
 import { postExecutionSync } from "../execution/PostExecutionSync";
 import { executionLogService } from "../execution/ExecutionLogService";
 import { concurrencyController } from "../execution/ConcurrencyController";
+import { performanceMonitor } from "../performance/PerformanceMonitor";
 import { useAppStore } from "@/store";
 
 export class AutomatedExecutionEngine {
@@ -177,6 +178,13 @@ export class AutomatedExecutionEngine {
   // ============================================================================
 
   private async processJob(job: ExecutionJob): Promise<void> {
+    const jobOperationId = `job-${job.id}`;
+    performanceMonitor.startOperation(jobOperationId, "execution_pipeline", {
+      actionType: job.actionType,
+      mode: job.mode,
+      priority: job.priority,
+    });
+
     console.log(`[ExecutionEngine] Processing job ${job.id} (${job.actionType}) in ${job.mode} mode`);
 
     // Add to active jobs
@@ -188,6 +196,7 @@ export class AutomatedExecutionEngine {
       job.status = "paused";
       this.jobQueue.push(job); // Re-queue
       this.activeJobs.delete(job.id);
+      performanceMonitor.endOperation(jobOperationId, "execution_pipeline", { paused: true });
       return;
     }
 
@@ -195,7 +204,13 @@ export class AutomatedExecutionEngine {
       // STEP 1: VALIDATION
       job.status = "validating";
       job.updatedAt = new Date();
-      const validation = await validationEngine.validateAction(job.trigger);
+      
+      const validation = await performanceMonitor.trackAsync(
+        "validation",
+        async () => validationEngine.validateAction(job.trigger),
+        { jobId: job.id }
+      );
+      
       job.validationSnapshot = validation;
 
       if (!validation.allowed) {
@@ -207,6 +222,7 @@ export class AutomatedExecutionEngine {
           retryCount: 0,
         };
         await this.handleJobCompletion(job);
+        performanceMonitor.endOperation(jobOperationId, "execution_pipeline", { failed: true });
         return;
       }
 
@@ -214,13 +230,25 @@ export class AutomatedExecutionEngine {
       job.status = "planning";
       job.updatedAt = new Date();
       const context = this.buildExecutionContext(job.trigger);
-      const plan = await actionPlanner.generatePlan(job.trigger, context);
+      
+      const plan = await performanceMonitor.trackAsync(
+        "action_planning",
+        async () => actionPlanner.generatePlan(job.trigger, context),
+        { jobId: job.id }
+      );
+      
       job.actionPlan = plan;
 
       // STEP 3: PREVIEW
       job.status = "previewing";
       job.updatedAt = new Date();
-      const preview = await previewEngine.generatePreview(plan, context);
+      
+      const preview = await performanceMonitor.trackAsync(
+        "preview_generation",
+        async () => previewEngine.generatePreview(plan, context),
+        { jobId: job.id }
+      );
+      
       job.previewSnapshot = preview;
 
       // Broadcast preview for UI
@@ -258,6 +286,7 @@ export class AutomatedExecutionEngine {
         await postExecutionSync.syncAfterExecution(job);
         executionLogService.logJobResult(job);
         await this.handleJobCompletion(job);
+        performanceMonitor.endOperation(jobOperationId, "execution_pipeline", { shadow: true });
         return;
       }
 
@@ -281,6 +310,7 @@ export class AutomatedExecutionEngine {
               retryCount: 0,
             };
             await this.handleJobCompletion(job);
+            performanceMonitor.endOperation(jobOperationId, "execution_pipeline", { failed: true });
             return;
           }
         } else if (job.mode === "live") {
@@ -288,6 +318,7 @@ export class AutomatedExecutionEngine {
           job.status = "awaiting_authorization";
           this.activeJobs.delete(job.id);
           concurrencyController.releaseLock(job);
+          performanceMonitor.endOperation(jobOperationId, "execution_pipeline", { awaiting: true });
           return;
         }
       }
@@ -296,7 +327,13 @@ export class AutomatedExecutionEngine {
       job.status = "executing";
       job.startedAt = new Date();
       job.updatedAt = new Date();
-      const result = await executionRunner.execute(plan, auth, context);
+      
+      const result = await performanceMonitor.trackAsync(
+        "execution_start",
+        async () => executionRunner.execute(plan, auth, context),
+        { jobId: job.id }
+      );
+      
       job.executionResult = result;
 
       // STEP 6: RESULT HANDLING
@@ -316,13 +353,18 @@ export class AutomatedExecutionEngine {
       }
 
       // STEP 8: POST-EXECUTION SYNC
-      await postExecutionSync.syncAfterExecution(job);
+      await performanceMonitor.trackAsync(
+        "sync_propagation",
+        async () => postExecutionSync.syncAfterExecution(job),
+        { jobId: job.id }
+      );
 
       // STEP 9: AUDIT LOGGING
       executionLogService.logJobResult(job);
 
       // STEP 10: CLEANUP
       await this.handleJobCompletion(job);
+      performanceMonitor.endOperation(jobOperationId, "execution_pipeline", { success: true });
 
     } catch (error: any) {
       console.error(`[ExecutionEngine] Unexpected error in job ${job.id}:`, error);
@@ -334,6 +376,7 @@ export class AutomatedExecutionEngine {
         retryCount: 0,
       };
       await this.handleJobCompletion(job);
+      performanceMonitor.endOperation(jobOperationId, "execution_pipeline", { error: true });
     }
   }
 

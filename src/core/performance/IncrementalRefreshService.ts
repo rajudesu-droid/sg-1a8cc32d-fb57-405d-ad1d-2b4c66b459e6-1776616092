@@ -1,4 +1,4 @@
-<![CDATA[
+
 // ============================================================================
 // INCREMENTAL REFRESH SERVICE
 // Updates only changed entities instead of full refresh

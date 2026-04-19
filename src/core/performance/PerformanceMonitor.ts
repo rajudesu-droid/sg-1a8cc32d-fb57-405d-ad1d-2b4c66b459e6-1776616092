@@ -1,4 +1,4 @@
-<![CDATA[
+
 // ============================================================================
 // PERFORMANCE MONITOR
 // Tracks execution latency and identifies bottlenecks

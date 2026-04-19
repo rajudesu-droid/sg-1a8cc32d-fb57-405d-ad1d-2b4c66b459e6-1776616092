@@ -1,4 +1,4 @@
-<![CDATA[
+
 // ============================================================================
 // CACHE MANAGER
 // Smart caching for static and semi-static data

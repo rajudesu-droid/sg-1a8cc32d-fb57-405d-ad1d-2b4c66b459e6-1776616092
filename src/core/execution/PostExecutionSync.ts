@@ -6,43 +6,44 @@
 import type { ExecutionJob } from "./ExecutionJob";
 import { orchestrator } from "../orchestrator";
 import { syncEngine } from "../sync";
-import { useAppStore } from "@/store";
+import { incrementalRefreshService } from "../performance/IncrementalRefreshService";
 
 export class PostExecutionSync {
-  private syncId = "post-execution-sync";
-
   /**
-   * Trigger global synchronization after an execution job completes or fails partially
+   * Sync state after execution
    */
   async syncAfterExecution(job: ExecutionJob): Promise<void> {
-    console.log(`[PostExecutionSync] Starting sync after job ${job.id} (${job.actionType})`);
+    console.log(`[PostExecutionSync] Syncing after ${job.actionType} execution`);
 
-    // 1. Determine affected modules based on action type
-    const affectedModules = this.determineAffectedModules(job);
+    // Determine affected modules based on action type
+    const affectedModules = this.getAffectedModules(job);
 
-    // 2. Publish sync required event
+    // Publish sync event
     orchestrator.publishEvent({
       type: "sync_required",
       timestamp: new Date(),
-      source: this.syncId,
-      data: {
-        jobId: job.id,
-        actionType: job.actionType,
-        targetEntityId: job.targetEntityId,
-        status: job.status,
-      },
+      source: "post-execution-sync",
+      data: { job },
       affectedModules,
     });
 
-    // 3. Directly trigger the sync engine for immediate UI consistency
+    // Trigger sync engine
     await syncEngine.syncAffectedModules(affectedModules);
-    
-    // 4. Handle Demo mode specific paper wallet updates if needed
-    if (job.mode === "demo" && job.executionResult?.stateChanges) {
-      this.applyDemoStateChanges(job);
-    }
 
-    console.log(`[PostExecutionSync] Completed sync for ${affectedModules.length} modules`);
+    // Use incremental refresh for targeted entity updates
+    if (job.targetEntityType === "position" && job.targetEntityId) {
+      await incrementalRefreshService.refreshAfterPositionChange(
+        job.targetEntityId,
+        job.mode
+      );
+    } else if (job.targetEntityType === "wallet" && job.walletId) {
+      await incrementalRefreshService.refreshAfterWalletChange(
+        job.walletId,
+        job.mode
+      );
+    } else {
+      await incrementalRefreshService.refreshAfterPortfolioChange(job.mode);
+    }
   }
 
   /**
@@ -92,22 +93,6 @@ export class PostExecutionSync {
     }
     
     return Array.from(modules);
-  }
-
-  /**
-   * Applies simulated state changes to the local demo store
-   */
-  private applyDemoStateChanges(job: ExecutionJob): void {
-    const store = useAppStore.getState();
-    const changes = job.executionResult?.stateChanges;
-    
-    if (!changes) return;
-    
-    console.log(`[PostExecutionSync] Applying demo state changes for job ${job.id}`);
-    
-    // Note: In a fully implemented system, this would explicitly update 
-    // the paperWallets array with the exact simulated token transfers.
-    // The ExecutionResult.stateChanges would contain the delta to apply.
   }
 }
 
