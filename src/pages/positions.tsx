@@ -92,12 +92,12 @@ export default function Positions() {
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
   const mode = useAppStore((state) => state.mode);
-  const positions = useAppStore((state) => state.positions);
+  const storePositions = useAppStore((state) => state.positions);
 
   // Listen for mode changes
   useEffect(() => {
     const unsubscribe = orchestrator.subscribe((event) => {
-      if (event.type === "mode.changed") {
+      if (event.type === "MODE_CHANGED") {
         console.log("[Positions] Mode changed, refreshing positions");
       }
     });
@@ -105,16 +105,16 @@ export default function Positions() {
   }, []);
 
   // Use store positions if available, otherwise use mock data
-  const displayPositions = positions.length > 0 ? positions : mockPositions;
+  const displayPositions = storePositions.length > 0 ? storePositions : mockPositions as any;
 
-  const filteredPositions = displayPositions.filter((position) => {
+  const filteredPositions = displayPositions.filter((position: any) => {
     const matchesStatus = filterStatus === "all" || position.status === filterStatus;
     const matchesChain = filterChain === "all" || position.chain === filterChain;
     const matchesSearch = position.pair.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesStatus && matchesChain && matchesSearch;
   });
 
-  const handleAddLiquidity = (position: Position) => {
+  const handleAddLiquidity = (position: any) => {
     if (mode.current === "shadow") {
       toast({
         title: "Shadow Mode - Read Only",
@@ -130,7 +130,7 @@ export default function Positions() {
     });
   };
 
-  const handleHarvest = (position: Position) => {
+  const handleHarvest = (position: any) => {
     if (mode.current === "shadow") {
       toast({
         title: "Shadow Mode - Read Only",
@@ -146,7 +146,7 @@ export default function Positions() {
     });
   };
 
-  const handleCompound = (position: Position) => {
+  const handleCompound = (position: any) => {
     if (mode.current === "shadow") {
       toast({
         title: "Shadow Mode - Read Only",
@@ -162,7 +162,7 @@ export default function Positions() {
     });
   };
 
-  const handleRebalance = (position: Position) => {
+  const handleRebalance = (position: any) => {
     if (mode.current === "shadow") {
       toast({
         title: "Shadow Mode - Read Only",
@@ -178,7 +178,7 @@ export default function Positions() {
     });
   };
 
-  const handleClosePosition = (position: Position) => {
+  const handleClosePosition = (position: any) => {
     if (mode.current === "shadow") {
       toast({
         title: "Shadow Mode - Read Only",
@@ -195,7 +195,7 @@ export default function Positions() {
     });
   };
 
-  const handleViewDetails = (position: Position) => {
+  const handleViewDetails = (position: any) => {
     toast({
       title: "Position Details",
       description: `Opening detailed view for ${position.pair}`,
@@ -306,7 +306,7 @@ export default function Positions() {
                         </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Opened {position.openedAt} • APR {position.apr}
+                        Opened {position.openedAt} • APR {position.apr || position.expectedApy || "18.5%"}
                       </p>
                     </div>
 

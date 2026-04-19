@@ -25,7 +25,7 @@ export default function Dashboard() {
   // Listen for mode changes and refresh data
   useEffect(() => {
     const unsubscribe = orchestrator.subscribe((event) => {
-      if (event.type === "mode.changed") {
+      if (event.type === "MODE_CHANGED") {
         console.log("[Dashboard] Mode changed, refreshing data", event.data);
         // Refresh dashboard data when mode changes
         handleDataRefresh();

@@ -66,7 +66,7 @@ export function PortfolioMetrics({ mode }: PortfolioMetricsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            ${portfolio.totalValueUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            ${Number(portfolio.totalValueUsd || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {mode === "demo" ? "Simulated total" : mode === "shadow" ? "Estimated value" : "Real-time value"}
@@ -84,7 +84,7 @@ export function PortfolioMetrics({ mode }: PortfolioMetricsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            ${portfolio.deployedCapital.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            ${Number(portfolio.deployedCapital || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {mode === "demo" ? "In simulated positions" : mode === "shadow" ? "Recommended deployment" : "In active positions"}
@@ -102,7 +102,7 @@ export function PortfolioMetrics({ mode }: PortfolioMetricsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            ${portfolio.idleCapital.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            ${Number(portfolio.idleCapital || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {mode === "demo" ? "Simulated undeployed" : mode === "shadow" ? "Available in wallet" : "Undeployed funds"}
@@ -130,7 +130,7 @@ export function PortfolioMetrics({ mode }: PortfolioMetricsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold metric-positive">
-            +${portfolio.dailyEarnings.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            +${Number(portfolio.dailyEarnings || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {mode === "demo" ? "Simulated today" : mode === "shadow" ? "Projected per day" : "Realized + Projected"}
@@ -158,7 +158,7 @@ export function PortfolioMetrics({ mode }: PortfolioMetricsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold metric-positive">
-            +${portfolio.monthlyEarnings.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            +${Number(portfolio.monthlyEarnings || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {mode === "demo" ? "Simulated MTD" : mode === "shadow" ? "Projected 30d" : "MTD + Projected"}
@@ -210,7 +210,7 @@ export function PortfolioMetrics({ mode }: PortfolioMetricsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold metric-positive">
-            +${portfolio.realizedEarnings.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            +${Number(portfolio.realizedEarnings || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {mode === "demo" ? "Simulated all-time" : mode === "shadow" ? "No execution yet" : "All-time claimed"}
@@ -244,7 +244,7 @@ export function PortfolioMetrics({ mode }: PortfolioMetricsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-primary">
-            +${portfolio.projectedEarnings.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            +${Number(portfolio.projectedEarnings || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {mode === "demo" ? "Simulated projection" : mode === "shadow" ? "If positions opened" : "Based on current APY"}

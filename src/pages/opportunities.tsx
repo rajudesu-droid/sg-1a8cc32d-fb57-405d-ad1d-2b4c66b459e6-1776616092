@@ -115,7 +115,7 @@ export default function Opportunities() {
   // Listen for mode changes
   useEffect(() => {
     const unsubscribe = orchestrator.subscribe((event) => {
-      if (event.type === "mode.changed") {
+      if (event.type === "MODE_CHANGED") {
         console.log("[Opportunities] Mode changed, refreshing data");
         handleRefreshPools();
       }
