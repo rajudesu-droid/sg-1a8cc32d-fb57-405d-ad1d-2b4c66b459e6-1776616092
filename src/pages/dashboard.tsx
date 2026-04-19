@@ -25,6 +25,8 @@ import { ActivePositions } from "@/components/dashboard/ActivePositions";
 import { RecentAlerts } from "@/components/dashboard/RecentAlerts";
 import { NetworkBalances } from "@/components/dashboard/NetworkBalances";
 import { ConnectedWallets } from "@/components/dashboard/ConnectedWallets";
+import { ExecutionMonitor } from "@/components/ExecutionMonitor";
+import { ModeBanner } from "@/components/ModeBanner";
 import { orchestrator } from "@/core/orchestrator";
 import { useRouter } from "next/router";
 
@@ -386,12 +388,11 @@ export default function Dashboard() {
         </div>
 
         {/* Additional Dashboard Sections */}
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2">
+          <PortfolioMetrics />
+          <ExecutionMonitor />
           <ActivePositions />
           <RecentAlerts />
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-2">
           <NetworkBalances />
           <ConnectedWallets />
         </div>

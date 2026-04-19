@@ -17,6 +17,9 @@ import {
   withdrawalEngine,
   policyEngine,
   multiProtocolScanner,
+  validationEngine,
+  triggerEngine,
+  executionEngine,
 } from "./engines";
 import { protocolRegistry } from "./protocols/ProtocolRegistry";
 
@@ -57,6 +60,9 @@ export async function initializeApp(): Promise<void> {
   console.log("=== Initialization Complete ===");
   console.log(`[Init] ${protocolRegistry.getEnabledAdapters().length} protocols enabled`);
   console.log(`[Init] ${protocolRegistry.getEnabledChains().length} chains supported`);
+  console.log(`[Init] Execution engine: ${executionEngine ? 'READY' : 'NOT FOUND'}`);
+  console.log(`[Init] Validation engine: ${validationEngine ? 'READY' : 'NOT FOUND'}`);
+  console.log(`[Init] Trigger engine: ${triggerEngine ? 'READY' : 'NOT FOUND'}`);
 }
 
 // Export engine instances for direct access when needed
