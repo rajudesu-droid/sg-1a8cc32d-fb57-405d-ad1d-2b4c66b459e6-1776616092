@@ -13,7 +13,7 @@ interface PollingConfig {
 }
 
 export class PollingManager {
-  private intervals = new Map<string, NodeJS.Timeout>();
+  private intervals = new Map<string, ReturnType<typeof setInterval>>();
   
   /**
    * Polling intervals by category and mode (milliseconds)

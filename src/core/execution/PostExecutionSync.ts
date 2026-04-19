@@ -16,7 +16,7 @@ export class PostExecutionSync {
     console.log(`[PostExecutionSync] Syncing after ${job.actionType} execution`);
 
     // Determine affected modules based on action type
-    const affectedModules = this.getAffectedModules(job);
+    const affectedModules = this.determineAffectedModules(job);
 
     // Publish sync event
     orchestrator.publishEvent({
