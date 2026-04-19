@@ -383,12 +383,12 @@ export class ValidationEngine {
     // Estimate gas cost (simplified)
     const estimatedGas = this.estimateGasCost(trigger.actionType);
 
-    if (estimatedGas > policy.maxDailyGasBudget) {
+    if (estimatedGas > policy.dailyGasBudget) {
       return {
         checkName: "gas_limit",
         passed: false,
         blocking: false, // Warning
-        message: `Estimated gas ($${estimatedGas}) exceeds daily budget ($${policy.maxDailyGasBudget})`,
+        message: `Estimated gas ($${estimatedGas}) exceeds daily budget ($${policy.dailyGasBudget})`,
       };
     }
 
