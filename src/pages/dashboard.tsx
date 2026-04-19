@@ -389,7 +389,7 @@ export default function Dashboard() {
 
         {/* Additional Dashboard Sections */}
         <div className="grid gap-6 md:grid-cols-2">
-          <PortfolioMetrics />
+          <PortfolioMetrics mode={mode.current} />
           <ExecutionMonitor />
           <ActivePositions />
           <RecentAlerts />
