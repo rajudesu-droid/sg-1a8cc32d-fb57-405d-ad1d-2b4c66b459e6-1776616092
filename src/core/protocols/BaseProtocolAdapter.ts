@@ -23,15 +23,16 @@ export abstract class BaseProtocolAdapter implements IProtocolAdapter {
 
   // ============================================================================
   // DISCOVERY METHODS
-  // Subclasses must implement pool/farm discovery
   // ============================================================================
 
   abstract getSupportedPools(chain: string): Promise<string[]>;
-  abstract getEligibleFarms(chain: string, walletAddress?: string): Promise<string[]>;
+
+  async getEligibleFarms(chain: string, walletAddress?: string): Promise<string[]> {
+    return [];
+  }
 
   // ============================================================================
   // METRICS METHODS
-  // Subclasses must implement metrics fetching
   // ============================================================================
 
   abstract getPoolMetrics(chain: string, poolAddress: string): Promise<PoolMetrics>;
@@ -39,35 +40,42 @@ export abstract class BaseProtocolAdapter implements IProtocolAdapter {
 
   // ============================================================================
   // WALLET INTEGRATION
-  // Subclasses must implement wallet compatibility checks
   // ============================================================================
 
-  abstract getWalletEligiblePairs(chain: string, walletAddress: string): Promise<string[]>;
+  async getWalletEligiblePairs(chain: string, walletAddress: string): Promise<string[]> {
+    return [];
+  }
 
   // ============================================================================
   // QUOTE METHODS
-  // Subclasses must implement entry/exit quoting
   // ============================================================================
 
-  abstract quoteEntry(chain: string, poolAddress: string, amountUsd: number): Promise<EntryQuote>;
-  abstract quoteExit(chain: string, poolAddress: string, positionId: string): Promise<ExitQuote>;
+  async quoteEntry(chain: string, poolAddress: string, amountUsd: number): Promise<EntryQuote> {
+    throw new Error("Method not implemented for " + this.protocolName);
+  }
+
+  async quoteExit(chain: string, poolAddress: string, positionId: string): Promise<ExitQuote> {
+    throw new Error("Method not implemented for " + this.protocolName);
+  }
 
   // ============================================================================
   // EXECUTION METHODS
-  // Subclasses must implement position management
   // ============================================================================
 
-  abstract openPosition(
-    chain: string,
-    poolAddress: string,
-    params: PositionParams
-  ): Promise<string>;
-  abstract addLiquidity(chain: string, positionId: string, amountUsd: number): Promise<void>;
-  abstract removeLiquidity(chain: string, positionId: string, percentage: number): Promise<void>;
+  async openPosition(chain: string, poolAddress: string, params: PositionParams): Promise<string> {
+    throw new Error("Method not implemented for " + this.protocolName);
+  }
+
+  async addLiquidity(chain: string, positionId: string, amountUsd: number): Promise<void> {
+    throw new Error("Method not implemented for " + this.protocolName);
+  }
+
+  async removeLiquidity(chain: string, positionId: string, percentage: number): Promise<void> {
+    throw new Error("Method not implemented for " + this.protocolName);
+  }
 
   // ============================================================================
   // STAKING METHODS
-  // Default implementations (can be overridden)
   // ============================================================================
 
   async stakeIfRequired(chain: string, positionId: string): Promise<void> {
@@ -82,74 +90,25 @@ export abstract class BaseProtocolAdapter implements IProtocolAdapter {
 
   // ============================================================================
   // REWARD METHODS
-  // Subclasses must implement harvest logic
   // ============================================================================
 
-  abstract harvestRewards(chain: string, positionId: string): Promise<HarvestResult>;
+  async harvestRewards(chain: string, positionId: string): Promise<HarvestResult> {
+    throw new Error("Method not implemented for " + this.protocolName);
+  }
 
   // ============================================================================
   // POSITION STATE
-  // Subclasses must implement position state fetching
   // ============================================================================
 
-  abstract getPositionState(chain: string, positionId: string): Promise<PositionState>;
+  async getPositionState(chain: string, positionId: string): Promise<PositionState> {
+    throw new Error("Method not implemented for " + this.protocolName);
+  }
 
   // ============================================================================
   // NORMALIZATION
-  // Subclasses must implement opportunity normalization
   // ============================================================================
 
-  abstract normalizeOpportunity(
-    chain: string,
-    poolAddress: string
-  ): Promise<NormalizedOpportunity>;
-
-  // Optional/Default implementations for the rest of IProtocolAdapter interface
-  // This allows rapid integration of new DEXs for discovery/scoring without needing full execution capability right away
-
-  async getEligibleFarms(chain: string, poolAddress: string): Promise<any[]> {
-    return [];
-  }
-
-  async getWalletEligiblePairs(chain: string, walletAddress: string): Promise<string[]> {
-    return [];
-  }
-
-  async quoteEntry(chain: string, poolAddress: string, amounts: { token0: number; token1: number }): Promise<any> {
-    throw new Error("Method not implemented for " + this.protocolName);
-  }
-
-  async quoteExit(chain: string, poolAddress: string, liquidity: string): Promise<any> {
-    throw new Error("Method not implemented for " + this.protocolName);
-  }
-
-  async openPosition(chain: string, poolAddress: string, amounts: { token0: number; token1: number }, slippage: number): Promise<any> {
-    throw new Error("Method not implemented for " + this.protocolName);
-  }
-
-  async addLiquidity(chain: string, positionId: string, amounts: { token0: number; token1: number }, slippage: number): Promise<any> {
-    throw new Error("Method not implemented for " + this.protocolName);
-  }
-
-  async removeLiquidity(chain: string, positionId: string, liquidity: string, slippage: number): Promise<any> {
-    throw new Error("Method not implemented for " + this.protocolName);
-  }
-
-  async stakeIfRequired(chain: string, positionId: string): Promise<any> {
-    throw new Error("Method not implemented for " + this.protocolName);
-  }
-
-  async unstakeIfRequired(chain: string, positionId: string): Promise<any> {
-    throw new Error("Method not implemented for " + this.protocolName);
-  }
-
-  async harvestRewards(chain: string, positionId: string): Promise<any> {
-    throw new Error("Method not implemented for " + this.protocolName);
-  }
-
-  async getPositionState(chain: string, positionId: string): Promise<any> {
-    throw new Error("Method not implemented for " + this.protocolName);
-  }
+  abstract normalizeOpportunity(chain: string, poolAddress: string): Promise<NormalizedOpportunity>;
 
   // ============================================================================
   // HELPER METHODS
@@ -166,10 +125,6 @@ export abstract class BaseProtocolAdapter implements IProtocolAdapter {
 
   protected generateOpportunityId(chain: string, poolAddress: string): string {
     return `${this.protocolName}-${chain}-${poolAddress}`.toLowerCase();
-  }
-
-  protected calculateTotalYield(baseYield: number, farmRewardYield: number): number {
-    return baseYield + farmRewardYield;
   }
 
   protected estimateGasCost(chain: string, operationType: "entry" | "exit" | "harvest"): number {
