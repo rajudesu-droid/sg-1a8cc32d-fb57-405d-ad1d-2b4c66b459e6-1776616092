@@ -18,21 +18,41 @@ export type AssetKind = "native" | "token" | "lp" | "position";
 export type AssetSource = "detected" | "manual" | "simulated";
 
 export interface Asset {
-  id: string;
+  id: string;  // Unique asset ID from createAssetId()
+  
+  // Chain context
   chainFamily: ChainFamily;
   network: string;
+  
+  // Asset type
   assetKind: AssetKind;
-  tokenStandard?: string;
-  address?: string; // contract/mint/issuer
+  tokenStandard?: string;  // ERC20, BEP20, TRC20, SPL, etc.
+  
+  // Token identification (chain-specific)
+  contractAddress?: string;  // EVM/TRON tokens
+  mintAddress?: string;      // Solana tokens
+  issuer?: string;           // XRPL issued assets
+  currency?: string;         // XRPL issued assets
+  
+  // Display metadata
   symbol: string;
-  name: string;
+  name?: string;
   decimals: number;
+  logoUrl?: string;
+  
+  // Balance and value
   balance: string;
-  source: AssetSource;
-  isNative: boolean;
+  balanceRaw?: string;
   priceUsd?: number;
   valueUsd?: number;
-  lastUpdated: Date;
+  
+  // Source tracking
+  source: AssetSource;
+  
+  // Additional metadata
+  isNative?: boolean;
+  verified?: boolean;
+  lastUpdated?: Date;
 }
 
 export interface Wallet {

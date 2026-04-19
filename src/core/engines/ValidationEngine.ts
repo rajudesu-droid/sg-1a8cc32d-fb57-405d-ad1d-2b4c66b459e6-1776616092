@@ -10,6 +10,7 @@ import type {
   ValidationResult,
   ValidationCheck,
 } from "../contracts/actions";
+import { createAssetId, findAssetByIdentity, assetsMatch, extractIdentity } from "../utils/assetIdentity";
 
 export class ValidationEngine {
   private engineId = "validation-engine";
