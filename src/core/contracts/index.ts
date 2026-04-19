@@ -276,7 +276,8 @@ export type EventType =
   | "withdrawal_planned"
   | "audit_logged"
   | "simulation_updated"
-  | "sync_required";
+  | "sync_required"
+  | "settings_changed";
 
 export interface AppEvent {
   type: EventType;

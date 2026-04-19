@@ -109,6 +109,8 @@ export class ProtocolRegistry {
   ];
 
   constructor() {
+    this.initializeDefaultChains();
+    this.initializeDefaultProtocols();
     this.initializeAdapters();
   }
 
@@ -231,6 +233,17 @@ export class ProtocolRegistry {
     return enabledProtocols
       .map(config => this.adapters.get(config.name))
       .filter((adapter): adapter is BaseProtocolAdapter => adapter !== undefined);
+  }
+
+  getAllProtocols(): ProtocolRegistryEntry[] {
+    return this.registry;
+  }
+
+  getAllChains(): ChainConfig[] {
+    if (this.chains.size === 0) {
+      this.initializeDefaultChains();
+    }
+    return Array.from(this.chains.values());
   }
 
   // ============================================================================
