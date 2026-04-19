@@ -210,7 +210,7 @@ export class UniswapV3Adapter extends BaseProtocolAdapter {
     this.validateChain(chain);
     
     const metrics = await this.getPoolMetrics(chain, poolAddress);
-    const rewardMetrics = await getRewardMetrics(chain, poolAddress);
+    const rewardMetrics = await this.getRewardMetrics(chain, poolAddress);
     
     return {
       id: this.generateOpportunityId(chain, poolAddress),
