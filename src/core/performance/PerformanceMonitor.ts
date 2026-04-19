@@ -155,6 +155,34 @@ export class PerformanceMonitor {
   }
 
   /**
+   * Alias for clearMetrics
+   */
+  reset(): void {
+    this.clearMetrics();
+  }
+
+  /**
+   * Get formatted metrics for UI
+   */
+  getMetrics() {
+    const operations: {type: string, duration: number}[] = [];
+    for (const [op, metrics] of this.metrics.entries()) {
+      metrics.forEach(m => {
+        if (m.duration !== undefined) {
+          operations.push({ type: op, duration: m.duration });
+        }
+      });
+    }
+
+    const slowest = [...operations].sort((a, b) => b.duration - a.duration);
+
+    return {
+      operations,
+      slowest
+    };
+  }
+
+  /**
    * Track async operation
    */
   async trackAsync<T>(

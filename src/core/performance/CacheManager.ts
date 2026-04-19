@@ -86,6 +86,13 @@ export class CacheManager {
   }
 
   /**
+   * Alias for clearAll
+   */
+  clear(): void {
+    this.clearAll();
+  }
+
+  /**
    * Get or fetch pattern
    */
   async getOrFetch<T>(

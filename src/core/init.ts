@@ -51,15 +51,15 @@ export async function initializeApp(): Promise<void> {
 
   // Step 6: Start polling manager
   const mode = "demo"; // Will be set from store later
-  pollingManager.startPolling("active_positions", mode, async () => {
+  pollingManager.startPolling("active_positions", async () => {
     await incrementalRefreshService.refreshActivePositions(mode);
-  });
-  pollingManager.startPolling("opportunities", mode, async () => {
-    await multiProtocolScanner.scanOpportunities();
-  });
-  pollingManager.startPolling("wallet_balances", mode, async () => {
+  }, mode);
+  pollingManager.startPolling("opportunities", async () => {
+    await multiProtocolScanner.scanAllOpportunities();
+  }, mode);
+  pollingManager.startPolling("wallet_balances", async () => {
     await incrementalRefreshService.refreshWalletBalances(mode);
-  });
+  }, mode);
   console.log("[Init] Polling manager started");
 
   // Step 7: Verify all domain engines are registered

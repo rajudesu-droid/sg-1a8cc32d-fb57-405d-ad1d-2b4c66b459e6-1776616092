@@ -139,6 +139,28 @@ export class IncrementalRefreshService {
       changedEntityType: "portfolio",
     });
   }
+
+  /**
+   * Refresh all active positions
+   */
+  async refreshActivePositions(mode: "demo" | "shadow" | "live"): Promise<void> {
+    await this.refreshIncremental({
+      mode,
+      priority: "normal",
+      changedEntityType: "position",
+    });
+  }
+
+  /**
+   * Refresh wallet balances
+   */
+  async refreshWalletBalances(mode: "demo" | "shadow" | "live"): Promise<void> {
+    await this.refreshIncremental({
+      mode,
+      priority: "normal",
+      changedEntityType: "wallet",
+    });
+  }
 }
 
 export const incrementalRefreshService = new IncrementalRefreshService();
