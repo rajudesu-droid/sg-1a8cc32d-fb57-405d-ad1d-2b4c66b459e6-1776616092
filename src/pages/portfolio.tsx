@@ -130,8 +130,8 @@ export default function Portfolio() {
           symbol: asset.symbol,
           name: asset.name,
           network: asset.network,
-          balance: asset.balance,
-          value: asset.balance * (asset.priceUsd || 0),
+          balance: parseFloat(asset.balance) || 0,
+          value: (parseFloat(asset.balance) || 0) * (asset.priceUsd || 0),
           price: asset.priceUsd || 0,
           change24h: 0,
         }));
@@ -171,8 +171,8 @@ export default function Portfolio() {
           symbol: asset.symbol,
           name: asset.name,
           network: asset.network,
-          balance: asset.balance,
-          value: asset.balance * (asset.priceUsd || 0),
+          balance: parseFloat(asset.balance) || 0,
+          value: (parseFloat(asset.balance) || 0) * (asset.priceUsd || 0),
           price: asset.priceUsd || 0,
           change24h: 0,
         }));
