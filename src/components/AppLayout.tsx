@@ -38,7 +38,7 @@ const navItems = [
   { href: "/automation", label: "Automation", icon: Zap },
   { href: "/withdraw", label: "Withdraw", icon: ArrowDownToLine },
   { href: "/wallets", label: "Wallets", icon: Wallet },
-  { href: "/demo", label: "Demo Portfolio", icon: Beaker },
+  { href: "/portfolio", label: "Portfolio", icon: Beaker },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/admin", label: "System Monitor", icon: Activity },
 ];
