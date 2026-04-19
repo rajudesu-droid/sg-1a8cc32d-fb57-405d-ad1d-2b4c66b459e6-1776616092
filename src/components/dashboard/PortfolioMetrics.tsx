@@ -1,215 +1,256 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Wallet, DollarSign, TrendingDown, Info, CalendarDays, Clock, Target, Sparkles } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Info, TrendingUp, DollarSign, Wallet, Activity } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useAppStore } from "@/store";
 
 interface PortfolioMetricsProps {
   mode: "demo" | "shadow" | "live";
 }
 
 export function PortfolioMetrics({ mode }: PortfolioMetricsProps) {
-  const getModeLabel = () => {
-    if (mode === "demo") return { text: "Simulated", color: "bg-muted text-muted-foreground" };
-    if (mode === "shadow") return { text: "Estimated", color: "bg-accent/20 text-accent" };
-    return { text: "Live", color: "bg-success/20 text-success" };
+  const portfolio = useAppStore((state) => state.portfolio);
+
+  const getModeLabel = (baseLabel: string) => {
+    switch (mode) {
+      case "demo":
+        return `${baseLabel} (Simulated)`;
+      case "shadow":
+        return `${baseLabel} (Estimated)`;
+      case "live":
+        return baseLabel;
+    }
   };
 
-  const modeLabel = getModeLabel();
+  const getValueLabel = (label: string) => {
+    switch (mode) {
+      case "demo":
+        return `${label} - Simulated`;
+      case "shadow":
+        return `${label} - Estimated from wallet data`;
+      case "live":
+        return `${label} - Realized from live positions`;
+    }
+  };
 
-  // Earnings KPIs
-  const earningsKPIs = [
-    {
-      label: "Daily Earnings",
-      value: "$24.80",
-      realized: "$12.40",
-      projected: "$12.40",
-      icon: Clock,
-      note: mode === "demo" 
-        ? "Simulated fees + rewards for today"
-        : mode === "shadow"
-        ? "Estimated based on current positions"
-        : "Today's realized + projected fees",
-      color: "text-primary",
-    },
-    {
-      label: "Monthly Earnings",
-      value: "$744.00",
-      realized: "$186.50",
-      projected: "$557.50",
-      icon: CalendarDays,
-      note: mode === "demo"
-        ? "Simulated Apr 2026 total"
-        : mode === "shadow"
-        ? "Estimated Apr 2026 total"
-        : "Apr realized ($186.50) + projected to month-end",
-      color: "text-primary",
-    },
-    {
-      label: "Realized Earnings",
-      value: "$351.30",
-      realized: "$351.30",
-      projected: "$0.00",
-      icon: TrendingUp,
-      note: mode === "demo"
-        ? "Simulated claimed fees + rewards"
-        : mode === "shadow"
-        ? "N/A - no execution in Shadow mode"
-        : "Actually claimed fees + rewards (all-time)",
-      color: "text-success",
-    },
-    {
-      label: "Projected 30-Day",
-      value: "$744.00",
-      realized: "$0.00",
-      projected: "$744.00",
-      icon: Target,
-      note: mode === "demo"
-        ? "Simulated 30-day projection"
-        : "Estimated based on current APYs (not guaranteed)",
-      color: "text-accent",
-    },
-  ];
+  const getDailyEarningsNote = () => {
+    switch (mode) {
+      case "demo":
+        return "Simulated daily earnings from demo positions. Based on mock fee accrual and farm rewards.";
+      case "shadow":
+        return "Projected daily earnings based on current wallet assets and available opportunities. No positions open yet.";
+      case "live":
+        return "Realized fees + rewards from active positions today, plus projected earnings from current APY.";
+    }
+  };
 
-  // Portfolio KPIs
-  const portfolioKPIs = [
-    {
-      label: "Total Portfolio Value",
-      value: "$18,805.60",
-      change: "+$405.90",
-      changePercent: "+2.21%",
-      icon: Wallet,
-      note: "Deployed positions + idle balances",
-      color: "text-foreground",
-    },
-    {
-      label: "Deployed Capital",
-      value: "$18,400.00",
-      change: "+3.2%",
-      icon: Sparkles,
-      note: "Active in LP positions across 3 chains",
-      color: "text-primary",
-    },
-    {
-      label: "Idle Capital",
-      value: "$405.60",
-      change: "2.2%",
-      icon: DollarSign,
-      note: "Available for deployment",
-      color: "text-muted-foreground",
-    },
-    {
-      label: "Estimated Net APY",
-      value: "11.8%",
-      change: "Weighted",
-      icon: TrendingUp,
-      note: mode === "demo"
-        ? "Simulated weighted average APY"
-        : "Weighted average across active positions",
-      color: "text-success",
-    },
-  ];
+  const getMonthlyEarningsNote = () => {
+    switch (mode) {
+      case "demo":
+        return "Simulated monthly earnings. Calculated from demo position performance over 30 days.";
+      case "shadow":
+        return "Projected monthly earnings if recommended positions were opened. Based on current market conditions.";
+      case "live":
+        return "Month-to-date realized earnings + projected remainder based on current positions and APY.";
+    }
+  };
 
   return (
-    <TooltipProvider>
-      <div className="space-y-6">
-        {/* Mode Badge */}
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className={`text-xs ${modeLabel.color}`}>
-            {mode === "demo" ? "Demo Mode" : mode === "shadow" ? "Shadow Mode" : "Live Mode"} - {modeLabel.text}
-          </Badge>
-          {mode !== "live" && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
-                <p className="text-xs">
-                  {mode === "demo" 
-                    ? "All values are simulated. No real funds or transactions."
-                    : "Read-only mode. Showing estimates based on current positions. No execution."}
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </div>
-
-        {/* Earnings KPIs */}
-        <div>
-          <h3 className="text-sm font-semibold text-muted-foreground mb-3">Earnings Overview</h3>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {earningsKPIs.map((metric, index) => (
-              <Card key={index} className="card-gradient border-border/50">
-                <CardContent className="p-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <metric.icon className={`h-4 w-4 ${metric.color}`} />
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">
-                          <p className="text-xs">{metric.note}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground font-medium">{metric.label}</p>
-                      <p className={`text-2xl font-semibold ${metric.color} font-mono`}>
-                        {metric.value}
-                      </p>
-                    </div>
-                    {mode === "live" && parseFloat(metric.realized.replace(/[$,]/g, "")) > 0 && (
-                      <div className="pt-2 border-t border-border/30 space-y-1">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">Realized</span>
-                          <span className="font-mono text-success">{metric.realized}</span>
-                        </div>
-                        {parseFloat(metric.projected.replace(/[$,]/g, "")) > 0 && (
-                          <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">Projected</span>
-                            <span className="font-mono text-accent">{metric.projected}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    <p className="text-xs text-muted-foreground/70 pt-1">{metric.note}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      {/* Total Portfolio Value */}
+      <Card className="card-gradient border-border/50">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            {getModeLabel("Portfolio Value")}
+          </CardTitle>
+          <DollarSign className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            ${portfolio.totalValueUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
-        </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {mode === "demo" ? "Simulated total" : mode === "shadow" ? "Estimated value" : "Real-time value"}
+          </p>
+        </CardContent>
+      </Card>
 
-        {/* Portfolio KPIs */}
-        <div>
-          <h3 className="text-sm font-semibold text-muted-foreground mb-3">Portfolio Metrics</h3>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {portfolioKPIs.map((metric, index) => (
-              <Card key={index} className="card-gradient border-border/50">
-                <CardContent className="p-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <metric.icon className={`h-4 w-4 ${metric.color}`} />
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground font-medium">{metric.label}</p>
-                      <p className={`text-2xl font-semibold ${metric.color}`}>
-                        {metric.value}
-                      </p>
-                      {metric.change && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {metric.change} {metric.changePercent && `(${metric.changePercent})`}
-                        </p>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground/70 pt-1">{metric.note}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+      {/* Deployed Capital */}
+      <Card className="card-gradient border-border/50">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            {getModeLabel("Deployed Capital")}
+          </CardTitle>
+          <Activity className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            ${portfolio.deployedCapital.toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
-        </div>
-      </div>
-    </TooltipProvider>
+          <p className="text-xs text-muted-foreground mt-1">
+            {mode === "demo" ? "In simulated positions" : mode === "shadow" ? "Recommended deployment" : "In active positions"}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Idle Capital */}
+      <Card className="card-gradient border-border/50">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            {getModeLabel("Idle Capital")}
+          </CardTitle>
+          <Wallet className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            ${portfolio.idleCapital.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {mode === "demo" ? "Simulated undeployed" : mode === "shadow" ? "Available in wallet" : "Undeployed funds"}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Daily Earnings */}
+      <Card className="card-gradient border-border/50">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            {getModeLabel("Daily Earnings")}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p className="text-xs">{getDailyEarningsNote()}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </CardTitle>
+          <TrendingUp className="h-4 w-4 text-success" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold metric-positive">
+            +${portfolio.dailyEarnings.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {mode === "demo" ? "Simulated today" : mode === "shadow" ? "Projected per day" : "Realized + Projected"}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Monthly Earnings */}
+      <Card className="card-gradient border-border/50">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            {getModeLabel("Monthly Earnings")}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p className="text-xs">{getMonthlyEarningsNote()}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </CardTitle>
+          <TrendingUp className="h-4 w-4 text-success" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold metric-positive">
+            +${portfolio.monthlyEarnings.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {mode === "demo" ? "Simulated MTD" : mode === "shadow" ? "Projected 30d" : "MTD + Projected"}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Net APY */}
+      <Card className="card-gradient border-border/50 md:col-span-2 lg:col-span-1">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            {getModeLabel("Net APY")}
+          </CardTitle>
+          <TrendingUp className="h-4 w-4 text-success" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold metric-positive">
+            {portfolio.netApy.toFixed(2)}%
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {mode === "demo" ? "Simulated portfolio APY" : mode === "shadow" ? "Projected if deployed" : "Current portfolio APY"}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Realized Earnings */}
+      <Card className="card-gradient border-border/50 md:col-span-2 lg:col-span-2">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            {getModeLabel("Realized Earnings")}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p className="text-xs">
+                    {mode === "demo"
+                      ? "Simulated cumulative earnings from all demo actions."
+                      : mode === "shadow"
+                      ? "No realized earnings in Shadow mode. Switch to Live to execute."
+                      : "All-time realized fees and rewards from harvested positions."}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </CardTitle>
+          <DollarSign className="h-4 w-4 text-success" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold metric-positive">
+            +${portfolio.realizedEarnings.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {mode === "demo" ? "Simulated all-time" : mode === "shadow" ? "No execution yet" : "All-time claimed"}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Projected 30-Day Earnings */}
+      <Card className="card-gradient border-border/50 md:col-span-2 lg:col-span-2">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            {getModeLabel("Projected 30-Day")}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p className="text-xs">
+                    {mode === "demo"
+                      ? "Simulated forward-looking 30-day earnings estimate based on current demo positions."
+                      : mode === "shadow"
+                      ? "Projected earnings if recommended positions were deployed for 30 days."
+                      : "Forward-looking estimate based on current positions, APY, and market conditions."}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </CardTitle>
+          <TrendingUp className="h-4 w-4 text-primary" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-primary">
+            +${portfolio.projectedEarnings.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {mode === "demo" ? "Simulated projection" : mode === "shadow" ? "If positions opened" : "Based on current APY"}
+          </p>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
