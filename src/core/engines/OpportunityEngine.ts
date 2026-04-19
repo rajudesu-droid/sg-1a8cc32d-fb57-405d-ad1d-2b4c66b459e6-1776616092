@@ -6,6 +6,7 @@
 import { orchestrator } from "@/core/orchestrator";
 import { useAppStore } from "@/store";
 import type { Opportunity, Asset, EngineResult, AppEvent } from "@/core/contracts";
+import { multiProtocolScanner } from "./MultiProtocolOpportunityEngine";
 
 export class OpportunityEngine {
   private scanInProgress = false;
@@ -26,64 +27,23 @@ export class OpportunityEngine {
     }
 
     this.scanInProgress = true;
-    console.log("[OpportunityEngine] Scanning pools for", assets.length, "assets");
+    console.log("[OpportunityEngine] Scanning pools across all protocols...");
 
     try {
-      // Mock opportunity discovery (in production, query DEX indexers)
-      const opportunities: Opportunity[] = [
-        {
-          id: "opp-eth-usdt-uniswap-v3",
-          chain: "Ethereum",
-          dex: "Uniswap V3",
-          pair: "ETH/USDT",
-          token0: "ETH",
-          token1: "USDT",
-          feeTier: "0.3%",
-          poolAddress: "0x...",
-          tvl: "45000000",
-          volume24h: "12000000",
-          feeApy: "18.5",
-          rewardApy: "5.2",
-          netApy: "23.7",
-          riskScore: 72,
-          riskLevel: "low",
-          recommended: true,
-          score: 85,
-        },
-        {
-          id: "opp-bnb-usdt-pancake-v3",
-          chain: "BSC",
-          dex: "PancakeSwap V3",
-          pair: "BNB/USDT",
-          token0: "BNB",
-          token1: "USDT",
-          feeTier: "0.25%",
-          poolAddress: "0x...",
-          tvl: "28000000",
-          volume24h: "8500000",
-          feeApy: "22.3",
-          rewardApy: "8.1",
-          netApy: "30.4",
-          riskScore: 68,
-          riskLevel: "medium",
-          recommended: true,
-          score: 75,
-        },
-      ];
-
-      useAppStore.getState().setOpportunities(opportunities);
+      // Delegate to the new MultiProtocolOpportunityEngine
+      const opportunities = await multiProtocolScanner.scanAllOpportunities(true);
 
       await orchestrator.coordinateUpdate(
         "opportunity",
         "opportunities_scanned",
         { count: opportunities.length },
-        ["dashboard"]
+        ["dashboard", "opportunities-page"]
       );
 
       return {
         success: true,
-        data: opportunities,
-        affectedModules: ["dashboard"],
+        data: opportunities as unknown as Opportunity[],
+        affectedModules: ["dashboard", "opportunities-page"],
         events: [],
       };
     } catch (error) {
@@ -100,21 +60,11 @@ export class OpportunityEngine {
 
   // ==================== SCORE OPPORTUNITIES TASK ====================
   async scoreOpportunities(): Promise<EngineResult<void>> {
-    console.log("[OpportunityEngine] Scoring opportunities");
-
-    const opportunities = useAppStore.getState().opportunities;
-    
-    // Recalculate risk scores based on current market conditions
-    const updatedOpportunities = opportunities.map((opp) => ({
-      ...opp,
-      riskScore: this.calculateRiskScore(opp),
-    }));
-
-    useAppStore.getState().setOpportunities(updatedOpportunities);
-
+    // Scoring is now handled centrally during the MultiProtocol scan and normalization phase.
+    console.log("[OpportunityEngine] Scoring is managed by Central Scoring Engine automatically.");
     return {
       success: true,
-      affectedModules: ["opportunities-page"],
+      affectedModules: [],
       events: [],
     };
   }
@@ -123,29 +73,6 @@ export class OpportunityEngine {
   async rescan(): Promise<void> {
     const { assets } = useAppStore.getState().wallet;
     await this.scanPools(assets);
-  }
-
-  // ==================== HELPER METHODS ====================
-  private calculateRiskScore(opp: Opportunity): number {
-    // Mock risk scoring (in production, use real risk models)
-    let score = 100;
-    
-    const tvl = parseFloat(opp.tvl);
-    const volume24h = parseFloat(opp.volume24h);
-    const netApy = parseFloat(opp.netApy);
-
-    // TVL depth
-    if (tvl < 1000000) score -= 20;
-    else if (tvl < 5000000) score -= 10;
-
-    // Volume
-    if (volume24h < tvl * 0.1) score -= 15;
-
-    // APY sustainability
-    if (netApy > 50) score -= 10;
-    else if (netApy > 30) score -= 5;
-
-    return Math.max(0, Math.min(100, score));
   }
 
   // ==================== EVENT HANDLER ====================

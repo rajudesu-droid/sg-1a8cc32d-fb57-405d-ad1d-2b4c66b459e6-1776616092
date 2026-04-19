@@ -1,147 +1,80 @@
 import { AppLayout } from "@/components/AppLayout";
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { TrendingUp, TrendingDown, Search, RefreshCw, ArrowUpDown, AlertCircle, Info, Percent, Activity, DollarSign, Filter, ExternalLink } from "lucide-react";
+import { TrendingUp, Search, Activity, DollarSign, Percent } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store";
 import { ModeBanner } from "@/components/ModeBanner";
 import { orchestrator } from "@/core/orchestrator";
+import { opportunityEngine } from "@/core/engines";
 
 type SortOption = "recommended" | "apy" | "tvl" | "risk";
 type RiskFilter = "all" | "low" | "medium" | "high";
-
-const opportunities = [
-  {
-    id: "1",
-    pair: "ETH/USDC",
-    token0: "ETH",
-    token1: "USDC",
-    dex: "Uniswap V3",
-    chain: "Ethereum",
-    feeTier: "0.3%",
-    tvl: "$458.2M",
-    volume24h: "$124.5M",
-    feeApy: "8.2%",
-    rewardApy: "4.6%",
-    netApy: "12.8%",
-    riskScore: 28,
-    riskLevel: "low" as const,
-    recommended: true,
-  },
-  {
-    id: "2",
-    pair: "BNB/BUSD",
-    token0: "BNB",
-    token1: "BUSD",
-    dex: "PancakeSwap V3",
-    chain: "BSC",
-    feeTier: "0.25%",
-    tvl: "$182.4M",
-    volume24h: "$48.2M",
-    feeApy: "6.8%",
-    rewardApy: "3.2%",
-    netApy: "10.0%",
-    riskScore: 35,
-    riskLevel: "low" as const,
-    recommended: true,
-  },
-  {
-    id: "3",
-    pair: "AVAX/USDC",
-    token0: "AVAX",
-    token1: "USDC",
-    dex: "Trader Joe V2",
-    chain: "Avalanche",
-    feeTier: "0.3%",
-    tvl: "$94.6M",
-    volume24h: "$28.4M",
-    feeApy: "12.4%",
-    rewardApy: "6.8%",
-    netApy: "19.2%",
-    riskScore: 52,
-    riskLevel: "medium" as const,
-    recommended: false,
-  },
-  {
-    id: "4",
-    pair: "MATIC/USDC",
-    token0: "MATIC",
-    token1: "USDC",
-    dex: "Uniswap V3",
-    chain: "Polygon",
-    feeTier: "0.3%",
-    tvl: "$64.2M",
-    volume24h: "$18.6M",
-    feeApy: "9.6%",
-    rewardApy: "2.4%",
-    netApy: "12.0%",
-    riskScore: 42,
-    riskLevel: "medium" as const,
-    recommended: true,
-  },
-  {
-    id: "5",
-    pair: "SOL/USDC",
-    token0: "SOL",
-    token1: "USDC",
-    dex: "Raydium CLMM",
-    chain: "Solana",
-    feeTier: "0.25%",
-    tvl: "$128.4M",
-    volume24h: "$52.8M",
-    feeApy: "14.2%",
-    rewardApy: "8.6%",
-    netApy: "22.8%",
-    riskScore: 68,
-    riskLevel: "high" as const,
-    recommended: false,
-  },
-];
 
 export default function Opportunities() {
   const [sortBy, setSortBy] = useState<SortOption>("recommended");
   const [riskFilter, setRiskFilter] = useState<RiskFilter>("all");
   const [chainFilter, setChainFilter] = useState<string>("all");
+  const [protocolFilter, setProtocolFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedOpportunity, setSelectedOpportunity] = useState<typeof opportunities[0] | null>(null);
+  
   const { toast } = useToast();
   const mode = useAppStore((state) => state.mode);
+  const opportunities = useAppStore((state) => state.opportunities);
+  const [isScanning, setIsScanning] = useState(false);
 
   // Listen for mode changes
   useEffect(() => {
     const unsubscribe = orchestrator.subscribe((event) => {
       if (event.type === "mode_changed") {
-        console.log("[Opportunities] Mode changed, refreshing data");
         handleRefreshPools();
       }
     });
+    
+    // Initial scan if empty
+    if (opportunities.length === 0) {
+      handleRefreshPools();
+    }
+    
     return () => unsubscribe();
   }, []);
 
-  const handleRefreshPools = () => {
-    const currentMode = useAppStore.getState().mode.current;
+  const handleRefreshPools = async () => {
+    setIsScanning(true);
     toast({
-      title: "Refreshing Opportunities",
-      description: `Loading ${currentMode} mode data...`,
+      title: "Scanning Protocols",
+      description: `Discovering opportunities across DEXs...`,
     });
+    
+    const { assets } = useAppStore.getState().wallet;
+    await opportunityEngine.scanPools(assets);
+    setIsScanning(false);
+  };
+
+  const getRiskLevel = (score: number) => {
+    if (score < 30) return "low";
+    if (score < 60) return "medium";
+    return "high";
   };
 
   const filteredOpportunities = opportunities
     .filter(opp => {
-      if (riskFilter !== "all" && opp.riskLevel !== riskFilter) return false;
+      const riskLevel = getRiskLevel(opp.riskScore);
+      if (riskFilter !== "all" && riskLevel !== riskFilter) return false;
       if (chainFilter !== "all" && opp.chain !== chainFilter) return false;
-      if (searchTerm && !opp.pair.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      if (protocolFilter !== "all" && opp.protocolName !== protocolFilter) return false;
+      const pairName = `${opp.token0Symbol}/${opp.token1Symbol || ''}`;
+      if (searchTerm && !pairName.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       return true;
     })
     .sort((a, b) => {
-      if (sortBy === "recommended") return b.riskScore - a.riskScore;
-      if (sortBy === "apy") return parseFloat(b.netApy) - parseFloat(a.netApy);
-      if (sortBy === "tvl") return parseFloat(b.tvl.replace(/[$M]/g, "")) - parseFloat(a.tvl.replace(/[$M]/g, ""));
+      if (sortBy === "recommended") return b.netScore - a.netScore;
+      if (sortBy === "apy") return b.totalYield - a.totalYield;
+      if (sortBy === "tvl") return b.tvl - a.tvl;
       if (sortBy === "risk") return a.riskScore - b.riskScore;
       return 0;
     });
@@ -152,11 +85,11 @@ export default function Opportunities() {
     return "border-destructive/50 text-destructive bg-destructive/10";
   };
 
-  const handleQuickDeploy = (opp: typeof opportunities[0]) => {
+  const handleQuickDeploy = (opp: any) => {
     if (mode.current === "shadow") {
       toast({
         title: "Shadow Mode - Action Simulated",
-        description: `Would deploy to ${opp.pair} on ${opp.dex}. Switch to Demo or Live mode to execute.`,
+        description: `Would deploy to ${opp.token0Symbol}/${opp.token1Symbol} on ${opp.protocolName}.`,
         variant: "default",
       });
       return;
@@ -164,35 +97,27 @@ export default function Opportunities() {
 
     toast({
       title: mode.current === "demo" ? "Simulating Deployment" : "Deploying Position",
-      description: `${mode.current === "demo" ? "Simulating" : "Opening"} LP position for ${opp.pair} on ${opp.dex}`,
+      description: `${mode.current === "demo" ? "Simulating" : "Opening"} LP position on ${opp.protocolName}`,
     });
   };
 
-  const handleViewDetails = (opp: typeof opportunities[0]) => {
-    setSelectedOpportunity(opp);
-    toast({
-      title: "Viewing Details",
-      description: `Opening detailed analysis for ${opp.pair}`,
-    });
-  };
-
-  const getModeLabel = () => {
-    switch (mode.current) {
-      case "demo": return "Simulated Opportunities";
-      case "shadow": return "Recommended Opportunities";
-      case "live": return "Live Opportunities";
-    }
-  };
+  const uniqueChains = Array.from(new Set(opportunities.map(o => o.chain)));
+  const uniqueProtocols = Array.from(new Set(opportunities.map(o => o.protocolName)));
 
   return (
     <AppLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold">LP Opportunities</h1>
-          <p className="text-muted-foreground">
-            Discover and compare liquidity pool opportunities across supported DEXes
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">LP Opportunities</h1>
+            <p className="text-muted-foreground">
+              Discover and compare liquidity pool opportunities across supported DEXes
+            </p>
+          </div>
+          <Button onClick={handleRefreshPools} disabled={isScanning}>
+            {isScanning ? "Scanning..." : "Scan Protocols"}
+          </Button>
         </div>
 
         {/* Summary Report */}
@@ -217,7 +142,7 @@ export default function Opportunities() {
               <div className="text-2xl font-bold text-cyan-400">
                 {filteredOpportunities.length > 0
                   ? (
-                      filteredOpportunities.reduce((sum, o) => sum + parseFloat(o.netApy), 0) /
+                      filteredOpportunities.reduce((sum, o) => sum + o.totalYield, 0) /
                       filteredOpportunities.length
                     ).toFixed(2)
                   : "0.00"}
@@ -235,7 +160,7 @@ export default function Opportunities() {
             <CardContent>
               <div className="text-2xl font-bold text-emerald-400">
                 {filteredOpportunities.length > 0
-                  ? Math.max(...filteredOpportunities.map((o) => parseFloat(o.netApy))).toFixed(2)
+                  ? Math.max(...filteredOpportunities.map((o) => o.totalYield)).toFixed(2)
                   : "0.00"}
                 %
               </div>
@@ -250,19 +175,18 @@ export default function Opportunities() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${(filteredOpportunities.reduce((sum, o) => sum + parseFloat(o.tvl.replace(/[$M]/g, "")), 0)).toFixed(1)}M
+                ${(filteredOpportunities.reduce((sum, o) => sum + o.tvl, 0) / 1000000).toFixed(1)}M
               </div>
               <p className="text-xs text-muted-foreground">Combined liquidity</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Mode Banner */}
         <ModeBanner />
 
         <Card className="card-gradient border-border/50">
           <CardContent className="p-6">
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-5">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -279,11 +203,21 @@ export default function Opportunities() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Chains</SelectItem>
-                  <SelectItem value="Ethereum">Ethereum</SelectItem>
-                  <SelectItem value="BSC">BSC</SelectItem>
-                  <SelectItem value="Polygon">Polygon</SelectItem>
-                  <SelectItem value="Avalanche">Avalanche</SelectItem>
-                  <SelectItem value="Solana">Solana</SelectItem>
+                  {uniqueChains.map(chain => (
+                    <SelectItem key={chain} value={chain}>{chain}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={protocolFilter} onValueChange={setProtocolFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Protocols" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Protocols</SelectItem>
+                  {uniqueProtocols.map(protocol => (
+                    <SelectItem key={protocol} value={protocol}>{protocol}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
@@ -315,155 +249,107 @@ export default function Opportunities() {
         </Card>
 
         {/* Opportunities Grid */}
-        <div className="grid gap-4">
-          {filteredOpportunities.map((opp) => (
-            <Card key={opp.id}>
-              <CardContent className="p-6">
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      placeholder="Search pairs..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9"
-                    />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filteredOpportunities.map((opp) => {
+            const riskLevel = getRiskLevel(opp.riskScore);
+            const pairName = opp.token1Symbol ? `${opp.token0Symbol}/${opp.token1Symbol}` : opp.token0Symbol;
+            
+            return (
+              <Card key={opp.id} className="card-gradient border-border/50 transition-all hover:border-primary/50 flex flex-col">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-2">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        {pairName}
+                        {opp.whitelisted && (
+                          <Badge variant="outline" className="text-[10px] h-5 border-emerald-500/30 text-emerald-500">Verified</Badge>
+                        )}
+                      </CardTitle>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">
+                          {opp.protocolName}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {opp.chain}
+                        </Badge>
+                        {opp.feeTier && (
+                          <Badge variant="outline" className="text-xs">
+                            {opp.feeTier}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    {opp.netScore > 70 && (
+                      <Badge className="bg-primary/20 text-primary border-primary/50 shrink-0">
+                        <TrendingUp className="h-3 w-3 mr-1" />
+                        Top
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4 flex-1 flex flex-col">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground text-xs">Total Yield</p>
+                      <p className="text-xl font-semibold metric-positive">{opp.totalYield.toFixed(2)}%</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Risk Score</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xl font-mono font-semibold">{opp.riskScore}</p>
+                        <Badge variant="outline" className={`text-xs ${getRiskBadgeColor(riskLevel)}`}>
+                          {riskLevel}
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
 
-                  <Select value={chainFilter} onValueChange={setChainFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Chains" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Chains</SelectItem>
-                      <SelectItem value="Ethereum">Ethereum</SelectItem>
-                      <SelectItem value="BSC">BSC</SelectItem>
-                      <SelectItem value="Polygon">Polygon</SelectItem>
-                      <SelectItem value="Avalanche">Avalanche</SelectItem>
-                      <SelectItem value="Solana">Solana</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-2 pt-2 border-t border-border/30 flex-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Base Yield</span>
+                      <span className="font-mono font-medium">{opp.baseYield.toFixed(2)}%</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Reward APR</span>
+                      <span className="font-mono font-medium">{opp.farmRewardYield.toFixed(2)}%</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">TVL</span>
+                      <span className="font-mono font-medium">${(opp.tvl / 1000000).toFixed(2)}M</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">24h Volume</span>
+                      <span className="font-mono font-medium">${(opp.volume24h / 1000000).toFixed(2)}M</span>
+                    </div>
+                  </div>
 
-                  <Select value={riskFilter} onValueChange={(v) => setRiskFilter(v as RiskFilter)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Risk Level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Risk Levels</SelectItem>
-                      <SelectItem value="low">Low Risk</SelectItem>
-                      <SelectItem value="medium">Medium Risk</SelectItem>
-                      <SelectItem value="high">High Risk</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sort By" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="recommended">Recommended</SelectItem>
-                      <SelectItem value="apy">Highest APY</SelectItem>
-                      <SelectItem value="tvl">Highest TVL</SelectItem>
-                      <SelectItem value="risk">Lowest Risk</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {filteredOpportunities.map((opp) => (
-                    <Card key={opp.id} className="card-gradient border-border/50 transition-all hover:border-primary/50">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-2">
-                            <CardTitle className="text-lg">{opp.pair}</CardTitle>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Badge variant="secondary" className="text-xs">
-                                {opp.dex}
-                              </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                {opp.chain}
-                              </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                {opp.feeTier}
-                              </Badge>
-                            </div>
-                          </div>
-                          {opp.recommended && (
-                            <Badge className="bg-primary/20 text-primary border-primary/50">
-                              <TrendingUp className="h-3 w-3 mr-1" />
-                              Top
-                            </Badge>
-                          )}
-                        </div>
-                      </CardHeader>
-
-                      <CardContent className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <p className="text-muted-foreground text-xs">Net APY</p>
-                            <p className="text-xl font-semibold metric-positive">{opp.netApy}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground text-xs">Risk Score</p>
-                            <div className="flex items-center gap-2">
-                              <p className="text-xl font-mono font-semibold">{opp.riskScore}</p>
-                              <Badge variant="outline" className={`text-xs ${getRiskBadgeColor(opp.riskLevel)}`}>
-                                {opp.riskLevel}
-                              </Badge>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2 pt-2 border-t border-border/30">
-                          <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">Fee APY</span>
-                            <span className="font-mono font-medium">{opp.feeApy}</span>
-                          </div>
-                          <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">Reward APY</span>
-                            <span className="font-mono font-medium">{opp.rewardApy}</span>
-                          </div>
-                          <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">TVL</span>
-                            <span className="font-mono font-medium">{opp.tvl}</span>
-                          </div>
-                          <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">24h Volume</span>
-                            <span className="font-mono font-medium">{opp.volume24h}</span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <Button onClick={() => handleViewDetails(opp)}>
-                            View Details
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => handleQuickDeploy(opp)}
-                            disabled={mode.current === "shadow"}
-                          >
-                            {mode.current === "shadow" ? "Preview Only" : "Quick Deploy"}
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-
-                {filteredOpportunities.length === 0 && (
-                  <Card className="card-gradient border-border/50">
-                    <CardContent className="py-12 text-center">
-                      <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      <h3 className="text-lg font-semibold mb-2">No opportunities found</h3>
-                      <p className="text-muted-foreground">Try adjusting your filters or search term</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                  <div className="flex items-center gap-3 mt-4 pt-4 border-t border-border/30">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => handleQuickDeploy(opp)}
+                      disabled={mode.current === "shadow"}
+                    >
+                      {mode.current === "shadow" ? "Preview Only" : "Quick Deploy"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
+
+        {filteredOpportunities.length === 0 && (
+          <Card className="card-gradient border-border/50">
+            <CardContent className="py-12 text-center">
+              <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">No opportunities found</h3>
+              <p className="text-muted-foreground">Try adjusting your filters or search term</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </AppLayout>
   );
