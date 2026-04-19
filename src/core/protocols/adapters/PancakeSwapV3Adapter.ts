@@ -44,9 +44,9 @@ export class PancakeSwapV3Adapter extends BaseProtocolAdapter {
     return {
       tvl: 28000000,
       volume24h: 8500000,
-      fees24h: 8500, // 0.01% - 0.25% fee tiers
-      baseApy: 22.8,
+      baseYield: 22.8,
       liquidityDepth: 3500000,
+      estimatedSlippage: 0.08,
     };
   }
 
@@ -62,7 +62,7 @@ export class PancakeSwapV3Adapter extends BaseProtocolAdapter {
           liquidityUsd: 45000000,
         },
       ],
-      totalRewardApr: 15.5,
+      farmRewardYield: 15.5,
     };
   }
 
@@ -197,14 +197,14 @@ export class PancakeSwapV3Adapter extends BaseProtocolAdapter {
       
       tvl: metrics.tvl,
       volume24h: metrics.volume24h,
-      baseYield: metrics.baseApy,
-      farmRewardYield: rewardMetrics.totalRewardApr,
-      totalYield: this.calculateTotalYield(metrics.baseApy, rewardMetrics.totalRewardApr),
+      baseYield: metrics.baseYield,
+      farmRewardYield: rewardMetrics.farmRewardYield,
+      totalYield: metrics.baseYield + rewardMetrics.farmRewardYield,
       
       rewardTokens: rewardMetrics.rewardTokens,
       
       liquidityDepth: metrics.liquidityDepth,
-      estimatedSlippage: 0.08,
+      estimatedSlippage: metrics.estimatedSlippage,
       gasCostEntry: this.estimateGasCost(chain, "entry"),
       gasCostExit: this.estimateGasCost(chain, "exit"),
       concentrationRisk: 40,

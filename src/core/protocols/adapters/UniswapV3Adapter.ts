@@ -53,9 +53,9 @@ export class UniswapV3Adapter extends BaseProtocolAdapter {
     return {
       tvl: 45000000,
       volume24h: 12500000,
-      fees24h: 37500, // 0.3% of volume
-      baseApy: 30.5,
+      baseYield: 30.5,
       liquidityDepth: 5000000,
+      estimatedSlippage: 0.15,
     };
   }
 
@@ -63,7 +63,7 @@ export class UniswapV3Adapter extends BaseProtocolAdapter {
     // Uniswap V3 base pools don't have additional rewards
     return {
       rewardTokens: [],
-      totalRewardApr: 0,
+      farmRewardYield: 0,
     };
   }
 
@@ -228,14 +228,14 @@ export class UniswapV3Adapter extends BaseProtocolAdapter {
       
       tvl: metrics.tvl,
       volume24h: metrics.volume24h,
-      baseYield: metrics.baseApy,
-      farmRewardYield: rewardMetrics.totalRewardApr,
-      totalYield: this.calculateTotalYield(metrics.baseApy, rewardMetrics.totalRewardApr),
+      baseYield: metrics.baseYield,
+      farmRewardYield: rewardMetrics.farmRewardYield,
+      totalYield: metrics.baseYield + rewardMetrics.farmRewardYield,
       
       rewardTokens: rewardMetrics.rewardTokens,
       
       liquidityDepth: metrics.liquidityDepth,
-      estimatedSlippage: 0.15,
+      estimatedSlippage: metrics.estimatedSlippage,
       gasCostEntry: this.estimateGasCost(chain, "entry"),
       gasCostExit: this.estimateGasCost(chain, "exit"),
       concentrationRisk: 45,
