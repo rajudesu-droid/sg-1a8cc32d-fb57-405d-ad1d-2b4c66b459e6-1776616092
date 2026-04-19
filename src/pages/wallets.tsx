@@ -13,13 +13,14 @@ import { supportedNetworks } from "@/lib/walletConfig";
 import { useAppStore } from "@/store";
 import { ModeBanner } from "@/components/ModeBanner";
 import { orchestrator } from "@/core/orchestrator";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Wallets() {
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { isConnected, address, chainId, detectedAssets, refreshBalances } = useWallet();
+  const { isConnected, address, chainId, detectedAssets, refreshBalances, connectWallet } = useWallet();
+  const { toast } = useToast();
   const mode = useAppStore((state) => state.mode);
 
   // Listen for mode changes

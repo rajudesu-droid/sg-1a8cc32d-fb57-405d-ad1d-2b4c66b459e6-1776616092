@@ -34,7 +34,20 @@ export default function Automation() {
   const [autoCompound, setAutoCompound] = useState(true);
   const [autoRebalance, setAutoRebalance] = useState(false);
   const [autoDeploy, setAutoDeploy] = useState(false);
-  const [emergencyPause, setEmergencyPause] = useState(false);
+  const [emergencyPauseAll, setEmergencyPauseAll] = useState(false);
+  
+  const [harvestFrequency, setHarvestFrequency] = useState("daily");
+  const [rebalanceFrequency, setRebalanceFrequency] = useState("weekly");
+  const [minHarvestAmount, setMinHarvestAmount] = useState("50");
+  const [minRebalanceEdge, setMinRebalanceEdge] = useState("5");
+  const [maxDailyGas, setMaxDailyGas] = useState("100");
+  const [minScoreThreshold, setMinScoreThreshold] = useState([70]);
+  const [maxPerPool, setMaxPerPool] = useState("10000");
+  const [maxPerChain, setMaxPerChain] = useState("50000");
+  const [maxTotalDeployed, setMaxTotalDeployed] = useState("100000");
+  const [pausedChains, setPausedChains] = useState<string[]>([]);
+  const [pausedDexes, setPausedDexes] = useState<string[]>([]);
+
   const { toast } = useToast();
   const mode = useAppStore((state) => state.mode);
   const policy = useAppStore((state) => state.policy);
@@ -50,14 +63,21 @@ export default function Automation() {
     return () => unsubscribe();
   }, []);
 
+  const toggleChainPause = (chain: string) => {
+    setPausedChains(prev => prev.includes(chain) ? prev.filter(c => c !== chain) : [...prev, chain]);
+  };
+
+  const toggleDexPause = (dex: string) => {
+    setPausedDexes(prev => prev.includes(dex) ? prev.filter(d => d !== dex) : [...prev, dex]);
+  };
+
   const handleSavePolicy = () => {
     setPolicy({
       autoHarvest,
       autoCompound,
       autoRebalance,
-      autoDeploy,
-      emergencyPause,
-    });
+      emergencyPause: emergencyPauseAll,
+    } as any);
 
     const modeLabel = mode.current === "demo" ? "simulated" : mode.current === "shadow" ? "shadow" : "live";
     toast({
@@ -92,7 +112,7 @@ export default function Automation() {
       return;
     }
 
-    setEmergencyPause(true);
+    setEmergencyPauseAll(true);
     toast({
       title: "Emergency Stop Activated",
       description: mode.current === "demo" 
@@ -133,10 +153,10 @@ export default function Automation() {
             variant="destructive" 
             className="gap-2"
             onClick={handleEmergencyStop}
-            disabled={mode.current === "shadow" || emergencyPause}
+            disabled={mode.current === "shadow" || emergencyPauseAll}
           >
             <AlertTriangle className="h-4 w-4" />
-            {mode.current === "shadow" ? "Shadow Mode" : emergencyPause ? "Paused" : "Emergency Stop All"}
+            {mode.current === "shadow" ? "Shadow Mode" : emergencyPauseAll ? "Paused" : "Emergency Stop All"}
           </Button>
         </div>
 
