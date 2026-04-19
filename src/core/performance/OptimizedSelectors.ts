@@ -21,12 +21,12 @@ export const selectPortfolioSummary = () => {
   
   // Recalculate
   const summary = {
-    totalValue: store.portfolio.totalValue,
-    deployedCapital: store.portfolio.deployedCapital,
-    idleCapital: store.portfolio.idleCapital,
+    totalValue: store.portfolio?.totalValue || 0,
+    deployedCapital: store.portfolio?.deployedCapital || 0,
+    idleCapital: store.portfolio?.idleCapital || 0,
     activePositionsCount: store.positions.filter((p: any) => p.status === "active").length,
-    totalEarnings: store.portfolio.totalEarnings,
-    netAPY: store.portfolio.netAPY,
+    realizedEarnings: store.portfolio?.realizedEarnings || 0,
+    netApy: store.portfolio?.netApy || 0,
   };
   
   // Cache result
@@ -72,7 +72,7 @@ export const selectTopOpportunities = (limit = 10) => {
     return cached.slice(0, limit);
   }
   
-  const sorted = [...store.opportunities].sort((a, b) => b.score - a.score);
+  const sorted = [...store.opportunities].sort((a, b) => b.netScore - a.netScore);
   const top = sorted.slice(0, 50); // Cache top 50
   
   (store as any)._topOpportunitiesCache = top;
