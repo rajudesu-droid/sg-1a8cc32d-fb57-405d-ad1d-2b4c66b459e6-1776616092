@@ -1,174 +1,154 @@
 /**
  * Portfolio Engine
- * Calculates portfolio metrics, tracks positions, manages capital allocation
+ * Calculates and maintains portfolio metrics
+ * 
+ * CRITICAL: Uses identity-based asset aggregation
  */
 
-import { orchestrator } from "@/core/orchestrator";
+import { orchestrator } from "../orchestrator";
 import { useAppStore } from "@/store";
-import type { PortfolioMetrics, Asset, Position, EngineResult, AppEvent } from "@/core/contracts";
+import type { PortfolioMetrics, EngineResult } from "../contracts";
+import { groupAssetsBySymbol, createAssetId } from "../utils/assetIdentity";
 
+/**
+ * Portfolio Engine
+ * Calculates and maintains portfolio metrics
+ * 
+ * CRITICAL: Uses identity-based asset aggregation
+ */
 export class PortfolioEngine {
+  private engineId = "portfolio";
+
   constructor() {
-    orchestrator.registerEngine("portfolio", this);
+    orchestrator.registerEngine(this.engineId, this);
+    console.log("[PortfolioEngine] Initialized and registered");
   }
 
   // ==================== CALCULATE PORTFOLIO TASK ====================
   async calculatePortfolio(): Promise<EngineResult<PortfolioMetrics>> {
     console.log("[PortfolioEngine] Calculating portfolio metrics");
 
-    try {
-      const { wallet, mode, positions } = useAppStore.getState();
-      const { assets } = wallet;
+    const wallet = useAppStore.getState().wallet;
+    const positions = useAppStore.getState().positions;
+    const mode = useAppStore.getState().mode.current;
 
-      // Calculate total value
-      const totalValue = this.calculateTotalValue(assets);
-      const deployedCapital = this.calculateDeployedCapital(positions);
-      const idleCapital = totalValue - deployedCapital;
+    // CRITICAL: Calculate using identity-aware asset aggregation
+    const walletAssets = wallet.assets || [];
+    
+    // Group by network first, then by symbol
+    const assetsByNetwork = walletAssets.reduce((acc, asset) => {
+      const network = asset.network || "unknown";
+      if (!acc[network]) {
+        acc[network] = [];
+      }
+      acc[network].push(asset);
+      return acc;
+    }, {} as Record<string, typeof walletAssets>);
 
-      // Calculate earnings
-      const dailyEarnings = this.calculateDailyEarnings(positions, mode.current);
-      const monthlyEarnings = this.calculateMonthlyEarnings(positions, mode.current);
-      const realizedEarnings = this.calculateRealizedEarnings(positions);
-      const projected30Day = this.calculateProjected30Day(positions);
-
-      // Calculate net APY
-      const netApy = deployedCapital > 0 ? (projected30Day * 12 / deployedCapital) * 100 : 0;
-
-      // Group assets by network
-      const assetsByNetwork = this.groupAssetsByNetwork(assets);
-
-      const metrics: PortfolioMetrics = {
-        totalValue,
-        deployedCapital,
-        idleCapital,
-        netApy,
-        dailyEarnings,
-        monthlyEarnings,
-        realizedEarnings,
-        projected30Day,
-        assetsByNetwork,
-      };
-
-      useAppStore.getState().setPortfolio(metrics);
-
-      await orchestrator.coordinateUpdate(
-        "portfolio",
-        "portfolio_updated",
-        { metrics },
-        ["dashboard"]
+    // Calculate network balances (identity-aware)
+    const networkBalances = Object.entries(assetsByNetwork).map(([network, assets]) => {
+      const totalValue = assets.reduce(
+        (sum, asset) => sum + ((asset.priceUsd || 0) * parseFloat(asset.balance)),
+        0
       );
 
       return {
-        success: true,
-        data: metrics,
-        affectedModules: ["dashboard"],
-        events: [],
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Failed to calculate portfolio",
-        affectedModules: [],
-        events: [],
-      };
-    }
-  }
-
-  // ==================== CALCULATION HELPERS ====================
-  private calculateTotalValue(assets: Asset[]): number {
-    return assets.reduce((sum, asset) => {
-      const balance = parseFloat(asset.balance);
-      const price = asset.priceUsd || this.getMockPrice(asset.symbol);
-      return sum + (balance * price);
-    }, 0);
-  }
-
-  private calculateDeployedCapital(positions: Position[]): number {
-    return positions.reduce((sum, pos) => sum + pos.valueUsd, 0);
-  }
-
-  private calculateDailyEarnings(positions: Position[], mode: string) {
-    const realized = positions.reduce((sum, pos) => sum + pos.accruedFees * 0.1, 0);
-    const projected = positions.reduce((sum, pos) => sum + pos.accruedFees * 0.15, 0);
-
-    return {
-      total: realized + projected,
-      realized,
-      projected,
-      label: mode === "demo" ? "Simulated" : mode === "shadow" ? "Estimated" : "Realized + Projected",
-    };
-  }
-
-  private calculateMonthlyEarnings(positions: Position[], mode: string) {
-    const realized = positions.reduce((sum, pos) => sum + pos.accruedFees * 0.5, 0);
-    const projected = positions.reduce((sum, pos) => sum + pos.accruedRewards * 0.8, 0);
-
-    return {
-      total: realized + projected,
-      realized,
-      projected,
-      label: mode === "demo" ? "Simulated" : mode === "shadow" ? "Estimated" : "Realized + Projected",
-    };
-  }
-
-  private calculateRealizedEarnings(positions: Position[]): number {
-    return positions.reduce((sum, pos) => sum + pos.accruedFees + pos.accruedRewards, 0);
-  }
-
-  private calculateProjected30Day(positions: Position[]): number {
-    return positions.reduce((sum, pos) => {
-      const dailyFees = pos.accruedFees / 30;
-      return sum + (dailyFees * 30);
-    }, 0);
-  }
-
-  private groupAssetsByNetwork(assets: Asset[]) {
-    return assets.reduce((acc, asset) => {
-      if (!acc[asset.network]) {
-        acc[asset.network] = {
+        network,
+        assets: assets.map(asset => ({
+          // Include full identity
+          id: asset.id,
+          symbol: asset.symbol,
+          chainFamily: asset.chainFamily,
           network: asset.network,
-          assets: [],
-          totalValue: 0,
-          percentage: 0,
+          contractAddress: asset.contractAddress,
+          balance: parseFloat(asset.balance),
+          valueUsd: (asset.priceUsd || 0) * parseFloat(asset.balance),
+        })),
+        totalValue,
+        percentage: 0, // Will calculate after total
+      };
+    });
+
+    const totalWalletValue = networkBalances.reduce((sum, nb) => sum + nb.totalValue, 0);
+
+    // Update percentages
+    networkBalances.forEach(nb => {
+      nb.percentage = totalWalletValue > 0 ? (nb.totalValue / totalWalletValue) * 100 : 0;
+    });
+
+    // Calculate position values
+    const deployedCapital = positions.reduce(
+      (sum, pos) => sum + (pos.valueUsd || 0),
+      0
+    );
+
+    const totalValue = totalWalletValue + deployedCapital;
+    const idleCapital = totalWalletValue;
+
+    // Calculate earnings (mode-aware)
+    const realizedEarnings = positions.reduce(
+      (sum, pos) => sum + (pos.accruedFees || 0) + (pos.accruedRewards || 0),
+      0
+    );
+
+    const netApy = deployedCapital > 0
+      ? (realizedEarnings / deployedCapital) * 365 * 100
+      : 0;
+
+    const metrics: PortfolioMetrics = {
+      totalValue,
+      deployedCapital,
+      idleCapital,
+      netApy,
+      dailyEarnings: {
+        total: realizedEarnings / 30,
+        realized: realizedEarnings / 30,
+        projected: 0,
+        label: mode === "demo" ? "Simulated" : mode === "shadow" ? "Estimated" : "Realized",
+      },
+      monthlyEarnings: {
+        total: realizedEarnings,
+        realized: realizedEarnings,
+        projected: 0,
+        label: mode === "demo" ? "Simulated" : mode === "shadow" ? "Estimated" : "Realized",
+      },
+      realizedEarnings,
+      projected30Day: 0,
+      assetsByNetwork: networkBalances.reduce((acc, nb) => {
+        acc[nb.network] = {
+          network: nb.network,
+          assets: nb.assets as any,
+          totalValue: nb.totalValue,
+          percentage: nb.percentage,
         };
-      }
-      acc[asset.network].assets.push(asset);
-      const value = parseFloat(asset.balance) * (asset.priceUsd || this.getMockPrice(asset.symbol));
-      acc[asset.network].totalValue += value;
-      return acc;
-    }, {} as Record<string, any>);
-  }
-
-  private getMockPrice(symbol: string): number {
-    const prices: Record<string, number> = {
-      ETH: 3200,
-      BNB: 580,
-      MATIC: 0.85,
-      AVAX: 38,
-      USDT: 1,
-      USDC: 1,
-      DAI: 1,
+        return acc;
+      }, {} as Record<string, any>),
     };
-    return prices[symbol] || 0;
-  }
 
-  // ==================== EVENT HANDLER ====================
-  async handleEvent(event: AppEvent): Promise<void> {
-    console.log("[PortfolioEngine] Handling event:", event.type);
-
-    if (["wallet_updated", "assets_updated", "positions_updated"].includes(event.type)) {
-      await this.calculatePortfolio();
+    // Save to mode-specific state
+    if (mode === "demo") {
+      useAppStore.getState().setDemoPortfolio(metrics);
+    } else if (mode === "shadow") {
+      useAppStore.getState().setShadowPortfolio(metrics);
+    } else if (mode === "live") {
+      useAppStore.getState().setLivePortfolio(metrics);
     }
-  }
 
-  // ==================== RECALCULATE ====================
-  async recalculate(): Promise<void> {
-    await this.calculatePortfolio();
-  }
+    useAppStore.getState().setPortfolio(metrics);
 
-  // ==================== HEALTH ====================
-  isHealthy(): boolean {
-    return true;
+    await orchestrator.coordinateUpdate(
+      this.engineId,
+      "portfolio_updated",
+      { metrics },
+      ["dashboard"]
+    );
+
+    return {
+      success: true,
+      data: metrics,
+      affectedModules: ["dashboard"],
+      events: [],
+    };
   }
 }
 

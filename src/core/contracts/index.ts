@@ -228,6 +228,7 @@ export interface WithdrawalPlan {
   estimatedReceived: number;
   steps: WithdrawalStep[];
   createdAt: Date;
+  targetAsset?: Asset;
 }
 
 export interface PositionWithdrawal {
