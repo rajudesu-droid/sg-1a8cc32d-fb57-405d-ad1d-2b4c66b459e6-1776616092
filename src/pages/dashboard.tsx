@@ -42,8 +42,8 @@ export default function Dashboard() {
     deployedCapital: 0,
     idleCapital: 0,
     netApy: 0,
-    dailyEarnings: 0,
-    monthlyEarnings: 0,
+    dailyEarnings: 0 as number | { realized: number; projected: number },
+    monthlyEarnings: 0 as number | { realized: number; projected: number },
     realizedEarnings: 0,
     projected30Day: 0,
   });
@@ -287,7 +287,9 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-emerald-400">
-                +${portfolioData.dailyEarnings.toLocaleString()}
+                +${typeof portfolioData.dailyEarnings === 'number' 
+                  ? portfolioData.dailyEarnings.toLocaleString() 
+                  : (portfolioData.dailyEarnings.realized + portfolioData.dailyEarnings.projected).toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {mode.current === "demo" ? "Simulated today" : mode.current === "shadow" ? "Estimated today" : "Today's earnings"}
@@ -305,7 +307,9 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-emerald-400">
-                +${portfolioData.monthlyEarnings.toLocaleString()}
+                +${typeof portfolioData.monthlyEarnings === 'number'
+                  ? portfolioData.monthlyEarnings.toLocaleString()
+                  : (portfolioData.monthlyEarnings.realized + portfolioData.monthlyEarnings.projected).toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {mode.current === "demo" ? "Simulated MTD" : mode.current === "shadow" ? "Estimated MTD" : "Current month"}
