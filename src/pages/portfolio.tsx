@@ -188,11 +188,12 @@ export default function Portfolio() {
         }, [] as Array<{ name: string; value: number }>);
 
         const totalValue = walletTokens.reduce((sum, t) => sum + t.value, 0);
+        const deployedCapital = portfolio?.deployedCapital || 0;
 
         setPortfolioData({
           totalValue,
-          deployedCapital: portfolio.deployedCapital,
-          idleCapital: totalValue - portfolio.deployedCapital,
+          deployedCapital,
+          idleCapital: totalValue - deployedCapital,
           tokens: walletTokens,
           chains: chainBalances,
         });
@@ -206,7 +207,7 @@ export default function Portfolio() {
         });
       }
     }
-  }, [mode.current, wallet.wallet, wallet.assets, portfolio.deployedCapital, paperWallets]);
+  }, [mode.current, wallet.wallet, wallet.assets, portfolio, paperWallets]);
 
   const getPageTitle = () => {
     switch (mode.current) {
