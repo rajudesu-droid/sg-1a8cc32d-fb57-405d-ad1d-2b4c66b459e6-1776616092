@@ -42,76 +42,87 @@ const SUPPORTED_CHAINS = [
   { id: "bitcoin", name: "Bitcoin", symbol: "BTC", color: "bg-orange-500" },
 ];
 
-// Popular tokens by network (Simulated market data)
-const POPULAR_TOKENS: Record<string, Array<{ symbol: string; name: string; currentPrice: number }>> = {
+// Network token mapping with simulated market prices
+const networkTokens: Record<string, Array<{ symbol: string; name: string; basePrice: number }>> = {
   ethereum: [
-    { symbol: "USDT", name: "Tether USD", currentPrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", currentPrice: 1.00 },
-    { symbol: "WETH", name: "Wrapped Ether", currentPrice: 3100.50 },
-    { symbol: "DAI", name: "Dai Stablecoin", currentPrice: 1.00 },
-    { symbol: "LINK", name: "Chainlink", currentPrice: 14.20 },
-    { symbol: "UNI", name: "Uniswap", currentPrice: 7.80 },
+    { symbol: "ETH", name: "Ethereum", basePrice: 3100.50 },
+    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
+    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
+    { symbol: "WETH", name: "Wrapped Ether", basePrice: 3100.50 },
+    { symbol: "DAI", name: "Dai Stablecoin", basePrice: 1.00 },
+    { symbol: "LINK", name: "Chainlink", basePrice: 14.50 },
+    { symbol: "UNI", name: "Uniswap", basePrice: 6.20 },
   ],
   bsc: [
-    { symbol: "USDT", name: "Tether USD", currentPrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", currentPrice: 1.00 },
-    { symbol: "BUSD", name: "Binance USD", currentPrice: 1.00 },
-    { symbol: "CAKE", name: "PancakeSwap", currentPrice: 2.10 },
-    { symbol: "WBNB", name: "Wrapped BNB", currentPrice: 580.40 },
+    { symbol: "BNB", name: "BNB", basePrice: 610.30 },
+    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
+    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
+    { symbol: "BUSD", name: "Binance USD", basePrice: 1.00 },
+    { symbol: "CAKE", name: "PancakeSwap", basePrice: 2.45 },
+    { symbol: "WBNB", name: "Wrapped BNB", basePrice: 610.30 },
   ],
   polygon: [
-    { symbol: "USDT", name: "Tether USD", currentPrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", currentPrice: 1.00 },
-    { symbol: "WMATIC", name: "Wrapped MATIC", currentPrice: 0.65 },
-    { symbol: "DAI", name: "Dai Stablecoin", currentPrice: 1.00 },
+    { symbol: "POL", name: "Polygon", basePrice: 0.85 },
+    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
+    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
+    { symbol: "WMATIC", name: "Wrapped MATIC", basePrice: 0.85 },
+    { symbol: "DAI", name: "Dai Stablecoin", basePrice: 1.00 },
   ],
-  solana: [
-    { symbol: "USDT", name: "Tether USD", currentPrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", currentPrice: 1.00 },
-    { symbol: "SOL", name: "Solana", currentPrice: 145.20 },
-    { symbol: "RAY", name: "Raydium", currentPrice: 1.65 },
-    { symbol: "SRM", name: "Serum", currentPrice: 0.45 },
-  ],
-  xrp: [
-    { symbol: "XRP", name: "XRP", currentPrice: 0.58 },
-    { symbol: "USD", name: "USD (Bitstamp)", currentPrice: 1.00 },
-    { symbol: "EUR", name: "EUR (Bitstamp)", currentPrice: 1.08 },
-    { symbol: "BTC", name: "BTC (Bitstamp)", currentPrice: 64200.00 },
-  ],
-  tron: [
-    { symbol: "USDT", name: "Tether USD", currentPrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", currentPrice: 1.00 },
-    { symbol: "WTRX", name: "Wrapped TRX", currentPrice: 0.11 },
-  ],
-  bitcoin: [{ symbol: "BTC", name: "Bitcoin", currentPrice: 64200.00 }],
   arbitrum: [
-    { symbol: "USDT", name: "Tether USD", currentPrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", currentPrice: 1.00 },
-    { symbol: "ARB", name: "Arbitrum", currentPrice: 1.15 },
+    { symbol: "ETH", name: "Ethereum", basePrice: 3100.50 },
+    { symbol: "ARB", name: "Arbitrum", basePrice: 0.92 },
+    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
+    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
   ],
   optimism: [
-    { symbol: "USDT", name: "Tether USD", currentPrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", currentPrice: 1.00 },
-    { symbol: "OP", name: "Optimism", currentPrice: 2.30 },
+    { symbol: "ETH", name: "Ethereum", basePrice: 3100.50 },
+    { symbol: "OP", name: "Optimism", basePrice: 2.15 },
+    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
+    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
   ],
   avalanche: [
-    { symbol: "USDT", name: "Tether USD", currentPrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", currentPrice: 1.00 },
-    { symbol: "WAVAX", name: "Wrapped AVAX", currentPrice: 35.60 },
+    { symbol: "AVAX", name: "Avalanche", basePrice: 38.20 },
+    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
+    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
+    { symbol: "WAVAX", name: "Wrapped AVAX", basePrice: 38.20 },
   ],
   base: [
-    { symbol: "USDC", name: "USD Coin", currentPrice: 1.00 },
-    { symbol: "WETH", name: "Wrapped Ether", currentPrice: 3100.50 },
+    { symbol: "ETH", name: "Ethereum", basePrice: 3100.50 },
+    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
+    { symbol: "WETH", name: "Wrapped Ether", basePrice: 3100.50 },
   ],
   fantom: [
-    { symbol: "USDT", name: "Tether USD", currentPrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", currentPrice: 1.00 },
-    { symbol: "WFTM", name: "Wrapped FTM", currentPrice: 0.72 },
+    { symbol: "FTM", name: "Fantom", basePrice: 0.75 },
+    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
+    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
+    { symbol: "WFTM", name: "Wrapped Fantom", basePrice: 0.75 },
   ],
   cronos: [
-    { symbol: "USDT", name: "Tether USD", currentPrice: 1.00 },
-    { symbol: "USDC", name: "USD Coin", currentPrice: 1.00 },
-    { symbol: "CRO", name: "Cronos", currentPrice: 0.12 },
+    { symbol: "CRO", name: "Cronos", basePrice: 0.12 },
+    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
+    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
+  ],
+  solana: [
+    { symbol: "SOL", name: "Solana", basePrice: 145.60 },
+    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
+    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
+    { symbol: "RAY", name: "Raydium", basePrice: 2.80 },
+    { symbol: "SRM", name: "Serum", basePrice: 0.35 },
+  ],
+  xrp: [
+    { symbol: "XRP", name: "XRP", basePrice: 2.15 },
+    { symbol: "USD", name: "USD (Bitstamp)", basePrice: 1.00 },
+    { symbol: "EUR", name: "EUR (Bitstamp)", basePrice: 1.08 },
+    { symbol: "BTC", name: "BTC (Bitstamp)", basePrice: 95000.00 },
+  ],
+  tron: [
+    { symbol: "TRX", name: "TRON", basePrice: 0.24 },
+    { symbol: "USDT", name: "Tether USD", basePrice: 1.00 },
+    { symbol: "USDC", name: "USD Coin", basePrice: 1.00 },
+    { symbol: "WTRX", name: "Wrapped TRX", basePrice: 0.24 },
+  ],
+  bitcoin: [
+    { symbol: "BTC", name: "Bitcoin", basePrice: 95000.00 },
   ],
 };
 
@@ -180,11 +191,11 @@ export default function Wallets() {
       
       // Simulate API call to CoinGecko/CoinMarketCap
       const timer = setTimeout(() => {
-        const token = POPULAR_TOKENS[tokenNetwork]?.find((t) => t.symbol === selectedToken);
+        const token = networkTokens[tokenNetwork]?.find((t) => t.symbol === selectedToken);
         if (token) {
           // Add a tiny bit of random variance to simulate real market data
-          const variance = token.currentPrice * (Math.random() * 0.002 - 0.001);
-          setFetchedPrice(token.currentPrice + variance);
+          const variance = token.basePrice * (Math.random() * 0.002 - 0.001);
+          setFetchedPrice(token.basePrice + variance);
         } else {
           setFetchedPrice(0);
         }
@@ -225,7 +236,7 @@ export default function Wallets() {
       return;
     }
 
-    const tokenInfo = POPULAR_TOKENS[tokenNetwork]?.find((t) => t.symbol === selectedToken);
+    const tokenInfo = networkTokens[tokenNetwork]?.find((t) => t.symbol === selectedToken);
     if (!tokenInfo) return;
 
     const numericBalance = parseFloat(tokenBalance);
@@ -716,7 +727,7 @@ export default function Wallets() {
                     <SelectValue placeholder={tokenNetwork ? "Select token" : "Select network first"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {tokenNetwork && POPULAR_TOKENS[tokenNetwork]?.map((token) => (
+                    {tokenNetwork && networkTokens[tokenNetwork]?.map((token) => (
                       <SelectItem key={token.symbol} value={token.symbol}>
                         <div className="flex justify-between items-center w-full">
                           <span>{token.symbol} - {token.name}</span>
