@@ -3,19 +3,10 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Wallet, TrendingUp, AlertCircle, Coins, Network } from "lucide-react";
+import { DollarSign, Wallet, TrendingUp, AlertCircle, Coins, Network, AlertTriangle, ArrowRight } from "lucide-react";
 import { useAppStore } from "@/store";
 import { ModeBanner } from "@/components/ModeBanner";
 import { orchestrator } from "@/core/orchestrator";
-import {
-  TrendingUp,
-  DollarSign,
-  AlertTriangle,
-  Wallet,
-  ArrowRight,
-  Coins,
-  Network,
-} from "lucide-react";
 
 // Mock data for demonstration
 const mockPortfolioData = {

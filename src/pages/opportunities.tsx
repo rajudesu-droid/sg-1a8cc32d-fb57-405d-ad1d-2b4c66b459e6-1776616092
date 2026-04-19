@@ -217,7 +217,7 @@ export default function Opportunities() {
               <div className="text-2xl font-bold text-cyan-400">
                 {filteredOpportunities.length > 0
                   ? (
-                      filteredOpportunities.reduce((sum, o) => sum + o.estimatedApy, 0) /
+                      filteredOpportunities.reduce((sum, o) => sum + parseFloat(o.netApy), 0) /
                       filteredOpportunities.length
                     ).toFixed(2)
                   : "0.00"}
@@ -235,7 +235,7 @@ export default function Opportunities() {
             <CardContent>
               <div className="text-2xl font-bold text-emerald-400">
                 {filteredOpportunities.length > 0
-                  ? Math.max(...filteredOpportunities.map((o) => o.estimatedApy)).toFixed(2)
+                  ? Math.max(...filteredOpportunities.map((o) => parseFloat(o.netApy))).toFixed(2)
                   : "0.00"}
                 %
               </div>
@@ -250,7 +250,7 @@ export default function Opportunities() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${(filteredOpportunities.reduce((sum, o) => sum + o.tvl, 0) / 1000000).toFixed(1)}M
+                ${(filteredOpportunities.reduce((sum, o) => sum + parseFloat(o.tvl.replace(/[$M]/g, "")), 0)).toFixed(1)}M
               </div>
               <p className="text-xs text-muted-foreground">Combined liquidity</p>
             </CardContent>

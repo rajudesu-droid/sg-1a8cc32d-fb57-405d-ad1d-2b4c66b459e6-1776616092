@@ -47,6 +47,13 @@ export default function Withdraw() {
   const { toast } = useToast();
   const mode = useAppStore((state) => state.mode);
 
+  const mockPositions = [
+    { currentValue: 5234.67, accruedFees: 124.30, accruedRewards: 18.40 },
+    { currentValue: 3210.45, accruedFees: 87.20, accruedRewards: 12.60 },
+  ];
+
+  const optimizedPlan = { totalGas: 4.20 };
+
   // Listen for mode changes
   useEffect(() => {
     const unsubscribe = orchestrator.subscribe((event) => {

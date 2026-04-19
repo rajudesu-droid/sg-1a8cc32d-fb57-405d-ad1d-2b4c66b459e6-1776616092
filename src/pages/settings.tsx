@@ -29,6 +29,11 @@ export default function Settings() {
   const [chainSettings, setChainSettings] = useState(supportedChains);
   const [dexSettings, setDexSettings] = useState(supportedDexes);
   const [slippageTolerance, setSlippageTolerance] = useState("2.0");
+  const [notificationSettings] = useState({
+    emailAlerts: true,
+    pushAlerts: true,
+    discordAlerts: false,
+  });
   const { toast } = useToast();
 
   const handleSaveChanges = () => {
@@ -81,7 +86,7 @@ export default function Settings() {
               Configure chains, DEXes, notifications, and preferences
             </p>
           </div>
-          <Button onClick={saveSettings} disabled={!hasChanges}>
+          <Button onClick={handleSaveChanges}>
             <Save className="mr-2 h-4 w-4" />
             Save Changes
           </Button>

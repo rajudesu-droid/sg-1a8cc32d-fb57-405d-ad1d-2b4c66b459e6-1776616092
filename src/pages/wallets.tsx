@@ -166,7 +166,10 @@ export default function Wallets() {
   const { toast } = useToast();
   const mode = useAppStore((state) => state.mode);
   const paperWallets = useAppStore((state) => state.paperWallets);
+  const wallet = useAppStore((state) => state.wallet);
   const addPaperWallet = useAppStore((state) => state.addPaperWallet);
+  const updatePaperWallet = useAppStore((state) => state.updatePaperWallet);
+  const deletePaperWallet = useAppStore((state) => state.deletePaperWallet);
   
   // Custom update helper to bridge the string balance to number quantity in global store
   const updateWallet = (id: string, updatedTokens: TokenHolding[]) => {
@@ -418,7 +421,7 @@ export default function Wallets() {
           </div>
           <div className="flex gap-3">
             {mode.current === "demo" && (
-              <Button onClick={() => setShowCreateDialog(true)}>
+              <Button onClick={() => setShowCreateWallet(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Create Paper Wallet
               </Button>
@@ -429,7 +432,7 @@ export default function Wallets() {
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Refresh Balances
                 </Button>
-                <Button onClick={handleWalletConnect}>
+                <Button onClick={connectWallet}>
                   <Wallet className="mr-2 h-4 w-4" />
                   Connect Wallet
                 </Button>

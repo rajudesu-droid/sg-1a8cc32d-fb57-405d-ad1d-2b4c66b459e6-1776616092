@@ -149,7 +149,7 @@ export default function Automation() {
             <h1 className="text-3xl font-bold">Automation & Policy</h1>
             <p className="text-muted-foreground">Configure automated LP management rules and guardrails</p>
           </div>
-          <Button onClick={savePolicy} disabled={!hasChanges}>
+          <Button onClick={handleSavePolicy}>
             <Save className="mr-2 h-4 w-4" />
             Save Changes
           </Button>
@@ -165,10 +165,10 @@ export default function Automation() {
             <CardContent>
               <div className="text-2xl font-bold">
                 {[
-                  policy.autoHarvest,
-                  policy.autoCompound,
-                  policy.autoRebalance,
-                  policy.autoDeploy,
+                  autoHarvest,
+                  autoCompound,
+                  autoRebalance,
+                  autoDeploy,
                 ].filter(Boolean).length}
                 /4
               </div>
@@ -183,7 +183,7 @@ export default function Automation() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {policy.emergencyPause ? (
+                {emergencyPauseAll ? (
                   <span className="text-amber-400">PAUSED</span>
                 ) : (
                   <span className="text-emerald-400">ACTIVE</span>
@@ -199,7 +199,7 @@ export default function Automation() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${policy.maxDailyGasBudget}</div>
+              <div className="text-2xl font-bold">${maxDailyGas}</div>
               <p className="text-xs text-muted-foreground">Maximum spend</p>
             </CardContent>
           </Card>
@@ -211,7 +211,7 @@ export default function Automation() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-cyan-400">
-                {policy.minPoolScore}%
+                {minScoreThreshold[0]}%
               </div>
               <p className="text-xs text-muted-foreground">Min pool score</p>
             </CardContent>

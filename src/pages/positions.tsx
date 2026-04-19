@@ -6,21 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { TrendingUp, TrendingDown, Coins, Target, Activity, AlertTriangle, RefreshCw, Search, DollarSign } from "lucide-react";
+import { TrendingUp, TrendingDown, Coins, Target, Activity, AlertTriangle, RefreshCw, Search, DollarSign, Filter, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store";
 import { ModeBanner } from "@/components/ModeBanner";
 import { orchestrator } from "@/core/orchestrator";
-import {
-  Target,
-  Filter,
-  ExternalLink,
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle,
-  DollarSign,
-  Coins,
-} from "lucide-react";
 
 type PositionStatus = "active" | "out_of_range" | "closed";
 
