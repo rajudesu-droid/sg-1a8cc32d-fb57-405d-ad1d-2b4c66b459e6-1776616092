@@ -78,7 +78,9 @@ export function AssetSearch({ assets, onSelect, placeholder }: AssetSearchProps)
                   {symbol} ({symbolAssets.length} networks)
                 </div>
               )}
-              {symbolAssets.map((asset) => (
+              {symbolAssets.map((a) => {
+                const asset = a as Asset;
+                return (
                 <button
                   key={asset.id}
                   onClick={() => handleSelect(asset)}
@@ -111,7 +113,7 @@ export function AssetSearch({ assets, onSelect, placeholder }: AssetSearchProps)
                     )}
                   </div>
                 </button>
-              ))}
+              )})}
             </div>
           ))}
         </div>
