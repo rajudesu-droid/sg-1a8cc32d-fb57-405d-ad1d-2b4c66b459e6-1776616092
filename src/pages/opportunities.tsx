@@ -1,5 +1,5 @@
 import { AppLayout } from "@/components/AppLayout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { TrendingUp, TrendingDown, Search, RefreshCw, ArrowUpDown, AlertCircle, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAppStore } from "@/store";
+import { ModeBanner } from "@/components/ModeBanner";
+import { orchestrator } from "@/core/orchestrator";
 
 type SortOption = "recommended" | "apy" | "tvl" | "risk";
 type RiskFilter = "all" | "low" | "medium" | "high";
@@ -107,6 +110,26 @@ export default function Opportunities() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedOpportunity, setSelectedOpportunity] = useState<typeof opportunities[0] | null>(null);
   const { toast } = useToast();
+  const mode = useAppStore((state) => state.mode);
+
+  // Listen for mode changes
+  useEffect(() => {
+    const unsubscribe = orchestrator.subscribe((event) => {
+      if (event.type === "mode.changed") {
+        console.log("[Opportunities] Mode changed, refreshing data");
+        handleRefreshPools();
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleRefreshPools = () => {
+    const currentMode = useAppStore.getState().mode.current;
+    toast({
+      title: "Refreshing Opportunities",
+      description: `Loading ${currentMode} mode data...`,
+    });
+  };
 
   const filteredOpportunities = opportunities
     .filter(opp => {
@@ -130,9 +153,18 @@ export default function Opportunities() {
   };
 
   const handleQuickDeploy = (opp: typeof opportunities[0]) => {
+    if (mode.current === "shadow") {
+      toast({
+        title: "Shadow Mode - Action Simulated",
+        description: `Would deploy to ${opp.pair} on ${opp.dex}. Switch to Demo or Live mode to execute.`,
+        variant: "default",
+      });
+      return;
+    }
+
     toast({
-      title: "Deploying Position",
-      description: `Opening LP position for ${opp.pair} on ${opp.dex}`,
+      title: mode.current === "demo" ? "Simulating Deployment" : "Deploying Position",
+      description: `${mode.current === "demo" ? "Simulating" : "Opening"} LP position for ${opp.pair} on ${opp.dex}`,
     });
   };
 
@@ -144,6 +176,14 @@ export default function Opportunities() {
     });
   };
 
+  const getModeLabel = () => {
+    switch (mode.current) {
+      case "demo": return "Simulated Opportunities";
+      case "shadow": return "Recommended Opportunities";
+      case "live": return "Live Opportunities";
+    }
+  };
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -152,14 +192,17 @@ export default function Opportunities() {
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">Opportunities</h1>
             <p className="text-muted-foreground mt-1">
-              Discover and rank LP pools by risk-adjusted score
+              {getModeLabel()} - Discover and rank LP pools by risk-adjusted score
             </p>
           </div>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={handleRefreshPools}>
             <RefreshCw className="h-4 w-4" />
             Refresh Pools
           </Button>
         </div>
+
+        {/* Mode Banner */}
+        <ModeBanner />
 
         <Card className="card-gradient border-border/50">
           <CardContent className="p-6">
@@ -338,8 +381,13 @@ export default function Opportunities() {
                           <Button onClick={() => handleViewDetails(opp)}>
                             View Details
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleQuickDeploy(opp)}>
-                            Quick Deploy
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleQuickDeploy(opp)}
+                            disabled={mode.current === "shadow"}
+                          >
+                            {mode.current === "shadow" ? "Preview Only" : "Quick Deploy"}
                           </Button>
                         </div>
                       </CardContent>

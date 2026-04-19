@@ -10,6 +10,7 @@ import { ActivePositions } from "@/components/dashboard/ActivePositions";
 import { RecentAlerts } from "@/components/dashboard/RecentAlerts";
 import { NetworkBalances } from "@/components/dashboard/NetworkBalances";
 import { ConnectedWallets } from "@/components/dashboard/ConnectedWallets";
+import { ModeBanner } from "@/components/ModeBanner";
 import { orchestrator } from "@/core/orchestrator";
 import { opportunityEngine } from "@/core/engines/OpportunityEngine";
 import { positionEngine } from "@/core/engines/PositionEngine";
@@ -21,6 +22,37 @@ export default function Dashboard() {
   const [botRunning, setBotRunning] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
 
+  // Listen for mode changes and refresh data
+  useEffect(() => {
+    const unsubscribe = orchestrator.subscribe((event) => {
+      if (event.type === "mode.changed") {
+        console.log("[Dashboard] Mode changed, refreshing data", event.data);
+        // Refresh dashboard data when mode changes
+        handleDataRefresh();
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleDataRefresh = async () => {
+    // Refresh data based on current mode
+    const currentMode = useAppStore.getState().mode.current;
+    
+    if (currentMode === "demo") {
+      // Load demo/simulated data
+      console.log("[Dashboard] Loading demo data");
+    } else if (currentMode === "shadow") {
+      // Load read-only wallet data and recommendations
+      console.log("[Dashboard] Loading shadow mode data");
+    } else {
+      // Load live data
+      console.log("[Dashboard] Loading live data");
+    }
+    
+    await portfolioEngine.recalculate();
+  };
+
   const handleStartBot = async () => {
     setIsStarting(true);
     
@@ -30,24 +62,15 @@ export default function Dashboard() {
     });
 
     try {
-      // Initialize and trigger all engines
       console.log("[Dashboard] Starting bot - triggering engines");
       
-      // Get current wallet assets to pass to scanPools
       const assets = useAppStore.getState().wallet.assets;
-      
-      // Scan for opportunities using actual assets
       await opportunityEngine.scanPools(assets);
-      
-      // Simulate some initial positions being opened
       await positionEngine.openPosition("opp-eth-usdt-uniswap-v3", 5000, "conservative");
       await new Promise(resolve => setTimeout(resolve, 500));
       await positionEngine.openPosition("opp-bnb-usdt-pancake-v3", 3000, "narrow");
-      
-      // Recalculate portfolio
       await portfolioEngine.recalculate();
       
-      // Add some sample alerts
       useAppStore.getState().addAlert({
         id: `alert-${Date.now()}-1`,
         type: "success",
@@ -150,6 +173,9 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Mode Banner */}
+        <ModeBanner />
+
         {/* Bot Status Banner */}
         {botRunning && (
           <div className="rounded-lg border border-success bg-success/10 p-4">
@@ -167,18 +193,6 @@ export default function Dashboard() {
                 <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
                 <span className="text-sm text-success">Live</span>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Mode Warning for Demo */}
-        {mode.current === "demo" && (
-          <div className="rounded-lg border border-accent bg-accent/10 p-4">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-accent flex-shrink-0" />
-              <p className="text-sm text-muted-foreground">
-                <strong className="text-foreground">Demo Mode:</strong> All positions and earnings are simulated. No real funds or transactions.
-              </p>
             </div>
           </div>
         )}

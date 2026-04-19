@@ -1,5 +1,5 @@
 import { AppLayout } from "@/components/AppLayout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { TrendingUp, TrendingDown, Coins, Target, Activity, AlertTriangle, RefreshCw, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAppStore } from "@/store";
+import { ModeBanner } from "@/components/ModeBanner";
+import { orchestrator } from "@/core/orchestrator";
 
 type PositionStatus = "active" | "out_of_range" | "closed";
 
@@ -88,8 +91,23 @@ export default function Positions() {
   const [filterChain, setFilterChain] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
+  const mode = useAppStore((state) => state.mode);
+  const positions = useAppStore((state) => state.positions);
 
-  const filteredPositions = mockPositions.filter((position) => {
+  // Listen for mode changes
+  useEffect(() => {
+    const unsubscribe = orchestrator.subscribe((event) => {
+      if (event.type === "mode.changed") {
+        console.log("[Positions] Mode changed, refreshing positions");
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Use store positions if available, otherwise use mock data
+  const displayPositions = positions.length > 0 ? positions : mockPositions;
+
+  const filteredPositions = displayPositions.filter((position) => {
     const matchesStatus = filterStatus === "all" || position.status === filterStatus;
     const matchesChain = filterChain === "all" || position.chain === filterChain;
     const matchesSearch = position.pair.toLowerCase().includes(searchTerm.toLowerCase());
@@ -97,37 +115,82 @@ export default function Positions() {
   });
 
   const handleAddLiquidity = (position: Position) => {
+    if (mode.current === "shadow") {
+      toast({
+        title: "Shadow Mode - Read Only",
+        description: "Cannot add liquidity in Shadow mode. Switch to Demo or Live.",
+        variant: "default",
+      });
+      return;
+    }
+
     toast({
-      title: "Adding Liquidity",
-      description: `Increasing position size for ${position.pair}`,
+      title: mode.current === "demo" ? "Simulating Add Liquidity" : "Adding Liquidity",
+      description: `${mode.current === "demo" ? "Simulating increase" : "Increasing"} position size for ${position.pair}`,
     });
   };
 
   const handleHarvest = (position: Position) => {
+    if (mode.current === "shadow") {
+      toast({
+        title: "Shadow Mode - Read Only",
+        description: "Cannot harvest in Shadow mode. Switch to Demo or Live.",
+        variant: "default",
+      });
+      return;
+    }
+
     toast({
-      title: "Harvesting Rewards",
-      description: `Claiming ${position.accruedFees} in fees and ${position.accruedRewards} in rewards`,
+      title: mode.current === "demo" ? "Simulating Harvest" : "Harvesting Rewards",
+      description: `${mode.current === "demo" ? "Simulating claim" : "Claiming"} ${position.accruedFees} in fees and ${position.accruedRewards} in rewards`,
     });
   };
 
   const handleCompound = (position: Position) => {
+    if (mode.current === "shadow") {
+      toast({
+        title: "Shadow Mode - Read Only",
+        description: "Cannot compound in Shadow mode. Switch to Demo or Live.",
+        variant: "default",
+      });
+      return;
+    }
+
     toast({
-      title: "Compounding",
-      description: `Reinvesting rewards into ${position.pair} position`,
+      title: mode.current === "demo" ? "Simulating Compound" : "Compounding",
+      description: `${mode.current === "demo" ? "Simulating reinvestment" : "Reinvesting"} rewards into ${position.pair} position`,
     });
   };
 
   const handleRebalance = (position: Position) => {
+    if (mode.current === "shadow") {
+      toast({
+        title: "Shadow Mode - Read Only",
+        description: "Cannot rebalance in Shadow mode. Switch to Demo or Live.",
+        variant: "default",
+      });
+      return;
+    }
+
     toast({
-      title: "Rebalancing Position",
-      description: `Adjusting range for ${position.pair}`,
+      title: mode.current === "demo" ? "Simulating Rebalance" : "Rebalancing Position",
+      description: `${mode.current === "demo" ? "Simulating range adjustment" : "Adjusting range"} for ${position.pair}`,
     });
   };
 
   const handleClosePosition = (position: Position) => {
+    if (mode.current === "shadow") {
+      toast({
+        title: "Shadow Mode - Read Only",
+        description: "Cannot close positions in Shadow mode. Switch to Demo or Live.",
+        variant: "default",
+      });
+      return;
+    }
+
     toast({
-      title: "Closing Position",
-      description: `Withdrawing all liquidity from ${position.pair}`,
+      title: mode.current === "demo" ? "Simulating Close" : "Closing Position",
+      description: `${mode.current === "demo" ? "Simulating withdrawal" : "Withdrawing"} all liquidity from ${position.pair}`,
       variant: "destructive",
     });
   };
@@ -139,15 +202,23 @@ export default function Positions() {
     });
   };
 
+  const getPageTitle = () => {
+    switch (mode.current) {
+      case "demo": return "Simulated Positions";
+      case "shadow": return "Recommended Positions";
+      case "live": return "Active Positions";
+    }
+  };
+
   return (
     <AppLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight">Active Positions</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">{getPageTitle()}</h1>
             <p className="text-muted-foreground mt-1">
-              Monitor and manage your LP positions
+              {mode.current === "shadow" ? "Read-only view of recommended positions" : "Monitor and manage your LP positions"}
             </p>
           </div>
           <Button className="gap-2">
@@ -155,6 +226,9 @@ export default function Positions() {
             Refresh Positions
           </Button>
         </div>
+
+        {/* Mode Banner */}
+        <ModeBanner />
 
         {/* Filters */}
         <Card className="card-gradient border-border/50">
@@ -300,11 +374,22 @@ export default function Positions() {
                   {/* Actions */}
                   <div className="flex items-center justify-between pt-4 border-t border-border">
                     <div className="flex items-center gap-2">
-                      <Button size="sm" className="gap-2" onClick={() => handleAddLiquidity(position)}>
+                      <Button 
+                        size="sm" 
+                        className="gap-2" 
+                        onClick={() => handleAddLiquidity(position)}
+                        disabled={mode.current === "shadow"}
+                      >
                         <TrendingUp className="h-4 w-4" />
                         Add Liquidity
                       </Button>
-                      <Button size="sm" variant="outline" className="gap-2" onClick={() => handleHarvest(position)}>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="gap-2" 
+                        onClick={() => handleHarvest(position)}
+                        disabled={mode.current === "shadow"}
+                      >
                         <Coins className="h-4 w-4" />
                         Harvest
                       </Button>
@@ -314,13 +399,28 @@ export default function Positions() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline" onClick={() => handleCompound(position)}>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => handleCompound(position)}
+                        disabled={mode.current === "shadow"}
+                      >
                         Compound
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleRebalance(position)}>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => handleRebalance(position)}
+                        disabled={mode.current === "shadow"}
+                      >
                         Rebalance
                       </Button>
-                      <Button size="sm" variant="destructive" onClick={() => handleClosePosition(position)}>
+                      <Button 
+                        size="sm" 
+                        variant="destructive" 
+                        onClick={() => handleClosePosition(position)}
+                        disabled={mode.current === "shadow"}
+                      >
                         Close Position
                       </Button>
                     </div>
