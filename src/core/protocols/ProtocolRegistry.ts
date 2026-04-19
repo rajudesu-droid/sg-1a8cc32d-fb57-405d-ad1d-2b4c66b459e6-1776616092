@@ -81,7 +81,7 @@ export class ProtocolRegistry {
       },
       {
         name: "Curve",
-        type: "stable_amm",
+        type: "standard_amm_dex",
         chains: ["ethereum", "arbitrum", "polygon", "optimism"],
         enabled: false,
         whitelisted: true,
