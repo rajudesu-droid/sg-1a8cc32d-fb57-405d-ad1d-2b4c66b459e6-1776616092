@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, TrendingDown, Target } from "lucide-react";
+import { TrendingUp, TrendingDown, Target, Activity } from "lucide-react";
 import { useAppStore } from "@/store";
 import Link from "next/link";
 
@@ -26,55 +26,45 @@ export function ActivePositions() {
       <CardContent>
         {activePositions.length > 0 ? (
           <div className="space-y-3">
-            {activePositions.slice(0, 4).map((position) => {
-              const isInRange = position.currentPrice >= position.rangeMin && position.currentPrice <= position.rangeMax;
-              
-              return (
-                <div key={position.id} className="rounded-lg border border-border/50 bg-card/30 p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-sm">{position.pair}</h4>
-                      <Badge variant="outline" className="text-xs">
-                        {position.chain}
-                      </Badge>
+            {positions.slice(0, 5).map((position) => (
+              <div
+                key={position.id}
+                className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <div className="font-semibold mb-1">{position.pair}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {position.protocol} · {position.chain}
                     </div>
-                    <Badge
-                      variant={isInRange ? "default" : "destructive"}
-                      className="text-xs"
-                    >
-                      {isInRange ? "In Range" : "Out of Range"}
-                    </Badge>
                   </div>
+                  <Badge className={position.inRange ? "bg-emerald-500" : "bg-amber-500"}>
+                    {position.inRange ? "In Range" : "Out of Range"}
+                  </Badge>
+                </div>
 
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <div>
-                      <p className="text-muted-foreground">Value</p>
-                      <p className="font-semibold">${position.valueUsd.toFixed(2)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Fees</p>
-                      <p className="font-semibold metric-positive">
-                        ${position.accruedFees.toFixed(2)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Health</p>
-                      <p
-                        className={`font-semibold ${
-                          position.health >= 80
-                            ? "metric-positive"
-                            : position.health >= 60
-                            ? "text-accent"
-                            : "metric-negative"
-                        }`}
-                      >
-                        {position.health}%
-                      </p>
-                    </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <div className="text-muted-foreground">Value</div>
+                    <div className="font-mono">${position.currentValue.toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">APY</div>
+                    <div className="font-mono text-cyan-400">{position.currentAPY.toFixed(2)}%</div>
                   </div>
                 </div>
-              );
-            })}
+
+                {/* Next Planned Action */}
+                {!position.inRange && (
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <div className="flex items-center gap-2 text-xs text-amber-400">
+                      <Activity className="w-3 h-3" />
+                      <span>Next: Rebalance position (pending approval)</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         ) : (
           <div className="text-center py-8">

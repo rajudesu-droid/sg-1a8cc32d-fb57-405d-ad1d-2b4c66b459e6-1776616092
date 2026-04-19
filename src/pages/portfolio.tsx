@@ -1,9 +1,9 @@
 import { AppLayout } from "@/components/AppLayout";
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Wallet, TrendingUp, AlertCircle, Coins, Network, AlertTriangle, ArrowRight } from "lucide-react";
+import { DollarSign, Wallet, TrendingUp, AlertCircle, Coins, Network, AlertTriangle, ArrowRight, Activity, CheckCircle2, XCircle, TrendingDown, PieChart } from "lucide-react";
 import { useAppStore } from "@/store";
 import { ModeBanner } from "@/components/ModeBanner";
 import { orchestrator } from "@/core/orchestrator";
@@ -309,48 +309,85 @@ export default function Portfolio() {
         {/* Mode Banner */}
         <ModeBanner />
 
-        {/* Portfolio Summary */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card className="card-gradient border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Portfolio Value</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+        {/* Main Content */}
+        <div className="grid gap-6">
+          {/* Portfolio Summary */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Portfolio Summary</CardTitle>
+              <CardDescription>
+                Your complete asset allocation across {mode.current} mode
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                ${portfolioData.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <div className="text-sm text-muted-foreground mb-1">Total Value</div>
+                  <div className="text-2xl font-bold">
+                    ${portfolio.totalValue.toLocaleString()}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground mb-1">Deployed Capital</div>
+                  <div className="text-2xl font-bold text-cyan-400">
+                    ${portfolio.deployedCapital.toLocaleString()}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground mb-1">Idle Capital</div>
+                  <div className="text-2xl font-bold text-amber-400">
+                    ${portfolio.idleCapital.toLocaleString()}
+                  </div>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {mode.current === "demo" ? "Simulated total" : mode.current === "shadow" ? "Estimated value" : "Real-time value"}
-              </p>
             </CardContent>
           </Card>
 
-          <Card className="card-gradient border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Connected Wallets</CardTitle>
-              <Wallet className="h-4 w-4 text-muted-foreground" />
+          {/* Recent Execution History */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="w-5 h-5" />
+                Recent Executions
+              </CardTitle>
+              <CardDescription>Last 5 automated actions</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {mode.current === "demo" ? paperWallets.length : wallet.wallet ? 1 : 0}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {mode.current === "demo" ? "Paper wallets" : mode.current === "shadow" ? "Read-only wallets" : "Active wallets"}
-              </p>
+              {auditLogs.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No execution history yet
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {auditLogs.slice(0, 5).map((log) => (
+                    <div
+                      key={log.id}
+                      className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        {log.success ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-red-400" />
+                        )}
+                        <div>
+                          <div className="font-medium">{log.actionType}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(log.timestamp).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                      <Badge variant={log.success ? "default" : "destructive"}>
+                        {log.mode}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          <Card className="card-gradient border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Assets Held</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{portfolioData.tokens.length}</div>
-              <p className="text-xs text-muted-foreground mt-1">Across {networks.length} networks</p>
-            </CardContent>
-          </Card>
+          {/* Asset Allocation */}
         </div>
 
         {/* Token Holdings by Network */}

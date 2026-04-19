@@ -177,7 +177,7 @@ export class AutomatedExecutionEngine {
   // ============================================================================
 
   private async processJob(job: ExecutionJob): Promise<void> {
-    console.log(`[ExecutionEngine] Processing job ${job.id} (${job.actionType})`);
+    console.log(`[ExecutionEngine] Processing job ${job.id} (${job.actionType}) in ${job.mode} mode`);
 
     // Add to active jobs
     this.activeJobs.set(job.id, job);
@@ -232,6 +232,30 @@ export class AutomatedExecutionEngine {
         affectedModules: ["dashboard", "positions-page"],
       });
 
+      // MODE-SPECIFIC BEHAVIOR
+      if (job.mode === "shadow") {
+        // Shadow mode: preview only, no execution
+        job.status = "completed";
+        job.executionResult = {
+          executionId: `shadow-${job.id}`,
+          planId: plan.planId,
+          actionType: job.actionType,
+          status: "completed",
+          completedSteps: 0,
+          totalSteps: plan.totalSteps,
+          transactions: [],
+          stateChanges: {},
+          startedAt: new Date(),
+          completedAt: new Date(),
+          logs: ["Shadow mode: Preview generated, no execution performed"],
+        };
+        
+        await postExecutionSync.syncAfterExecution(job);
+        executionLogService.logJobResult(job);
+        await this.handleJobCompletion(job);
+        return;
+      }
+
       // STEP 4: AUTHORIZATION
       job.status = "awaiting_authorization";
       job.updatedAt = new Date();
@@ -239,8 +263,9 @@ export class AutomatedExecutionEngine {
 
       if (!auth.authorized) {
         console.log(`[ExecutionEngine] Job ${job.id} awaiting authorization`);
-        // For now, auto-approve demo/shadow. Live requires manual approval.
-        if (job.mode !== "live") {
+        
+        // Auto-approve for demo mode
+        if (job.mode === "demo") {
           const approved = await authorizationEngine.approveAuthorization(auth);
           if (!approved.authorized) {
             job.status = "failed";
@@ -253,8 +278,8 @@ export class AutomatedExecutionEngine {
             await this.handleJobCompletion(job);
             return;
           }
-        } else {
-          // Live mode requires explicit user approval (not implemented here)
+        } else if (job.mode === "live") {
+          // Live mode requires explicit user approval (keep in awaiting state)
           job.status = "awaiting_authorization";
           this.activeJobs.delete(job.id);
           concurrencyController.releaseLock(job);
