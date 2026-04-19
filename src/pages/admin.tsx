@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Save, Shield, Network, Activity, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Save, Shield, Network, Activity, AlertTriangle, ShieldCheck, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { protocolRegistry } from "@/core/protocols/ProtocolRegistry";
 import { useAppStore } from "@/store";
@@ -58,7 +58,7 @@ export default function Admin() {
     // Trigger a re-sync
     orchestrator.coordinateUpdate(
       "admin",
-      "settings_changed",
+      "settings_changed" as any,
       { protocols, chains },
       ["opportunities-page", "dashboard"]
     );
