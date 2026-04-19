@@ -9,7 +9,7 @@ export function ActivePositions() {
   const positions = useAppStore((state) => state.positions);
 
   // Show only active positions (not closed)
-  const activePositions = positions.filter(p => p.status === "active" || p.status === "out_of_range");
+  const activePositions = positions.filter(p => p.status === "active" || p.status === "out-of-range");
 
   return (
     <Card className="card-gradient border-border/50">

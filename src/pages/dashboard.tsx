@@ -33,13 +33,13 @@ export default function Dashboard() {
       // Initialize and trigger all engines
       console.log("[Dashboard] Starting bot - triggering engines");
       
-      // Scan for opportunities
-      await opportunityEngine.scanPools();
+      // Scan for opportunities (no parameters needed - uses current mode)
+      await opportunityEngine.scanPools(["Ethereum", "BSC"]);
       
       // Simulate some initial positions being opened
-      await positionEngine.openPosition("opp-eth-usdt-uniswap-v3", 5000);
+      await positionEngine.openPosition("opp-eth-usdt-uniswap-v3", 5000, 3000, 3400);
       await new Promise(resolve => setTimeout(resolve, 500));
-      await positionEngine.openPosition("opp-bnb-usdt-pancake-v3", 3000);
+      await positionEngine.openPosition("opp-bnb-usdt-pancake-v3", 3000, 280, 310);
       
       // Recalculate portfolio
       await portfolioEngine.recalculate();
