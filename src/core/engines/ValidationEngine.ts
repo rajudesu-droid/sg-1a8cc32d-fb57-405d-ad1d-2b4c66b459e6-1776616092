@@ -11,6 +11,8 @@ import type {
   ValidationCheck,
 } from "../contracts/actions";
 import { createAssetId, findAssetByIdentity, assetsMatch, extractIdentity } from "../utils/assetIdentity";
+import { spenderAllowlist } from "../config/SpenderAllowlist";
+import { allowanceService } from "../services/AllowanceService";
 
 export class ValidationEngine {
   private engineId = "validation-engine";
@@ -116,6 +118,154 @@ export class ValidationEngine {
     checks.push(await this.checkSyncState(trigger));
     checks.push(await this.checkConcurrentActions(trigger));
     checks.push(await this.checkOpportunityValidity(trigger));
+
+    // Check 3: Spender allowlist validation
+    if (trigger.metadata?.spenderAddress && trigger.chain) {
+      const spenderAddress = trigger.metadata.spenderAddress as string;
+      const chain = trigger.chain;
+
+      const isAllowed = spenderAllowlist.isSpenderAllowed(spenderAddress, chain);
+      
+      if (!isAllowed) {
+        checks.push({
+          name: "spender_allowlist",
+          passed: false,
+          message: `Spender ${spenderAddress} not whitelisted on ${chain}. Cannot proceed.`,
+        });
+      } else {
+        const spenderDetails = spenderAllowlist.getSpenderDetails(spenderAddress, chain);
+        checks.push({
+          name: "spender_allowlist",
+          passed: true,
+          message: `Spender whitelisted: ${spenderDetails?.name || spenderAddress} (${spenderDetails?.protocol || "unknown"})`,
+        });
+      }
+    }
+
+    // Check 4: Pool whitelisting
+    if (trigger.poolAddress) {
+      const isWhitelisted = this.isPoolWhitelisted(
+        trigger.poolAddress,
+        trigger.chain || "",
+        trigger.protocol || ""
+      );
+      
+      checks.push({
+        name: "pool_whitelisted",
+        passed: isWhitelisted,
+        message: isWhitelisted 
+          ? "Pool is whitelisted" 
+          : "Pool not whitelisted - add to whitelist first",
+      });
+    }
+
+    // Check 5: Token allowance validation (if required)
+    if (trigger.metadata?.requiredAssets && trigger.metadata?.spenderAddress) {
+      const requiredAssets = trigger.metadata.requiredAssets as Array<{
+        identity: any;
+        amount: string;
+      }>;
+      const spenderAddress = trigger.metadata.spenderAddress as string;
+      const ownerAddress = store.wallet.wallet?.address || "";
+
+      for (const required of requiredAssets) {
+        // CRITICAL: Find asset by identity
+        const walletAsset = findAssetByIdentity(
+          store.wallet.assets,
+          required.identity
+        );
+        
+        if (!walletAsset) {
+          checks.push({
+            name: "balance_check",
+            passed: false,
+            message: `Missing required asset: ${required.identity.symbol} on ${required.identity.network}`,
+          });
+          continue;
+        }
+
+        // Check balance sufficiency
+        const requiredAmount = parseFloat(required.amount);
+        const availableBalance = parseFloat(walletAsset.balance);
+        
+        const hasSufficient = availableBalance >= requiredAmount;
+        
+        checks.push({
+          name: "balance_check",
+          passed: hasSufficient,
+          message: hasSufficient
+            ? `Sufficient ${required.identity.symbol} on ${required.identity.network}: ${availableBalance} >= ${requiredAmount}`
+            : `Insufficient ${required.identity.symbol} on ${required.identity.network}: ${availableBalance} < ${requiredAmount}`,
+        });
+
+        // Check allowance if token requires approval
+        if (walletAsset.contractAddress) {
+          try {
+            const allowanceCheck = await allowanceService.isApprovalNeeded(
+              walletAsset,
+              ownerAddress,
+              spenderAddress,
+              (requiredAmount * Math.pow(10, walletAsset.decimals)).toString(),
+              mode
+            );
+
+            if (allowanceCheck.needed) {
+              checks.push({
+                name: "allowance_check",
+                passed: true,  // Not blocking, approval will be added to plan
+                message: `Approval needed: ${required.identity.symbol} for ${spenderAddress.slice(0, 6)}...${spenderAddress.slice(-4)}`,
+              });
+            } else {
+              checks.push({
+                name: "allowance_check",
+                passed: true,
+                message: `Sufficient allowance for ${required.identity.symbol}`,
+              });
+            }
+          } catch (error) {
+            // CRITICAL: In Live Mode, allowance fetch failure is blocking
+            if (mode === "live") {
+              checks.push({
+                name: "allowance_check",
+                passed: false,
+                message: `Failed to check allowance for ${required.identity.symbol}: ${error instanceof Error ? error.message : "Unknown error"}`,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Check 6: Slippage tolerance
+    if (trigger.metadata?.estimatedSlippage !== undefined) {
+      const maxSlippage = store.policies.maxSlippage || 1.0;
+      const estimatedSlippage = trigger.metadata.estimatedSlippage as number;
+      
+      checks.push({
+        name: "slippage_check",
+        passed: estimatedSlippage <= maxSlippage,
+        message: estimatedSlippage <= maxSlippage
+          ? `Slippage ${estimatedSlippage.toFixed(2)}% within limit ${maxSlippage.toFixed(2)}%`
+          : `Slippage ${estimatedSlippage.toFixed(2)}% exceeds limit ${maxSlippage.toFixed(2)}%`,
+      });
+    }
+
+    // Check 7: Gas budget
+    if (trigger.metadata?.estimatedGas !== undefined) {
+      const dailyGasBudget = store.policies.maxDailyGas || 1000000;
+      const usedGasToday = 0; // TODO: Track from audit logs
+      const estimatedGas = trigger.metadata.estimatedGas as number;
+      
+      const wouldExceedBudget = (usedGasToday + estimatedGas) > dailyGasBudget;
+      
+      checks.push({
+        name: "gas_budget_check",
+        passed: !wouldExceedBudget,
+        message: wouldExceedBudget
+          ? `Would exceed daily gas budget: ${usedGasToday + estimatedGas} > ${dailyGasBudget}`
+          : `Gas within budget: ${usedGasToday + estimatedGas} / ${dailyGasBudget}`,
+      });
+    }
 
     // Collect blocking reasons and warnings
     checks.forEach((check) => {
