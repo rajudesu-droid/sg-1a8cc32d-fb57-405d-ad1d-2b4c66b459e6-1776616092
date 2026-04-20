@@ -4,143 +4,134 @@
 // ============================================================================
 
 import type {
-  IProtocolAdapter,
-  ProtocolType,
+  ProtocolAdapter,
+  ProtocolMetadata,
+  AdapterCapabilities,
+  AdapterReadiness,
+  Pool,
+  Farm,
   PoolMetrics,
   RewardMetrics,
-  EntryQuote,
-  ExitQuote,
-  PositionParams,
-  HarvestResult,
+  QuoteResult,
   PositionState,
-  NormalizedOpportunity,
+  ExecutionParams,
 } from "./types";
-import { cacheManager } from "../performance/CacheManager";
 
-export abstract class BaseProtocolAdapter implements IProtocolAdapter {
-  abstract protocolName: string;
-  abstract protocolType: ProtocolType;
-  abstract supportedChains: string[];
+/**
+ * Base Protocol Adapter
+ * Abstract class with common functionality
+ * 
+ * CRITICAL: Adapters must declare their readiness level
+ */
+export abstract class BaseProtocolAdapter implements ProtocolAdapter {
+  protected protocolName: string;
+  protected capabilities: AdapterCapabilities;
 
-  // ============================================================================
-  // DISCOVERY METHODS
-  // ============================================================================
-
-  abstract getSupportedPools(chain: string): Promise<string[]>;
-
-  async getEligibleFarms(chain: string, walletAddress?: string): Promise<string[]> {
-    return [];
+  constructor(protocolName: string) {
+    this.protocolName = protocolName;
+    this.capabilities = this.getDefaultCapabilities();
   }
 
-  // ============================================================================
-  // METRICS METHODS
-  // ============================================================================
+  // ==================== METADATA ====================
+  
+  abstract getMetadata(): ProtocolMetadata;
 
-  abstract getPoolMetrics(chain: string, poolAddress: string): Promise<PoolMetrics>;
-  abstract getRewardMetrics(chain: string, poolAddress: string): Promise<RewardMetrics>;
-
-  // ============================================================================
-  // WALLET INTEGRATION
-  // ============================================================================
-
-  async getWalletEligiblePairs(chain: string, walletAddress: string): Promise<string[]> {
-    return [];
+  /**
+   * Get adapter readiness level
+   * Override in subclass to set appropriate level
+   */
+  getReadiness(): AdapterReadiness {
+    return this.capabilities.readiness;
   }
 
-  // ============================================================================
-  // QUOTE METHODS
-  // ============================================================================
-
-  async quoteEntry(chain: string, poolAddress: string, amountUsd: number): Promise<EntryQuote> {
-    throw new Error("Method not implemented for " + this.protocolName);
+  /**
+   * Get adapter capabilities
+   */
+  getCapabilities(): AdapterCapabilities {
+    return { ...this.capabilities };
   }
 
-  async quoteExit(chain: string, poolAddress: string, positionId: string): Promise<ExitQuote> {
-    throw new Error("Method not implemented for " + this.protocolName);
+  /**
+   * Check if adapter can be used in given mode
+   */
+  canUseInMode(mode: "demo" | "shadow" | "live"): boolean {
+    const readiness = this.getReadiness();
+    
+    if (mode === "demo") return true;  // All adapters work in demo
+    if (mode === "shadow") return readiness === "shadow" || readiness === "live";
+    if (mode === "live") return readiness === "live";
+    
+    return false;
   }
 
-  // ============================================================================
-  // EXECUTION METHODS
-  // ============================================================================
-
-  async openPosition(chain: string, poolAddress: string, params: PositionParams): Promise<string> {
-    throw new Error("Method not implemented for " + this.protocolName);
+  /**
+   * Get blocking issues preventing live-ready status
+   */
+  getBlockingIssues(): string[] {
+    return this.capabilities.blockingIssues || [];
   }
 
-  async addLiquidity(chain: string, positionId: string, amountUsd: number): Promise<void> {
-    throw new Error("Method not implemented for " + this.protocolName);
-  }
-
-  async removeLiquidity(chain: string, positionId: string, percentage: number): Promise<void> {
-    throw new Error("Method not implemented for " + this.protocolName);
-  }
-
-  // ============================================================================
-  // STAKING METHODS
-  // ============================================================================
-
-  async stakeIfRequired(chain: string, positionId: string): Promise<void> {
-    // Default: no-op (override if protocol has staking)
-    console.log(`[${this.protocolName}] Staking not required for ${positionId}`);
-  }
-
-  async unstakeIfRequired(chain: string, positionId: string): Promise<void> {
-    // Default: no-op (override if protocol has staking)
-    console.log(`[${this.protocolName}] Unstaking not required for ${positionId}`);
-  }
-
-  // ============================================================================
-  // REWARD METHODS
-  // ============================================================================
-
-  async harvestRewards(chain: string, positionId: string): Promise<HarvestResult> {
-    throw new Error("Method not implemented for " + this.protocolName);
-  }
-
-  // ============================================================================
-  // POSITION STATE
-  // ============================================================================
-
-  async getPositionState(chain: string, positionId: string): Promise<PositionState> {
-    throw new Error("Method not implemented for " + this.protocolName);
-  }
-
-  // ============================================================================
-  // NORMALIZATION
-  // ============================================================================
-
-  abstract normalizeOpportunity(chain: string, poolAddress: string): Promise<NormalizedOpportunity>;
-
-  // ============================================================================
-  // HELPER METHODS
-  // Shared utilities for all adapters
-  // ============================================================================
-
-  protected validateChain(chain: string): void {
-    if (!this.supportedChains.includes(chain)) {
-      throw new Error(
-        `[${this.protocolName}] Chain ${chain} not supported. Supported: ${this.supportedChains.join(", ")}`
-      );
-    }
-  }
-
-  protected generateOpportunityId(chain: string, poolAddress: string): string {
-    return `${this.protocolName}-${chain}-${poolAddress}`.toLowerCase();
-  }
-
-  protected estimateGasCost(chain: string, operationType: "entry" | "exit" | "harvest"): number {
-    // Simplified gas estimation (should be enhanced with real gas price feeds)
-    const gasEstimates: Record<string, Record<string, number>> = {
-      ethereum: { entry: 15, exit: 12, harvest: 8 },
-      bsc: { entry: 2, exit: 1.5, harvest: 1 },
-      polygon: { entry: 0.5, exit: 0.4, harvest: 0.2 },
-      arbitrum: { entry: 1, exit: 0.8, harvest: 0.5 },
-      optimism: { entry: 1, exit: 0.8, harvest: 0.5 },
-      base: { entry: 0.8, exit: 0.6, harvest: 0.4 },
-      avalanche: { entry: 1.5, exit: 1.2, harvest: 0.8 },
+  /**
+   * Default capabilities (all false)
+   * Subclasses must override to declare their capabilities
+   */
+  protected getDefaultCapabilities(): AdapterCapabilities {
+    return {
+      realPoolDiscovery: false,
+      realPoolMetrics: false,
+      realQuotes: false,
+      realRewards: false,
+      realPositionState: false,
+      realExecution: false,
+      testedOnTestnet: false,
+      auditedContracts: false,
+      readiness: "demo",
+      blockingIssues: [
+        "Pool discovery uses mock data",
+        "Pool metrics are simulated",
+        "Quotes are estimated, not real",
+        "Reward data is placeholder",
+        "Position state is simulated",
+        "Execution paths not implemented",
+        "Not tested on testnet",
+        "Contract addresses not audited",
+      ],
     };
+  }
 
-    const chainGas = gasEstimates[chain.toLowerCase()] || gasEstimates.polygon;
-    return chainGas[operationType] || 1;
+  // ==================== ABSTRACT METHODS ====================
+  
+  abstract getSupportedPools(chain: string): Promise<Pool[]>;
+  abstract getEligibleFarms(chain: string): Promise<Farm[]>;
+  abstract getPoolMetrics(poolAddress: string, chain: string): Promise<PoolMetrics>;
+  abstract getRewardMetrics(poolAddress: string, chain: string): Promise<RewardMetrics>;
+  abstract getWalletEligiblePairs(walletAddress: string, chain: string): Promise<string[]>;
+  abstract quoteEntry(params: ExecutionParams): Promise<QuoteResult>;
+  abstract quoteExit(params: ExecutionParams): Promise<QuoteResult>;
+  abstract getPositionState(positionId: string, walletAddress: string, chain: string): Promise<PositionState>;
+  
+  // Execution methods (default to throwing error if not implemented)
+  async openPosition(params: ExecutionParams): Promise<string> {
+    throw new Error(`${this.protocolName}: openPosition not implemented`);
+  }
+  
+  async addLiquidity(params: ExecutionParams): Promise<string> {
+    throw new Error(`${this.protocolName}: addLiquidity not implemented`);
+  }
+  
+  async removeLiquidity(params: ExecutionParams): Promise<string> {
+    throw new Error(`${this.protocolName}: removeLiquidity not implemented`);
+  }
+  
+  async stakeIfRequired(params: ExecutionParams): Promise<string | null> {
+    return null;  // No staking by default
+  }
+  
+  async unstakeIfRequired(params: ExecutionParams): Promise<string | null> {
+    return null;  // No staking by default
+  }
+  
+  async harvestRewards(params: ExecutionParams): Promise<string> {
+    throw new Error(`${this.protocolName}: harvestRewards not implemented`);
   }
 }

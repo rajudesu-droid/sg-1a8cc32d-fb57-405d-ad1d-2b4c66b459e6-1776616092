@@ -241,3 +241,43 @@ export interface ChainConfig {
   maxCapital: number; // USD
   gasPriceMultiplier: number; // 1.0 = normal, 1.5 = 50% buffer
 }
+
+/**
+ * Adapter Readiness Level
+ * Controls which modes an adapter can be used in
+ */
+export type AdapterReadiness = "demo" | "shadow" | "live";
+
+/**
+ * Adapter Capability Status
+ * Tracks which features are implemented with real data
+ */
+export interface AdapterCapabilities {
+  // Read capabilities
+  realPoolDiscovery: boolean;      // Uses real protocol contracts
+  realPoolMetrics: boolean;        // Fetches real TVL, volume, APR
+  realQuotes: boolean;             // Generates real entry/exit quotes
+  realRewards: boolean;            // Fetches real reward data
+  realPositionState: boolean;      // Reads real position state
+  
+  // Write capabilities
+  realExecution: boolean;          // Can execute real transactions
+  testedOnTestnet: boolean;        // Tested on testnet
+  auditedContracts: boolean;       // Contract addresses verified
+  
+  // Current readiness
+  readiness: AdapterReadiness;
+  blockingIssues: string[];        // Issues preventing live-ready status
+}
+
+/**
+ * Protocol Metadata
+ */
+export interface ProtocolMetadata {
+  name: string;
+  version: string;
+  description: string;
+  chains: string[];
+  capabilities: AdapterCapabilities;
+  documentation?: string;
+}
