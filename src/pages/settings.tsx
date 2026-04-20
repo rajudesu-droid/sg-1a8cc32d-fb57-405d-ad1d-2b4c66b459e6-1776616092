@@ -7,27 +7,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Settings as SettingsIcon, Wallet, Bell, Shield, Save, Network, Activity, Palette } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-
-const supportedChains = [
-  { id: "ethereum", name: "Ethereum", enabled: true },
-  { id: "bsc", name: "BSC", enabled: true },
-  { id: "polygon", name: "Polygon", enabled: true },
-  { id: "avalanche", name: "Avalanche", enabled: false },
-  { id: "solana", name: "Solana", enabled: false },
-];
-
-const supportedDexes = [
-  { id: "uniswap-v3", name: "Uniswap V3", chain: "Ethereum", enabled: true },
-  { id: "pancake-v3", name: "PancakeSwap V3", chain: "BSC", enabled: true },
-  { id: "trader-joe", name: "Trader Joe V2", chain: "Avalanche", enabled: false },
-  { id: "raydium", name: "Raydium CLMM", chain: "Solana", enabled: false },
-];
+import { protocolRegistry } from "@/core/protocols/ProtocolRegistry";
+import { spenderAllowlist } from "@/core/config/SpenderAllowlist";
+import { ProtocolReadinessIndicator } from "@/components/ProtocolReadinessIndicator";
 
 export default function Settings() {
-  const [chainSettings, setChainSettings] = useState(supportedChains);
-  const [dexSettings, setDexSettings] = useState(supportedDexes);
+  const [chainSettings, setChainSettings] = useState<Array<{ id: string; name: string; enabled: boolean }>>([]);
+  const [protocolSettings, setProtocolSettings] = useState<Array<{
+    id: string;
+    name: string;
+    chain: string;
+    enabled: boolean;
+    readiness: string;
+    spenderCount: number;
+  }>>([]);
   const [slippageTolerance, setSlippageTolerance] = useState("2.0");
   const [notificationSettings] = useState({
     emailAlerts: true,
@@ -35,6 +30,51 @@ export default function Settings() {
     discordAlerts: false,
   });
   const { toast } = useToast();
+
+  // Load real data on mount
+  useEffect(() => {
+    loadChainSettings();
+    loadProtocolSettings();
+  }, []);
+
+  const loadChainSettings = () => {
+    const chains = spenderAllowlist.getSupportedChains();
+    const chainData = chains.map(chain => ({
+      id: chain,
+      name: chain.charAt(0).toUpperCase() + chain.slice(1),
+      enabled: true, // All chains in allowlist are enabled
+    }));
+    setChainSettings(chainData);
+  };
+
+  const loadProtocolSettings = () => {
+    const adapters = protocolRegistry.getAllAdapters();
+    const protocols: Array<{
+      id: string;
+      name: string;
+      chain: string;
+      enabled: boolean;
+      readiness: string;
+      spenderCount: number;
+    }> = [];
+
+    adapters.forEach(adapter => {
+      adapter.supportedChains.forEach(chain => {
+        const spenders = spenderAllowlist.getSpendersForProtocol(adapter.protocolName.toLowerCase().replace(/\s+/g, '-'), chain);
+        
+        protocols.push({
+          id: `${adapter.protocolName}-${chain}`,
+          name: adapter.protocolName,
+          chain: chain.charAt(0).toUpperCase() + chain.slice(1),
+          enabled: spenders.length > 0, // Enabled if has whitelisted spenders
+          readiness: adapter.getReadiness(),
+          spenderCount: spenders.length,
+        });
+      });
+    });
+
+    setProtocolSettings(protocols);
+  };
 
   const handleSaveChanges = () => {
     toast({
@@ -44,8 +84,8 @@ export default function Settings() {
   };
 
   const handleResetDefaults = () => {
-    setChainSettings(supportedChains);
-    setDexSettings(supportedDexes);
+    loadChainSettings();
+    loadProtocolSettings();
     setSlippageTolerance("2.0");
     toast({
       title: "Settings Reset",
@@ -101,7 +141,7 @@ export default function Settings() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {supportedChains.filter((c) => c.enabled).length}
+                {chainSettings.filter((c) => c.enabled).length}
               </div>
               <p className="text-xs text-muted-foreground">Networks enabled</p>
             </CardContent>
@@ -109,14 +149,14 @@ export default function Settings() {
 
           <Card className="card-gradient border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active DEXes</CardTitle>
+              <CardTitle className="text-sm font-medium">Whitelisted Protocols</CardTitle>
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {supportedDexes.filter((d) => d.enabled).length}
+                {protocolSettings.filter((d) => d.enabled).length}
               </div>
-              <p className="text-xs text-muted-foreground">Protocols enabled</p>
+              <p className="text-xs text-muted-foreground">Protocol/chain combos</p>
             </CardContent>
           </Card>
 
@@ -163,76 +203,107 @@ export default function Settings() {
               <CardHeader>
                 <CardTitle>Supported Chains</CardTitle>
                 <CardDescription>
-                  Enable or disable specific blockchain networks
+                  Networks with whitelisted spender contracts
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {chainSettings.map((chain, index) => (
-                    <div key={chain.id}>
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <Label htmlFor={`chain-${chain.id}`}>{chain.name}</Label>
-                          <p className="text-xs text-muted-foreground">
-                            {chain.enabled
-                              ? "Platform will scan for opportunities"
-                              : "Platform will ignore this chain"}
-                          </p>
+                {chainSettings.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Network className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p>Loading chain configuration...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {chainSettings.map((chain, index) => (
+                      <div key={chain.id}>
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <Label htmlFor={`chain-${chain.id}`}>{chain.name}</Label>
+                              <Badge variant="outline" className="text-xs bg-green-500/10 text-green-500 border-green-500/50">
+                                Whitelisted
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Platform can execute on this network
+                            </p>
+                          </div>
+                          <Switch
+                            id={`chain-${chain.id}`}
+                            checked={chain.enabled}
+                            onCheckedChange={(checked) => {
+                              const newSettings = [...chainSettings];
+                              newSettings[index].enabled = checked;
+                              setChainSettings(newSettings);
+                            }}
+                          />
                         </div>
-                        <Switch
-                          id={`chain-${chain.id}`}
-                          checked={chain.enabled}
-                          onCheckedChange={(checked) => {
-                            const newSettings = [...chainSettings];
-                            newSettings[index].enabled = checked;
-                            setChainSettings(newSettings);
-                          }}
-                        />
+                        {index !== chainSettings.length - 1 && <Separator className="mt-4" />}
                       </div>
-                      {index !== chainSettings.length - 1 && <Separator className="mt-4" />}
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             <Card className="card-gradient border-border/50">
               <CardHeader>
-                <CardTitle>Whitelisted DEXes</CardTitle>
+                <CardTitle>Whitelisted DEXes & Protocols</CardTitle>
                 <CardDescription>
-                  Only enabled DEXes will be used for LP opportunities
+                  Only protocols with whitelisted spender contracts can be used
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {dexSettings.map((dex, index) => (
-                    <div key={dex.id}>
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <Label htmlFor={`dex-${dex.id}`}>{dex.name}</Label>
-                            <Badge variant="outline" className="text-xs">
-                              {dex.chain}
-                            </Badge>
+                {protocolSettings.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p>Loading protocol configuration...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {protocolSettings.map((protocol, index) => (
+                      <div key={protocol.id}>
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <Label htmlFor={`protocol-${protocol.id}`}>{protocol.name}</Label>
+                              <Badge variant="outline" className="text-xs">
+                                {protocol.chain}
+                              </Badge>
+                              <ProtocolReadinessIndicator
+                                readiness={protocol.readiness as any}
+                                blockingIssues={[]}
+                                showLabel={false}
+                                size="sm"
+                              />
+                              {protocol.spenderCount > 0 && (
+                                <Badge variant="outline" className="text-xs bg-green-500/10 text-green-500 border-green-500/50">
+                                  {protocol.spenderCount} spender{protocol.spenderCount !== 1 ? 's' : ''}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {protocol.enabled 
+                                ? `${protocol.spenderCount} whitelisted contract${protocol.spenderCount !== 1 ? 's' : ''} on ${protocol.chain}`
+                                : "No whitelisted contracts"}
+                            </p>
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            {dex.enabled ? "Enabled for opportunities" : "Disabled"}
-                          </p>
+                          <Switch
+                            id={`protocol-${protocol.id}`}
+                            checked={protocol.enabled}
+                            disabled={!protocol.enabled} // Can't enable if no spenders
+                            onCheckedChange={(checked) => {
+                              const newSettings = [...protocolSettings];
+                              newSettings[index].enabled = checked;
+                              setProtocolSettings(newSettings);
+                            }}
+                          />
                         </div>
-                        <Switch
-                          id={`dex-${dex.id}`}
-                          checked={dex.enabled}
-                          onCheckedChange={(checked) => {
-                            const newSettings = [...dexSettings];
-                            newSettings[index].enabled = checked;
-                            setDexSettings(newSettings);
-                          }}
-                        />
+                        {index !== protocolSettings.length - 1 && <Separator className="mt-4" />}
                       </div>
-                      {index !== dexSettings.length - 1 && <Separator className="mt-4" />}
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
