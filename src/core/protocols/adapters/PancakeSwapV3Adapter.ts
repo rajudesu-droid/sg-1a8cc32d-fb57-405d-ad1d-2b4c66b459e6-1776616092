@@ -10,7 +10,6 @@ import type {
   NormalizedOpportunity,
   ProtocolType
 } from "../types";
-import { ethers } from "ethers";
 
 export class PancakeSwapV3Adapter extends BaseProtocolAdapter {
   public protocolName = "PancakeSwap V3";

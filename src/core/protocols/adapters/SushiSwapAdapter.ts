@@ -106,7 +106,7 @@ export class SushiSwapAdapter extends BaseProtocolAdapter {
     return {
       id: this.generateOpportunityId(chain, poolAddress),
       protocolName: this.protocolName, protocolType: this.protocolType,
-      chain, poolAddress, poolType: "standard_amm",
+      chain, poolAddress, poolType: "volatile_amm",
       token0Symbol: "TKN0", token0Address: "0x0",
       token1Symbol: "TKN1", token1Address: "0x0",
       tvl: 0, volume24h: 0, baseYield: 0, farmRewardYield: 0,
