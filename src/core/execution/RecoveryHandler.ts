@@ -131,7 +131,7 @@ export class RecoveryHandler {
     }
     
     // Partial completion
-    if (result.status === "partially_completed" || result.completedSteps < result.totalSteps) {
+    if (result.status === "partial" || result.completedSteps < result.totalSteps) {
       return "partial_completion";
     }
     

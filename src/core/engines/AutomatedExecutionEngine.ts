@@ -286,7 +286,7 @@ export class AutomatedExecutionEngine {
         await postExecutionSync.syncAfterExecution(
           job.executionResult,
           job.mode,
-          job.walletAddress,
+          context.wallet?.wallet?.address,
           job.trigger.chain
         );
         executionLogService.logJobResult(job);
@@ -363,7 +363,7 @@ export class AutomatedExecutionEngine {
         async () => postExecutionSync.syncAfterExecution(
           result,
           job.mode,
-          job.walletAddress,
+          context.wallet?.wallet?.address,
           job.trigger.chain
         ),
         { jobId: job.id }
