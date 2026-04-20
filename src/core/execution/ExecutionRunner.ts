@@ -3,6 +3,7 @@
 // Handles step-by-step transaction processing and protocol interactions
 // ============================================================================
 
+import { orchestrator } from "../orchestrator";
 import type { ActionPlan, ExecutionAuthorization, ExecutionResult, ExecutionContext, ExecutionSubstep } from "./types";
 import { validationEngine } from "../engines/ValidationEngine";
 import { conflictDetector } from "../validation/ConflictDetector";
@@ -71,7 +72,7 @@ export class ExecutionRunner {
         mode: context.mode,
         chain: plan.chain,
         poolAddress: plan.poolAddress,
-        walletAddress: plan.walletAddress,
+        walletAddress: context.wallet?.address,
         metadata: {
           spenderAddress: plan.substeps.find(s => s.operation === "approve_token")?.requiredApproval?.spender,
           requiredAssets: [], // Would reconstruct from plan
