@@ -1,5 +1,3 @@
-
-<![CDATA[
 /**
  * Execution Record Service
  * Server-side immutable audit trail for all fund-critical actions

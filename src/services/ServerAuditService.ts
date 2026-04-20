@@ -1,5 +1,3 @@
-
-<![CDATA[
 /**
  * Server Audit Service
  * Append-only server-side audit log
