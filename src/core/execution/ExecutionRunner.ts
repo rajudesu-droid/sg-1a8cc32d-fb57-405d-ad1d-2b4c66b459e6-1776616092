@@ -83,14 +83,14 @@ export class ExecutionRunner {
           chain: plan.chain,
           poolAddress: plan.poolAddress,
           targetContracts: plan.substeps
-            .filter(s => s.targetContract)
-            .map(s => s.targetContract!),
+            .filter(s => (s as any).targetContract)
+            .map(s => (s as any).targetContract!),
           spenderAddresses: plan.substeps
             .filter(s => s.requiredApproval?.spender)
             .map(s => s.requiredApproval!.spender),
-          validationSnapshot: auth.validationSnapshot,
+          validationSnapshot: (auth as any).validationSnapshot,
           actionPlanSnapshot: plan,
-          previewSnapshot: auth.preview,
+          previewSnapshot: (auth as any).preview,
           balancesBefore: result.stateChanges?.balancesBefore || {},
           positionsBefore: [],
           rewardsBefore: [],

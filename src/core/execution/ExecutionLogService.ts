@@ -71,10 +71,10 @@ export class ExecutionLogService {
             walletAddress,
             protocol: job.trigger.protocol,
             chain: job.trigger.chain,
-            poolAddress: job.poolAddress,
-            validationSnapshot: job.validationSnapshot,
+            poolAddress: (job as any).poolAddress,
+            validationSnapshot: (job as any).validationSnapshot,
             actionPlanSnapshot: job.actionPlan,
-            previewSnapshot: job.previewSnapshot,
+            previewSnapshot: (job as any).previewSnapshot,
             balancesBefore: job.executionResult.stateChanges?.balancesBefore || {},
           });
           
