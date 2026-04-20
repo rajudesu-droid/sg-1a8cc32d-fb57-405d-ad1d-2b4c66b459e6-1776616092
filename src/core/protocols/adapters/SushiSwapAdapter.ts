@@ -1,112 +1,119 @@
-// ============================================================================
-// SUSHISWAP V2 & V3 PROTOCOL ADAPTER
-// Supports: Ethereum, Arbitrum, Polygon, Optimism, Base, Avalanche
-// ============================================================================
-
 import { BaseProtocolAdapter } from "../BaseProtocolAdapter";
 import type {
   PoolMetrics,
   RewardMetrics,
+  EntryQuote,
+  ExitQuote,
+  PositionParams,
+  HarvestResult,
+  PositionState,
   NormalizedOpportunity,
+  ProtocolType
 } from "../types";
 
 export class SushiSwapAdapter extends BaseProtocolAdapter {
-  protocolName = "SushiSwap";
-  protocolType: "concentrated_liquidity_dex" | "standard_amm_dex" = "standard_amm_dex";
-  supportedChains = ["ethereum", "arbitrum", "polygon", "optimism", "base", "avalanche"];
+  public protocolName = "SushiSwap";
+  public protocolType = "standard_amm_dex" as ProtocolType;
+  public supportedChains = ["ethereum", "arbitrum", "polygon", "avalanche", "bsc"];
+
+  constructor() {
+    super();
+    this.capabilities = {
+      realPoolDiscovery: false,
+      realPoolMetrics: false,
+      realQuotes: false,
+      realRewards: false,
+      realPositionState: false,
+      realExecution: false,
+      testedOnTestnet: false,
+      auditedContracts: false,
+      readiness: "demo", // STRICTLY DEMO ONLY - Not safe for live execution
+      blockingIssues: [
+        "Adapter uses placeholder mock data",
+        "No real contract reads implemented",
+        "Execution paths not scaffolded",
+        "Not safe for live environments"
+      ]
+    };
+  }
 
   async getSupportedPools(chain: string): Promise<string[]> {
     this.validateChain(chain);
-    
-    // Mock implementation - real version would query SushiSwap subgraph
-    const mockPools: Record<string, string[]> = {
-      ethereum: ["0xsushi_eth_usdc", "0xsushi_wbtc_eth"],
-      arbitrum: ["0xsushi_arb_eth", "0xsushi_usdc_usdt"],
-      polygon: ["0xsushi_matic_usdc", "0xsushi_eth_usdc"],
-    };
-    
-    return mockPools[chain] || [];
+    return [];
+  }
+
+  async getEligibleFarms(chain: string, walletAddress?: string): Promise<string[]> {
+    return [];
   }
 
   async getPoolMetrics(chain: string, poolAddress: string): Promise<PoolMetrics> {
     this.validateChain(chain);
-    
-    // Mock implementation
-    return {
-      tvl: 2500000 + Math.random() * 3000000,
-      volume24h: 800000 + Math.random() * 1200000,
-      baseYield: 8 + Math.random() * 15,
-      liquidityDepth: 1800000 + Math.random() * 2200000,
-      estimatedSlippage: 0.1 + Math.random() * 0.3,
-    };
+    return { tvl: 0, volume24h: 0, baseYield: 0, liquidityDepth: 0, estimatedSlippage: 0 };
   }
 
   async getRewardMetrics(chain: string, poolAddress: string): Promise<RewardMetrics> {
+    return { rewardTokens: [], farmRewardYield: 0 };
+  }
+
+  async getWalletEligiblePairs(chain: string, walletAddress: string): Promise<string[]> {
+    return [];
+  }
+
+  async quoteEntry(chain: string, poolAddress: string, amountUsd: number): Promise<EntryQuote> {
+    return { expectedLpTokens: 0, priceImpact: 0, gasCostUsd: 0, minOutputTokens: 0, route: [] };
+  }
+
+  async quoteExit(chain: string, poolAddress: string, positionId: string): Promise<ExitQuote> {
+    return { expectedToken0: 0, expectedToken1: 0, priceImpact: 0, gasCostUsd: 0, minOutputUsd: 0 };
+  }
+
+  async openPosition(chain: string, poolAddress: string, params: PositionParams): Promise<string> {
+    throw new Error(`[SushiSwap] Adapter not approved for execution in live mode`);
+  }
+
+  async addLiquidity(chain: string, positionId: string, amountUsd: number): Promise<void> {
+    throw new Error(`[SushiSwap] Adapter not approved for execution in live mode`);
+  }
+
+  async removeLiquidity(chain: string, positionId: string, percentage: number): Promise<void> {
+    throw new Error(`[SushiSwap] Adapter not approved for execution in live mode`);
+  }
+
+  async stakeIfRequired(chain: string, positionId: string): Promise<void> {
+    throw new Error(`[SushiSwap] Adapter not approved for execution in live mode`);
+  }
+
+  async unstakeIfRequired(chain: string, positionId: string): Promise<void> {
+    throw new Error(`[SushiSwap] Adapter not approved for execution in live mode`);
+  }
+
+  async harvestRewards(chain: string, positionId: string): Promise<HarvestResult> {
+    throw new Error(`[SushiSwap] Adapter not approved for execution in live mode`);
+  }
+
+  async getPositionState(chain: string, positionId: string): Promise<PositionState> {
     this.validateChain(chain);
-    
-    // Mock SUSHI rewards
     return {
-      farmRewardYield: 5 + Math.random() * 10,
-      rewardTokens: [
-        {
-          symbol: "SUSHI",
-          address: "0xsushi_token",
-          apr: 5 + Math.random() * 10,
-          liquidityUsd: 15000000,
-        },
-      ],
+      positionId, poolAddress: "", chain, protocol: this.protocolName,
+      token0Symbol: "TKN0", token0Amount: 0, currentValueUsd: 0, initialValueUsd: 0,
+      accruedFeesUsd: 0, accruedRewardsUsd: 0, isStaked: false,
+      lastHarvest: new Date(), openedAt: new Date()
     };
   }
 
-  async normalizeOpportunity(
-    chain: string,
-    poolAddress: string
-  ): Promise<NormalizedOpportunity> {
+  async normalizeOpportunity(chain: string, poolAddress: string): Promise<NormalizedOpportunity> {
     this.validateChain(chain);
-    
-    const metrics = await this.getPoolMetrics(chain, poolAddress);
-    const rewardMetrics = await this.getRewardMetrics(chain, poolAddress);
-    
     return {
       id: this.generateOpportunityId(chain, poolAddress),
-      protocolName: this.protocolName,
-      protocolType: this.protocolType,
-      chain,
-      poolAddress,
-      poolType: "volatile_amm",
-      
-      token0Symbol: "ETH",
-      token0Address: "0xeth",
-      token1Symbol: "USDC",
-      token1Address: "0xusdc",
-      feeTier: "0.3%",
-      
-      tvl: metrics.tvl,
-      volume24h: metrics.volume24h,
-      baseYield: metrics.baseYield,
-      farmRewardYield: rewardMetrics.farmRewardYield,
-      totalYield: metrics.baseYield + rewardMetrics.farmRewardYield,
-      
-      rewardTokens: rewardMetrics.rewardTokens,
-      
-      liquidityDepth: metrics.liquidityDepth,
-      estimatedSlippage: metrics.estimatedSlippage,
-      gasCostEntry: this.estimateGasCost(chain, "entry"),
-      gasCostExit: this.estimateGasCost(chain, "exit"),
-      
-      concentrationRisk: 20,
-      volatilityRisk: 35,
-      impermanentLossRisk: 40,
-      contractRisk: 15,
-      
-      riskScore: 0,
-      qualityScore: 0,
-      netScore: 0,
-      
-      whitelisted: true,
-      enabled: true,
-      strategyCompatible: true,
-      
+      protocolName: this.protocolName, protocolType: this.protocolType,
+      chain, poolAddress, poolType: "standard_amm",
+      token0Symbol: "TKN0", token0Address: "0x0",
+      token1Symbol: "TKN1", token1Address: "0x0",
+      tvl: 0, volume24h: 0, baseYield: 0, farmRewardYield: 0,
+      totalYield: 0, rewardTokens: [], liquidityDepth: 0, estimatedSlippage: 0,
+      gasCostEntry: 0, gasCostExit: 0, concentrationRisk: 0, volatilityRisk: 0,
+      impermanentLossRisk: 0, contractRisk: 50, riskScore: 50, qualityScore: 50,
+      netScore: 50, whitelisted: false, enabled: false, strategyCompatible: false,
       lastUpdated: new Date(),
     };
   }
