@@ -11,12 +11,12 @@ import { ModeBanner } from "@/components/ModeBanner";
 import { Save, Zap, Shield, DollarSign, Activity, AlertTriangle, Eye } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useStore } from "@/store";
+import { useAppStore } from "@/store";
 import { userPreferencesService } from "@/services/UserPreferencesService";
 import type { UserPolicy } from "@/services/UserPreferencesService";
 
 export default function Automation() {
-  const mode = useStore((state) => state.mode);
+  const mode = useAppStore((state) => state.mode);
   
   const [autoHarvest, setAutoHarvest] = useState(false);
   const [autoCompound, setAutoCompound] = useState(false);
@@ -266,7 +266,7 @@ export default function Automation() {
         <ModeBanner />
 
         {/* Shadow Mode Notice */}
-        {mode === "shadow" && (
+        {mode.current === "shadow" && (
           <Card className="card-gradient border-accent/20 border">
             <CardContent className="p-6">
               <div className="flex items-start gap-4">
