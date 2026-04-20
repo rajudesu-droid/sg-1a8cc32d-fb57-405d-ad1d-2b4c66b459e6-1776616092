@@ -6,13 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Save, Zap, Shield, DollarSign, Activity, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ModeBanner } from "@/components/ModeBanner";
+import { Save, Zap, Shield, DollarSign, Activity, AlertTriangle, Eye } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useStore } from "@/store";
 import { userPreferencesService } from "@/services/UserPreferencesService";
 import type { UserPolicy } from "@/services/UserPreferencesService";
 
 export default function Automation() {
+  const mode = useStore((state) => state.mode);
+  
   const [autoHarvest, setAutoHarvest] = useState(false);
   const [autoCompound, setAutoCompound] = useState(false);
   const [autoRebalance, setAutoRebalance] = useState(false);
@@ -208,9 +213,8 @@ export default function Automation() {
                   autoHarvest,
                   autoCompound,
                   autoRebalance,
-                  autoDeploy,
                 ].filter(Boolean).length}
-                /4
+                /3
               </div>
               <p className="text-xs text-muted-foreground">Automation enabled</p>
             </CardContent>
@@ -223,7 +227,7 @@ export default function Automation() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {emergencyPauseAll ? (
+                {emergencyPause ? (
                   <span className="text-amber-400">PAUSED</span>
                 ) : (
                   <span className="text-emerald-400">ACTIVE</span>
@@ -239,7 +243,7 @@ export default function Automation() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${maxDailyGas}</div>
+              <div className="text-2xl font-bold">${dailyGasBudget}</div>
               <p className="text-xs text-muted-foreground">Maximum spend</p>
             </CardContent>
           </Card>
@@ -251,9 +255,9 @@ export default function Automation() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-cyan-400">
-                {minScoreThreshold[0]}%
+                {rebalanceThreshold}%
               </div>
-              <p className="text-xs text-muted-foreground">Min pool score</p>
+              <p className="text-xs text-muted-foreground">Min better opportunity</p>
             </CardContent>
           </Card>
         </div>
@@ -262,7 +266,7 @@ export default function Automation() {
         <ModeBanner />
 
         {/* Shadow Mode Notice */}
-        {mode.current === "shadow" && (
+        {mode === "shadow" && (
           <Card className="card-gradient border-accent/20 border">
             <CardContent className="p-6">
               <div className="flex items-start gap-4">
@@ -278,7 +282,7 @@ export default function Automation() {
           </Card>
         )}
 
-        {emergencyPauseAll && (
+        {emergencyPause && (
           <Alert className="border-destructive/50 bg-destructive/10">
             <AlertTriangle className="h-4 w-4 text-destructive" />
             <AlertDescription>
