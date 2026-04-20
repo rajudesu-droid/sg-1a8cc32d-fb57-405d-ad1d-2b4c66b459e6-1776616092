@@ -51,8 +51,7 @@ export default function Opportunities() {
       description: `Discovering opportunities across DEXs...`,
     });
     
-    const { assets } = useAppStore.getState().wallet;
-    await opportunityEngine.scanPools(assets);
+    await opportunityEngine.scanOpportunities();
     setIsScanning(false);
   };
 
@@ -327,14 +326,14 @@ export default function Opportunities() {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-semibold text-lg">{opp.pair}</h3>
+                      <h3 className="font-semibold text-lg">{pairName}</h3>
                       <div className="flex items-center gap-2 mt-1">
-                        <p className="text-sm text-muted-foreground">{opp.protocol}</p>
+                        <p className="text-sm text-muted-foreground">{opp.protocolName}</p>
                         <Badge variant="outline" className="text-xs">
                           {opp.chain}
                         </Badge>
                         {(() => {
-                          const readiness = protocolRegistry.getProtocolReadiness(opp.protocol);
+                          const readiness = protocolRegistry.getProtocolReadiness(opp.protocolName);
                           return readiness ? (
                             <ProtocolReadinessIndicator
                               readiness={readiness.readiness}
