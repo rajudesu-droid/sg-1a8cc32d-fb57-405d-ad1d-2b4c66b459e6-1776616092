@@ -16,6 +16,8 @@ import {
   Calendar,
   Coins,
   Percent,
+  Play,
+  Square,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -31,6 +33,9 @@ import { ModeBanner } from "@/components/ModeBanner";
 import { orchestrator } from "@/core/orchestrator";
 import { useRouter } from "next/router";
 import { assertNoSimulatedDataInLiveMode, getPortfolioForMode } from "@/core/utils/modeGuards";
+import { botOrchestrationService } from "@/services/BotOrchestrationService";
+import { useToast } from "@/hooks/use-toast";
+import type { BotConfig } from "@/services/BotOrchestrationService";
 
 export default function Dashboard() {
   const mode = useAppStore((state) => state.mode);
@@ -38,8 +43,12 @@ export default function Dashboard() {
   const paperWallets = useAppStore((state) => state.paperWallets);
   const portfolio = useAppStore((state) => state.portfolio);
   const positions = useAppStore((state) => state.positions);
-  const botRunning = useAppStore((state) => state.botRunning);
   const router = useRouter();
+  const { toast } = useToast();
+
+  const [botRunning, setBotRunning] = useState(false);
+  const [botStarting, setBotStarting] = useState(false);
+  const [botStopping, setBotStopping] = useState(false);
 
   const [portfolioData, setPortfolioData] = useState({
     totalValue: 0,
@@ -53,6 +62,26 @@ export default function Dashboard() {
   });
 
   const [modeErrors, setModeErrors] = useState<string[]>([]);
+
+  // Check bot status on mount
+  useEffect(() => {
+    const checkBotStatus = async () => {
+      await botOrchestrationService.loadBotStatus();
+      const status = botOrchestrationService.getStatus();
+      setBotRunning(status.isRunning);
+    };
+    checkBotStatus();
+  }, []);
+
+  // Listen for mode changes
+  useEffect(() => {
+    const unsubscribe = orchestrator.subscribe((event) => {
+      if (event.type === "mode_changed") {
+        console.log("[Dashboard] Mode changed, updating portfolio view");
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   // CRITICAL: Validate mode data integrity
   useEffect(() => {
@@ -68,15 +97,75 @@ export default function Dashboard() {
     }
   }, [mode.current, wallet, portfolio, positions]);
 
-  // Listen for mode changes
-  useEffect(() => {
-    const unsubscribe = orchestrator.subscribe((event) => {
-      if (event.type === "mode_changed") {
-        console.log("[Dashboard] Mode changed, updating portfolio view");
+  // Handle start bot
+  const handleStartBot = async () => {
+    setBotStarting(true);
+    try {
+      const config: BotConfig = {
+        mode: mode.current,
+        checkIntervalMs: 60000, // Check every 60 seconds
+        autoHarvest: true,
+        autoCompound: true,
+        autoRebalance: true,
+      };
+
+      const success = await botOrchestrationService.startBot(config);
+
+      if (success) {
+        setBotRunning(true);
+        toast({
+          title: "Bot Started",
+          description: `Automation engine is now running in ${mode.current} mode. The bot will check for opportunities every minute.`,
+        });
+      } else {
+        toast({
+          title: "Failed to Start Bot",
+          description: "The bot is already running or failed to start. Please try again.",
+          variant: "destructive",
+        });
       }
-    });
-    return () => unsubscribe();
-  }, []);
+    } catch (error) {
+      console.error("[Dashboard] Failed to start bot:", error);
+      toast({
+        title: "Start Failed",
+        description: "Failed to start automation bot. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBotStarting(false);
+    }
+  };
+
+  // Handle stop bot
+  const handleStopBot = async () => {
+    setBotStopping(true);
+    try {
+      const success = await botOrchestrationService.stopBot();
+
+      if (success) {
+        setBotRunning(false);
+        toast({
+          title: "Bot Stopped",
+          description: "Automation engine has been stopped. No further actions will be executed.",
+        });
+      } else {
+        toast({
+          title: "Failed to Stop Bot",
+          description: "The bot is not running or failed to stop. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("[Dashboard] Failed to stop bot:", error);
+      toast({
+        title: "Stop Failed",
+        description: "Failed to stop automation bot. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBotStopping(false);
+    }
+  };
 
   // Update portfolio data based on mode
   useEffect(() => {
@@ -210,13 +299,28 @@ export default function Dashboard() {
             <Badge variant={mode.current === "demo" ? "secondary" : mode.current === "shadow" ? "outline" : "default"}>
               {mode.current === "demo" ? "Demo Mode" : mode.current === "shadow" ? "Shadow Mode" : "Live Mode"}
             </Badge>
-            {mode.current === "demo" && (
-              <Button onClick={() => router.push("/wallets")} variant="default">
-                Start Bot
+            {!botRunning && (
+              <Button 
+                onClick={handleStartBot} 
+                variant="default"
+                disabled={botStarting}
+              >
+                <Play className="mr-2 h-4 w-4" />
+                {botStarting ? "Starting..." : "Start Bot"}
               </Button>
             )}
-            {mode.current !== "demo" && botRunning && (
-              <Badge variant="default" className="bg-emerald-500">
+            {botRunning && (
+              <Button 
+                onClick={handleStopBot} 
+                variant="destructive"
+                disabled={botStopping}
+              >
+                <Square className="mr-2 h-4 w-4" />
+                {botStopping ? "Stopping..." : "Stop Bot"}
+              </Button>
+            )}
+            {botRunning && (
+              <Badge variant="default" className="bg-emerald-500 animate-pulse">
                 Bot Running
               </Badge>
             )}
