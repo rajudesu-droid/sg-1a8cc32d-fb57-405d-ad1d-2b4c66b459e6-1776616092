@@ -46,24 +46,10 @@ export class ValidationEngine {
     const result: ValidationResult = {
       allowed: true,
       blockingReasons: [],
-      warnings: [],
-      checks: {
-        modePermission: true,
-        walletConnection: true,
-        sufficientBalance: true,
-        requiredAssets: true,
-        stalenessCheck: true,
-        conflictCheck: true,
-        spenderWhitelist: true,
-        protocolReadiness: true,
-        liveReadiness: true,
-        assetIdentity: true,
-        approvalSafety: true,
-        reconciliationActive: true,
-        auditLoggingActive: true,
-        executionPipelineSafe: true,
-      },
-      metadata: {},
+      warningFlags: [],
+      checks: [],
+      requiredNextSteps: [],
+      validatedAt: new Date(),
     };
 
     // CRITICAL: Live Safety Gate
@@ -77,7 +63,12 @@ export class ValidationEngine {
 
       if (!liveReadiness.liveReady) {
         result.allowed = false;
-        result.checks.liveReadiness = false;
+        result.checks.push({
+          checkName: "live_readiness",
+          passed: false,
+          blocking: true,
+          message: "LIVE MODE BLOCKED: System not ready for real fund execution."
+        });
         result.blockingReasons.push(
           `LIVE MODE BLOCKED: System not ready for real fund execution. ${liveReadiness.summary.blocking} critical issue(s) detected.`
         );
