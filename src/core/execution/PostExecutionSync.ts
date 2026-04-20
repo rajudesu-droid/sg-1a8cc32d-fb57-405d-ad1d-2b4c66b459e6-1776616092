@@ -61,8 +61,9 @@ export class PostExecutionSync {
             useAppStore.getState().addAuditLog({
               id: `reconciliation-${finalTxHash}`,
               timestamp: new Date(),
-              action: "reconciliation_warning",
               mode: "live",
+              actionType: "reconciliation_warning",
+              actor: walletAddress,
               walletAddress,
               details: {
                 txHash: finalTxHash,
@@ -86,8 +87,9 @@ export class PostExecutionSync {
           useAppStore.getState().addAuditLog({
             id: `reconciliation-error-${finalTxHash}`,
             timestamp: new Date(),
-            action: "reconciliation_failed",
             mode: "live",
+            actionType: "reconciliation_failed",
+            actor: walletAddress,
             walletAddress,
             details: {
               txHash: finalTxHash,
@@ -103,7 +105,7 @@ export class PostExecutionSync {
     // Step 3: Notify affected modules
     await orchestrator.coordinateUpdate(
       this.syncId,
-      "execution_completed",
+      "execution_completed" as any,
       { result, mode },
       ["dashboard", "wallets", "positions", "opportunities", "withdraw", "execution_center"]
     );

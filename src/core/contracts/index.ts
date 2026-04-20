@@ -260,14 +260,18 @@ export type AuditActionType =
   | "rebalance"
   | "policy_update"
   | "withdrawal"
-  | "simulation";
+  | "simulation"
+  | "reconciliation_warning"
+  | "reconciliation_failed";
 
 export interface AuditLog {
   id: string;
   timestamp: Date;
   mode: AppMode;
   actionType: AuditActionType;
+  action?: string;  // Deprecated, use actionType instead
   actor: string; // wallet address or "system"
+  walletAddress?: string;
   details: Record<string, any>;
   success: boolean;
   error?: string;
@@ -301,7 +305,8 @@ export type EventType =
   | "sync_required"
   | "settings_changed"
   | "action_triggered"
-  | "validation_completed";
+  | "validation_completed"
+  | "execution_completed";
 
 export interface AppEvent {
   type: EventType;

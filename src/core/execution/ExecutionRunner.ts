@@ -27,7 +27,7 @@ export class ExecutionRunner {
       executionId: `exec-${Date.now()}`,
       planId: plan.planId,
       actionType: plan.actionType,
-      status: "executing",
+      status: "success",
       completedSteps: 0,
       totalSteps: plan.totalSteps,
       transactions: [],
@@ -57,7 +57,7 @@ export class ExecutionRunner {
     // 2. Shadow Mode Bypass
     if (context.mode === "shadow") {
       result.logs.push("[Runner] Shadow mode detected. Skipping real transactions.");
-      result.status = "completed";
+      result.status = "success";
       result.completedSteps = plan.totalSteps;
       result.completedAt = new Date();
       return result;
@@ -107,7 +107,6 @@ export class ExecutionRunner {
 
     // 3. Process Sequence
     for (const step of plan.substeps) {
-      result.currentStep = step;
       result.logs.push(`[Runner] Executing step ${step.sequence}: ${step.description}`);
       step.status = "executing";
       step.startTime = new Date();
@@ -124,7 +123,7 @@ export class ExecutionRunner {
           // Generate simulated tx hash for demo mode only
           const simulatedTxHash = `0xSIM${Math.random().toString(16).slice(2, 62)}`;
           step.txHash = simulatedTxHash;
-          result.transactions.push({
+          result.transactions?.push({
             stepId: step.id,
             txHash: simulatedTxHash,
             gasUsed: step.estimatedGas,
@@ -150,7 +149,7 @@ export class ExecutionRunner {
           step.txHash = txResult.txHash;
           result.completedSteps++;
           
-          result.transactions.push({
+          result.transactions?.push({
             stepId: step.id,
             txHash: txResult.txHash,
             gasUsed: txResult.gasUsed || step.estimatedGas,
@@ -185,7 +184,7 @@ export class ExecutionRunner {
       }
     }
 
-    result.status = "completed";
+    result.status = "success";
     result.completedAt = new Date();
     result.logs.push("[Runner] Execution finished successfully");
     

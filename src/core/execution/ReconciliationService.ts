@@ -178,13 +178,23 @@ class ReconciliationService {
       
       // STUB: Would fetch real allowance from blockchain
       try {
-        const allowance = await allowanceService.getAllowance(
-          tokenAddress,
+        // Create a minimal asset object for allowance check
+        const minimalAsset = {
+          contractAddress: tokenAddress,
+          decimals: 18, // Default, would fetch from contract
+          symbol: "TOKEN",
+          network: chain,
+        } as any;
+        
+        const allowanceResult = await allowanceService.isApprovalNeeded(
+          minimalAsset,
           walletAddress,
           spenderAddress,
-          chain
+          "0", // We just want current allowance, not checking if approval needed
+          "live"
         );
-        actualAllowances[key] = allowance;
+        
+        actualAllowances[key] = allowanceResult.currentAllowance;
       } catch (error) {
         console.error(`[ReconciliationService] Failed to fetch allowance for ${key}:`, error);
         actualAllowances[key] = "0";

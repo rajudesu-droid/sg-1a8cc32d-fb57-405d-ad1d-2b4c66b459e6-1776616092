@@ -255,31 +255,47 @@ export interface ExecutionAuthorization {
 // ============================================================================
 
 export interface ExecutionResult {
+  executionId: string;
   planId: string;
   actionType: ActionType;
-  mode: "demo" | "shadow" | "live";
+  mode?: "demo" | "shadow" | "live";
   
   // Status
   status: "success" | "failed" | "partial";
   
   // Transaction data
-  txHashes: string[];
-  gasUsed: number;
-  totalCost: number; // USD
+  txHashes?: string[];
+  transactions?: Array<{
+    stepId: string;
+    txHash: string;
+    gasUsed: number;
+    status: "confirmed" | "pending" | "failed";
+  }>;
+  gasUsed?: number;
+  totalCost?: number; // USD
   
   // Timing
   startedAt: Date;
-  completedAt: Date;
-  duration: number; // seconds
+  completedAt?: Date;
+  duration?: number; // seconds
   
   // Steps
   completedSteps: number;
   totalSteps: number;
-  failedSteps: number;
+  failedSteps?: number;
+  currentStep?: ExecutionSubstep;
   
   // Outcome
-  tokensIn: Array<{ symbol: string; amount: number }>;
-  tokensOut: Array<{ symbol: string; amount: number }>;
+  tokensIn?: Array<{ symbol: string; amount: number }>;
+  tokensOut?: Array<{ symbol: string; amount: number }>;
+  
+  // State changes
+  stateChanges?: {
+    balancesBefore: Record<string, number>;
+    balancesAfter: Record<string, number>;
+    positionsAffected: string[];
+    portfolioValueChange: number;
+  };
   
   // Error (if failed)
   error?: {

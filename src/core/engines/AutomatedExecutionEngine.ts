@@ -268,7 +268,7 @@ export class AutomatedExecutionEngine {
           executionId: `shadow-${job.id}`,
           planId: plan.planId,
           actionType: job.actionType,
-          status: "completed",
+          status: "success",
           completedSteps: 0,
           totalSteps: plan.totalSteps,
           transactions: [],
@@ -283,7 +283,12 @@ export class AutomatedExecutionEngine {
           logs: ["Shadow mode: Preview generated, no execution performed"],
         };
         
-        await postExecutionSync.syncAfterExecution(job);
+        await postExecutionSync.syncAfterExecution(
+          job.executionResult,
+          job.mode,
+          job.walletAddress,
+          job.trigger.chain
+        );
         executionLogService.logJobResult(job);
         await this.handleJobCompletion(job);
         performanceMonitor.endOperation(jobOperationId, "execution_pipeline", { shadow: true });
@@ -337,7 +342,7 @@ export class AutomatedExecutionEngine {
       job.executionResult = result;
 
       // STEP 6: RESULT HANDLING
-      if (result.status === "completed") {
+      if (result.status === "success") {
         job.status = "completed";
         console.log(`[ExecutionEngine] Job ${job.id} completed successfully`);
       } else if (result.status === "failed") {
@@ -355,7 +360,12 @@ export class AutomatedExecutionEngine {
       // STEP 8: POST-EXECUTION SYNC
       await performanceMonitor.trackAsync(
         "sync_propagation",
-        async () => postExecutionSync.syncAfterExecution(job),
+        async () => postExecutionSync.syncAfterExecution(
+          result,
+          job.mode,
+          job.walletAddress,
+          job.trigger.chain
+        ),
         { jobId: job.id }
       );
 
