@@ -13,13 +13,22 @@ export class PreviewEngine {
     console.log(`[PreviewEngine] Generating preview for plan ${plan.planId}`);
 
     // Map plan steps to preview format
-    const steps = plan.substeps.map((step) => ({
-      sequence: step.sequence,
-      operation: step.operation,
-      description: step.description,
-      estimatedGas: step.estimatedGas,
-      status: step.requiredApproval ? ("requires_approval" as const) : ("ready" as const),
-    }));
+    const steps = plan.substeps.map((step) => {
+      let description = step.description;
+      
+      // CRITICAL: Surface exact approval requirements clearly
+      if (step.operation === "approve_token" && step.requiredApproval) {
+        description = `APPROVE: ${step.requiredApproval.token} to spender ${step.requiredApproval.spender.slice(0, 6)}...${step.requiredApproval.spender.slice(-4)} on ${plan.chain}`;
+      }
+      
+      return {
+        sequence: step.sequence,
+        operation: step.operation,
+        description,
+        estimatedGas: step.estimatedGas,
+        status: step.requiredApproval ? ("requires_approval" as const) : ("ready" as const),
+      };
+    });
 
     // Format risk indicators
     const risks = plan.risks.map((risk) => ({

@@ -10,6 +10,9 @@ import type {
 } from "./types";
 import type { ActionTrigger, ActionType } from "../contracts/actions";
 import { useAppStore } from "@/store";
+import { allowanceService } from "../services/AllowanceService";
+import { findAssetByIdentity } from "../utils/assetIdentity";
+import type { Asset } from "../contracts";
 
 export class ActionPlanner {
   private plannerId = "action-planner";
@@ -118,10 +121,11 @@ export class ActionPlanner {
     context: ExecutionContext
   ): Promise<ExecutionSubstep[]> {
     const steps: ExecutionSubstep[] = [];
+    let seq = 1;
     
     // Step 1: Verify balances
     steps.push(this.createSubstep({
-      sequence: 1,
+      sequence: seq++,
       operation: "verify_balances",
       description: "Verify token balances are sufficient",
       estimatedGas: 0, // Read-only
@@ -129,39 +133,54 @@ export class ActionPlanner {
       retryable: true,
     }));
 
-    // Step 2: Approve token A (if needed)
-    steps.push(this.createSubstep({
-      sequence: 2,
-      operation: "approve_token",
-      description: "Approve token A for spending",
-      estimatedGas: 0.001,
-      isOptional: false,
-      retryable: true,
-      requiredApproval: {
-        token: "TOKEN_A",
-        spender: trigger.poolAddress || "",
-        amount: trigger.amount || 0,
-      },
-    }));
+    // Step 2 & 3: Dynamic approvals based on real on-chain allowance checks
+    if (trigger.metadata?.requiredAssets && trigger.metadata?.spenderAddress) {
+      const requiredAssets = trigger.metadata.requiredAssets as Array<{identity: any, amount: string}>;
+      const spenderAddress = trigger.metadata.spenderAddress as string;
+      const ownerAddress = context.wallet?.address || "";
+      
+      for (const required of requiredAssets) {
+        const walletAsset = findAssetByIdentity(context.walletAssets || [], required.identity) as Asset;
+        
+        if (walletAsset && walletAsset.contractAddress) {
+          try {
+            const requiredAmountBase = (parseFloat(required.amount) * Math.pow(10, walletAsset.decimals)).toString();
+            const allowanceCheck = await allowanceService.isApprovalNeeded(
+              walletAsset,
+              ownerAddress,
+              spenderAddress,
+              requiredAmountBase,
+              context.mode as "demo" | "shadow" | "live"
+            );
 
-    // Step 3: Approve token B (if needed)
-    steps.push(this.createSubstep({
-      sequence: 3,
-      operation: "approve_token",
-      description: "Approve token B for spending",
-      estimatedGas: 0.001,
-      isOptional: false,
-      retryable: true,
-      requiredApproval: {
-        token: "TOKEN_B",
-        spender: trigger.poolAddress || "",
-        amount: trigger.amount || 0,
-      },
-    }));
+            if (allowanceCheck.needed) {
+              steps.push(this.createSubstep({
+                sequence: seq++,
+                operation: "approve_token",
+                description: `Approve ${walletAsset.symbol} for ${spenderAddress.slice(0, 6)}...${spenderAddress.slice(-4)}`,
+                estimatedGas: 0.001,
+                isOptional: false,
+                retryable: true,
+                requiredApproval: {
+                  token: walletAsset.symbol,
+                  spender: spenderAddress,
+                  amount: allowanceCheck.recommendedApproval,
+                },
+              }));
+            }
+          } catch (error) {
+            console.error("[ActionPlanner] Failed to check allowance:", error);
+            if (context.mode === "live") {
+              throw new Error(`Failed to check allowance for ${walletAsset.symbol}. Cannot plan execution safely.`);
+            }
+          }
+        }
+      }
+    }
 
     // Step 4: Add liquidity
     steps.push(this.createSubstep({
-      sequence: 4,
+      sequence: seq++,
       operation: "add_liquidity",
       description: "Add liquidity to pool",
       estimatedGas: 0.005,
@@ -175,7 +194,7 @@ export class ActionPlanner {
     // Step 5: Stake LP tokens (if farm exists)
     if (trigger.metadata?.hasFarm) {
       steps.push(this.createSubstep({
-        sequence: 5,
+        sequence: seq++,
         operation: "stake_position",
         description: "Stake LP tokens in farm",
         estimatedGas: 0.002,
@@ -188,7 +207,7 @@ export class ActionPlanner {
 
     // Step 6: Fetch position state
     steps.push(this.createSubstep({
-      sequence: steps.length + 1,
+      sequence: seq++,
       operation: "fetch_position_state",
       description: "Fetch new position state",
       estimatedGas: 0,
@@ -198,7 +217,7 @@ export class ActionPlanner {
 
     // Step 7: Sync state
     steps.push(this.createSubstep({
-      sequence: steps.length + 1,
+      sequence: seq++,
       operation: "sync_state",
       description: "Sync balances and position records",
       estimatedGas: 0,
