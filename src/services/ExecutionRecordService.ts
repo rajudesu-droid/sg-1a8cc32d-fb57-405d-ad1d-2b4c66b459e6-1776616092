@@ -115,7 +115,7 @@ class ExecutionRecordService {
         rewards_before: params.rewardsBefore,
         allowances_before: params.allowancesBefore,
         status: "pending",
-      })
+      } as any)
       .select()
       .single();
 
@@ -178,7 +178,7 @@ class ExecutionRecordService {
 
     const { data, error } = await supabase
       .from("execution_records")
-      .update(updateData)
+      .update(updateData as any)
       .eq("action_id", actionId)
       .select()
       .single();
