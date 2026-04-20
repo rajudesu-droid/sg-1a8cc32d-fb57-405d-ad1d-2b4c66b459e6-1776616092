@@ -255,58 +255,84 @@ export interface ExecutionAuthorization {
 // ============================================================================
 
 export interface ExecutionResult {
-  executionId: string;
   planId: string;
   actionType: ActionType;
+  mode: "demo" | "shadow" | "live";
   
   // Status
-  status: ExecutionStatus;
+  status: "success" | "failed" | "partial";
   
-  // Steps completed
-  completedSteps: number;
-  totalSteps: number;
-  currentStep?: ExecutionSubstep;
-  
-  // Transactions
-  transactions: Array<{
-    stepId: string;
-    txHash: string;
-    blockNumber?: number;
-    gasUsed: number;
-    status: "pending" | "confirmed" | "failed";
-  }>;
-  
-  // Actual outcome
-  actualOutcome?: {
-    tokensIn: Array<{ symbol: string; amount: number }>;
-    tokensOut: Array<{ symbol: string; amount: number }>;
-    gasUsed: number;
-    slippageActual: number;
-  };
-  
-  // State changes
-  stateChanges: {
-    balancesBefore: Record<string, number>;
-    balancesAfter: Record<string, number>;
-    positionsAffected: string[];
-    portfolioValueChange: number;
-  };
+  // Transaction data
+  txHashes: string[];
+  gasUsed: number;
+  totalCost: number; // USD
   
   // Timing
   startedAt: Date;
-  completedAt?: Date;
-  executionTime?: number; // seconds
+  completedAt: Date;
+  duration: number; // seconds
   
-  // Errors
+  // Steps
+  completedSteps: number;
+  totalSteps: number;
+  failedSteps: number;
+  
+  // Outcome
+  tokensIn: Array<{ symbol: string; amount: number }>;
+  tokensOut: Array<{ symbol: string; amount: number }>;
+  
+  // Error (if failed)
   error?: {
     stepId: string;
     message: string;
-    code?: string;
     recoverable: boolean;
   };
   
+  // CRITICAL: Reconciliation result (Live Mode only)
+  reconciliation?: ReconciliationResult;
+  
   // Logs
   logs: string[];
+}
+
+/**
+ * Reconciliation Result
+ * Compares expected vs actual onchain state after live transactions
+ */
+export interface ReconciliationResult {
+  success: boolean;
+  reconciledAt: Date;
+  txHash: string;
+  actionType: string;
+  
+  // State comparison
+  expectedState: {
+    balances: Record<string, number>;
+    positions: Record<string, any>;
+    allowances: Record<string, string>;
+  };
+  actualState: {
+    balances: Record<string, number>;
+    positions: Record<string, any>;
+    allowances: Record<string, string>;
+  };
+  
+  // Discrepancies
+  discrepancies: Array<{
+    type: "balance" | "position" | "allowance";
+    assetOrId: string;
+    expected: any;
+    actual: any;
+    difference: number | string;
+    percentDiff?: number;
+    severity: "minor" | "moderate" | "critical";
+  }>;
+  
+  // Summary
+  totalDiscrepancies: number;
+  criticalDiscrepancies: number;
+  requiresUserAttention: boolean;
+  nextActions: string[];
 }
 
 export type ExecutionStatus =

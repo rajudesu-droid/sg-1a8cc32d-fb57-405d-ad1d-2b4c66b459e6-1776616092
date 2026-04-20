@@ -3,96 +3,125 @@
 // Centralized state synchronization after any execution
 // ============================================================================
 
-import type { ExecutionJob } from "./ExecutionJob";
-import { orchestrator } from "../orchestrator";
 import { syncEngine } from "../sync";
-import { incrementalRefreshService } from "../performance/IncrementalRefreshService";
+import { orchestrator } from "../orchestrator";
+import type { ExecutionResult, ReconciliationResult } from "./types";
+import { reconciliationService } from "./ReconciliationService";
+import { useAppStore } from "@/store";
 
 export class PostExecutionSync {
+  private syncId = "post-execution-sync";
+
   /**
-   * Sync state after execution
+   * Sync state after execution completes
+   * 
+   * CRITICAL: Routes reconciliation through Sync Engine
    */
-  async syncAfterExecution(job: ExecutionJob): Promise<void> {
-    console.log(`[PostExecutionSync] Syncing after ${job.actionType} execution`);
+  async syncAfterExecution(
+    result: ExecutionResult,
+    mode: "demo" | "shadow" | "live",
+    walletAddress?: string,
+    chain?: string
+  ): Promise<void> {
+    console.log(`[PostExecutionSync] Syncing after execution in ${mode} mode`);
 
-    // Determine affected modules based on action type
-    const affectedModules = this.determineAffectedModules(job);
+    // Step 1: Basic state sync (all modes)
+    await syncEngine.syncAll();
 
-    // Publish sync event
-    orchestrator.publishEvent({
-      type: "sync_required",
-      timestamp: new Date(),
-      source: "post-execution-sync",
-      data: { job },
-      affectedModules,
-    });
+    // Step 2: Live Mode reconciliation
+    if (mode === "live" && result.status === "success" && walletAddress && chain) {
+      console.log(`[PostExecutionSync] Initiating onchain reconciliation for Live Mode`);
 
-    // Trigger sync engine
-    await syncEngine.syncAffectedModules(affectedModules);
+      // Extract expected state from execution result
+      const expectedState = this.extractExpectedState(result);
 
-    // Use incremental refresh for targeted entity updates
-    if (job.targetEntityType === "position" && job.targetEntityId) {
-      await incrementalRefreshService.refreshAfterPositionChange(
-        job.targetEntityId,
-        job.mode
-      );
-    } else if (job.targetEntityType === "wallet" && job.walletId) {
-      await incrementalRefreshService.refreshAfterWalletChange(
-        job.walletId,
-        job.mode
-      );
-    } else {
-      await incrementalRefreshService.refreshAfterPortfolioChange(job.mode);
+      // Get final tx hash
+      const finalTxHash = result.txHashes[result.txHashes.length - 1];
+
+      if (finalTxHash) {
+        try {
+          // CRITICAL: Reconcile with actual onchain state
+          const reconciliationResult = await reconciliationService.reconcile(
+            finalTxHash,
+            result.actionType,
+            expectedState,
+            walletAddress,
+            chain
+          );
+
+          // Add reconciliation result to execution result
+          result.reconciliation = reconciliationResult;
+
+          // If critical discrepancies, add to audit log
+          if (reconciliationResult.criticalDiscrepancies > 0) {
+            console.warn(
+              `[PostExecutionSync] CRITICAL DISCREPANCIES DETECTED: ${reconciliationResult.criticalDiscrepancies}`
+            );
+
+            useAppStore.getState().addAuditLog({
+              id: `reconciliation-${finalTxHash}`,
+              timestamp: new Date(),
+              action: "reconciliation_warning",
+              mode: "live",
+              walletAddress,
+              details: {
+                txHash: finalTxHash,
+                actionType: result.actionType,
+                discrepancies: reconciliationResult.discrepancies,
+                criticalCount: reconciliationResult.criticalDiscrepancies,
+              },
+              success: true,
+            });
+          }
+
+          console.log(
+            `[PostExecutionSync] Reconciliation complete. ` +
+            `Discrepancies: ${reconciliationResult.totalDiscrepancies}, ` +
+            `Critical: ${reconciliationResult.criticalDiscrepancies}`
+          );
+        } catch (error) {
+          console.error(`[PostExecutionSync] Reconciliation failed:`, error);
+
+          // Add failure to audit log
+          useAppStore.getState().addAuditLog({
+            id: `reconciliation-error-${finalTxHash}`,
+            timestamp: new Date(),
+            action: "reconciliation_failed",
+            mode: "live",
+            walletAddress,
+            details: {
+              txHash: finalTxHash,
+              actionType: result.actionType,
+              error: error instanceof Error ? error.message : "Unknown error",
+            },
+            success: false,
+          });
+        }
+      }
     }
+
+    // Step 3: Notify affected modules
+    await orchestrator.coordinateUpdate(
+      this.syncId,
+      "execution_completed",
+      { result, mode },
+      ["dashboard", "wallets", "positions", "opportunities", "withdraw", "execution_center"]
+    );
+
+    console.log(`[PostExecutionSync] Post-execution sync complete`);
   }
 
   /**
-   * Identifies exactly which parts of the application need refreshing
+   * Extract expected state from execution result
    */
-  private determineAffectedModules(job: ExecutionJob): string[] {
-    const modules = new Set<string>();
-    
-    // Core modules affected by almost all actions
-    modules.add("wallet-engine");
-    modules.add("portfolio-engine");
-    modules.add("dashboard");
-    
-    // Action specific module resolution
-    switch (job.actionType) {
-      case "ADD_LIQUIDITY":
-      case "DEPOSIT":
-      case "STAKE":
-      case "REMOVE_LIQUIDITY":
-      case "EXIT_POSITION":
-      case "REBALANCE":
-        modules.add("position-engine");
-        modules.add("positions-page");
-        modules.add("opportunities-page"); // Capital was deployed, opportunities need rescoring
-        break;
-        
-      case "HARVEST_REWARDS":
-      case "COMPOUND":
-      case "CONVERT_REWARDS":
-        modules.add("position-engine");
-        modules.add("rewards-engine");
-        modules.add("positions-page");
-        break;
-        
-      case "WITHDRAW_FUNDS":
-        modules.add("withdrawal-engine");
-        modules.add("position-engine");
-        modules.add("positions-page");
-        break;
-        
-      case "EMERGENCY_PAUSE":
-      case "CANCEL_PENDING":
-      case "REFRESH_STATE":
-        modules.add("policy-engine");
-        modules.add("system-monitor");
-        break;
-    }
-    
-    return Array.from(modules);
+  private extractExpectedState(result: ExecutionResult): any {
+    // STUB: Would extract expected balances, positions, allowances from result
+    // For now, return empty structure
+    return {
+      balances: {},
+      positions: {},
+      allowances: {},
+    };
   }
 }
 
