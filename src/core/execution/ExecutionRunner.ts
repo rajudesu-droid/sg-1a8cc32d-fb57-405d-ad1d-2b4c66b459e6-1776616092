@@ -72,7 +72,7 @@ export class ExecutionRunner {
         mode: context.mode,
         chain: plan.chain,
         poolAddress: plan.poolAddress,
-        walletAddress: context.wallet?.address,
+        walletAddress: context.walletAddress,
         metadata: {
           spenderAddress: plan.substeps.find(s => s.operation === "approve_token")?.requiredApproval?.spender,
           requiredAssets: [], // Would reconstruct from plan
