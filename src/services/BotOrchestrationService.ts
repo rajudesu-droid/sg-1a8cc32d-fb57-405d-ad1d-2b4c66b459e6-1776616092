@@ -23,7 +23,7 @@ export interface BotConfig {
 }
 
 class BotOrchestrationService {
-  private runningInterval: NodeJS.Timeout | null = null;
+  private runningInterval: ReturnType<typeof setInterval> | null = null;
   private status: BotStatus = {
     isRunning: false,
     startedAt: null,
