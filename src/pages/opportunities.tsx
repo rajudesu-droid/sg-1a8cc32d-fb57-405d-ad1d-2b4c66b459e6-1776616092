@@ -12,6 +12,7 @@ import { ModeBanner } from "@/components/ModeBanner";
 import { orchestrator } from "@/core/orchestrator";
 import { opportunityEngine } from "@/core/engines";
 import { ProtocolReadinessIndicator } from "@/components/ProtocolReadinessIndicator";
+import { protocolRegistry } from "@/core/protocols/ProtocolRegistry";
 
 type SortOption = "recommended" | "apy" | "tvl" | "risk";
 type RiskFilter = "all" | "low" | "medium" | "high";
