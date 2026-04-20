@@ -13,6 +13,8 @@ import { protocolRegistry } from "@/core/protocols/ProtocolRegistry";
 import { spenderAllowlist } from "@/core/config/SpenderAllowlist";
 import { ProtocolReadinessIndicator } from "@/components/ProtocolReadinessIndicator";
 import { LiveReadinessPanel } from "@/components/LiveReadinessPanel";
+import { userPreferencesService } from "@/services/UserPreferencesService";
+import type { UserPreferences } from "@/services/UserPreferencesService";
 
 export default function Settings() {
   const [chainSettings, setChainSettings] = useState<Array<{ id: string; name: string; enabled: boolean }>>([]);
@@ -25,25 +27,91 @@ export default function Settings() {
     spenderCount: number;
   }>>([]);
   const [slippageTolerance, setSlippageTolerance] = useState("2.0");
-  const [notificationSettings] = useState({
+  const [notificationSettings, setNotificationSettings] = useState({
+    notifyOutOfRange: true,
+    notifyHarvest: true,
+    notifyRebalance: false,
+    notifyActions: true,
     emailAlerts: true,
     pushAlerts: true,
     discordAlerts: false,
   });
+  const [advancedSettings, setAdvancedSettings] = useState({
+    debugMode: false,
+    testnetMode: false,
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
-  // Load real data on mount
+  // Load data on mount
   useEffect(() => {
-    loadChainSettings();
-    loadProtocolSettings();
+    loadAllSettings();
   }, []);
+
+  const loadAllSettings = async () => {
+    setLoading(true);
+    try {
+      // Load chain and protocol settings
+      loadChainSettings();
+      loadProtocolSettings();
+      
+      // Load user preferences from database
+      const preferences = await userPreferencesService.loadPreferences();
+      
+      if (preferences) {
+        setSlippageTolerance(preferences.defaultSlippage.toString());
+        setNotificationSettings({
+          notifyOutOfRange: preferences.notifyOutOfRange,
+          notifyHarvest: preferences.notifyHarvest,
+          notifyRebalance: preferences.notifyRebalance,
+          notifyActions: preferences.notifyActions,
+          emailAlerts: preferences.emailAlerts,
+          pushAlerts: preferences.pushAlerts,
+          discordAlerts: preferences.discordAlerts,
+        });
+        setAdvancedSettings({
+          debugMode: preferences.debugMode,
+          testnetMode: preferences.testnetMode,
+        });
+        
+        // Apply saved chain preferences
+        if (preferences.enabledChains.length > 0) {
+          setChainSettings(prev => prev.map(chain => ({
+            ...chain,
+            enabled: preferences.enabledChains.includes(chain.id),
+          })));
+        }
+        
+        // Apply saved protocol preferences
+        if (preferences.enabledProtocols.length > 0) {
+          setProtocolSettings(prev => prev.map(protocol => {
+            const saved = preferences.enabledProtocols.find((p: any) => p.id === protocol.id);
+            return {
+              ...protocol,
+              enabled: saved ? saved.enabled : protocol.enabled,
+            };
+          }));
+        }
+      }
+    } catch (error) {
+      console.error("[Settings] Failed to load settings:", error);
+      toast({
+        title: "Error Loading Settings",
+        description: "Failed to load your saved preferences. Using defaults.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadChainSettings = () => {
     const chains = spenderAllowlist.getSupportedChains();
     const chainData = chains.map(chain => ({
       id: chain,
       name: chain.charAt(0).toUpperCase() + chain.slice(1),
-      enabled: true, // All chains in allowlist are enabled
+      enabled: true,
     }));
     setChainSettings(chainData);
   };
@@ -67,7 +135,7 @@ export default function Settings() {
           id: `${adapter.protocolName}-${chain}`,
           name: adapter.protocolName,
           chain: chain.charAt(0).toUpperCase() + chain.slice(1),
-          enabled: spenders.length > 0, // Enabled if has whitelisted spenders
+          enabled: spenders.length > 0,
           readiness: adapter.getReadiness(),
           spenderCount: spenders.length,
         });
@@ -77,20 +145,67 @@ export default function Settings() {
     setProtocolSettings(protocols);
   };
 
-  const handleSaveChanges = () => {
-    toast({
-      title: "Settings Saved",
-      description: "All settings have been saved successfully",
-    });
+  const handleSaveChanges = async () => {
+    setSaving(true);
+    try {
+      const preferences: UserPreferences = {
+        enabledChains: chainSettings.filter(c => c.enabled).map(c => c.id),
+        enabledProtocols: protocolSettings.map(p => ({ id: p.id, enabled: p.enabled })),
+        defaultSlippage: parseFloat(slippageTolerance),
+        autoApprove: false,
+        notifyOutOfRange: notificationSettings.notifyOutOfRange,
+        notifyHarvest: notificationSettings.notifyHarvest,
+        notifyRebalance: notificationSettings.notifyRebalance,
+        notifyActions: notificationSettings.notifyActions,
+        emailAlerts: notificationSettings.emailAlerts,
+        pushAlerts: notificationSettings.pushAlerts,
+        discordAlerts: notificationSettings.discordAlerts,
+        debugMode: advancedSettings.debugMode,
+        testnetMode: advancedSettings.testnetMode,
+      };
+
+      const success = await userPreferencesService.savePreferences(preferences);
+
+      if (success) {
+        toast({
+          title: "Settings Saved",
+          description: "All settings have been saved successfully to your account",
+        });
+      } else {
+        throw new Error("Failed to save preferences");
+      }
+    } catch (error) {
+      console.error("[Settings] Failed to save:", error);
+      toast({
+        title: "Save Failed",
+        description: "Failed to save settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleResetDefaults = () => {
     loadChainSettings();
     loadProtocolSettings();
     setSlippageTolerance("2.0");
+    setNotificationSettings({
+      notifyOutOfRange: true,
+      notifyHarvest: true,
+      notifyRebalance: false,
+      notifyActions: true,
+      emailAlerts: true,
+      pushAlerts: true,
+      discordAlerts: false,
+    });
+    setAdvancedSettings({
+      debugMode: false,
+      testnetMode: false,
+    });
     toast({
       title: "Settings Reset",
-      description: "All settings have been reset to defaults",
+      description: "All settings have been reset to defaults (not saved yet)",
     });
   };
 
@@ -127,9 +242,9 @@ export default function Settings() {
               Configure chains, DEXes, notifications, and preferences
             </p>
           </div>
-          <Button onClick={handleSaveChanges}>
+          <Button onClick={handleSaveChanges} disabled={saving || loading}>
             <Save className="mr-2 h-4 w-4" />
-            Save Changes
+            {saving ? "Saving..." : "Save Changes"}
           </Button>
         </div>
 
@@ -387,7 +502,11 @@ export default function Settings() {
                         Notify when positions go out of range
                       </p>
                     </div>
-                    <Switch id="notify-out-of-range" defaultChecked />
+                    <Switch 
+                      id="notify-out-of-range" 
+                      checked={notificationSettings.notifyOutOfRange}
+                      onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, notifyOutOfRange: checked }))}
+                    />
                   </div>
 
                   <Separator />
@@ -399,7 +518,11 @@ export default function Settings() {
                         Notify when rewards exceed harvest threshold
                       </p>
                     </div>
-                    <Switch id="notify-harvest" defaultChecked />
+                    <Switch 
+                      id="notify-harvest" 
+                      checked={notificationSettings.notifyHarvest}
+                      onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, notifyHarvest: checked }))}
+                    />
                   </div>
 
                   <Separator />
@@ -411,7 +534,11 @@ export default function Settings() {
                         Notify when better opportunities are available
                       </p>
                     </div>
-                    <Switch id="notify-rebalance" />
+                    <Switch 
+                      id="notify-rebalance"
+                      checked={notificationSettings.notifyRebalance}
+                      onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, notifyRebalance: checked }))}
+                    />
                   </div>
 
                   <Separator />
@@ -423,7 +550,11 @@ export default function Settings() {
                         Notify when automation executes actions
                       </p>
                     </div>
-                    <Switch id="notify-actions" defaultChecked />
+                    <Switch 
+                      id="notify-actions" 
+                      checked={notificationSettings.notifyActions}
+                      onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, notifyActions: checked }))}
+                    />
                   </div>
                 </div>
               </CardContent>
@@ -454,7 +585,11 @@ export default function Settings() {
                         Show detailed logs and diagnostics
                       </p>
                     </div>
-                    <Switch id="debug-mode" />
+                    <Switch 
+                      id="debug-mode"
+                      checked={advancedSettings.debugMode}
+                      onCheckedChange={(checked) => setAdvancedSettings(prev => ({ ...prev, debugMode: checked }))}
+                    />
                   </div>
 
                   <Separator />
@@ -466,7 +601,11 @@ export default function Settings() {
                         Use testnet networks for all operations
                       </p>
                     </div>
-                    <Switch id="test-mode" />
+                    <Switch 
+                      id="test-mode"
+                      checked={advancedSettings.testnetMode}
+                      onCheckedChange={(checked) => setAdvancedSettings(prev => ({ ...prev, testnetMode: checked }))}
+                    />
                   </div>
 
                   <Separator />
@@ -489,11 +628,11 @@ export default function Settings() {
         </Tabs>
 
         <div className="flex items-center justify-end gap-3">
-          <Button variant="outline" onClick={handleResetDefaults}>
+          <Button variant="outline" onClick={handleResetDefaults} disabled={loading || saving}>
             Reset to Defaults
           </Button>
-          <Button onClick={handleSaveChanges}>
-            Save Changes
+          <Button onClick={handleSaveChanges} disabled={saving || loading}>
+            {saving ? "Saving..." : "Save Changes"}
           </Button>
         </div>
       </div>

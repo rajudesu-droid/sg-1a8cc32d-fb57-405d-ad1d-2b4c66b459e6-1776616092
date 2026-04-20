@@ -723,6 +723,129 @@ export type Database = {
         }
         Relationships: []
       }
+      user_policies: {
+        Row: {
+          auto_compound: boolean | null
+          auto_harvest: boolean | null
+          auto_rebalance: boolean | null
+          compound_threshold: number | null
+          created_at: string | null
+          daily_gas_budget: number | null
+          emergency_pause: boolean | null
+          id: string
+          max_gas_price: number | null
+          max_impermanent_loss: number | null
+          max_per_chain: number | null
+          max_per_pool: number | null
+          max_slippage: number | null
+          max_total_deployed: number | null
+          min_harvest_value: number | null
+          rebalance_threshold: number | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          auto_compound?: boolean | null
+          auto_harvest?: boolean | null
+          auto_rebalance?: boolean | null
+          compound_threshold?: number | null
+          created_at?: string | null
+          daily_gas_budget?: number | null
+          emergency_pause?: boolean | null
+          id?: string
+          max_gas_price?: number | null
+          max_impermanent_loss?: number | null
+          max_per_chain?: number | null
+          max_per_pool?: number | null
+          max_slippage?: number | null
+          max_total_deployed?: number | null
+          min_harvest_value?: number | null
+          rebalance_threshold?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          auto_compound?: boolean | null
+          auto_harvest?: boolean | null
+          auto_rebalance?: boolean | null
+          compound_threshold?: number | null
+          created_at?: string | null
+          daily_gas_budget?: number | null
+          emergency_pause?: boolean | null
+          id?: string
+          max_gas_price?: number | null
+          max_impermanent_loss?: number | null
+          max_per_chain?: number | null
+          max_per_pool?: number | null
+          max_slippage?: number | null
+          max_total_deployed?: number | null
+          min_harvest_value?: number | null
+          rebalance_threshold?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_preferences: {
+        Row: {
+          auto_approve: boolean | null
+          created_at: string | null
+          debug_mode: boolean | null
+          default_slippage: number | null
+          discord_alerts: boolean | null
+          email_alerts: boolean | null
+          enabled_chains: string[] | null
+          enabled_protocols: Json | null
+          id: string
+          notify_actions: boolean | null
+          notify_harvest: boolean | null
+          notify_out_of_range: boolean | null
+          notify_rebalance: boolean | null
+          push_alerts: boolean | null
+          testnet_mode: boolean | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          auto_approve?: boolean | null
+          created_at?: string | null
+          debug_mode?: boolean | null
+          default_slippage?: number | null
+          discord_alerts?: boolean | null
+          email_alerts?: boolean | null
+          enabled_chains?: string[] | null
+          enabled_protocols?: Json | null
+          id?: string
+          notify_actions?: boolean | null
+          notify_harvest?: boolean | null
+          notify_out_of_range?: boolean | null
+          notify_rebalance?: boolean | null
+          push_alerts?: boolean | null
+          testnet_mode?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          auto_approve?: boolean | null
+          created_at?: string | null
+          debug_mode?: boolean | null
+          default_slippage?: number | null
+          discord_alerts?: boolean | null
+          email_alerts?: boolean | null
+          enabled_chains?: string[] | null
+          enabled_protocols?: Json | null
+          id?: string
+          notify_actions?: boolean | null
+          notify_harvest?: boolean | null
+          notify_out_of_range?: boolean | null
+          notify_rebalance?: boolean | null
+          push_alerts?: boolean | null
+          testnet_mode?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       withdrawal_plans: {
         Row: {
           created_at: string | null
