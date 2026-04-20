@@ -154,7 +154,130 @@ class SpenderAllowlist {
       },
     ]);
 
-    console.log("[SpenderAllowlist] Initialized with", this.getTotalSpendersCount(), "whitelisted spenders");
+    // Avalanche
+    this.addSpenders("avalanche", [
+      {
+        address: "0xbb00FF08d01D300023C629E8fFfFcb65A5a578cE",
+        name: "Trader Joe V2 Router",
+        protocol: "traderjoe-v2",
+        type: "router",
+        chain: "avalanche",
+        verified: true,
+        notes: "Official Trader Joe V2 LB Router",
+      },
+    ]);
+
+    // Base (Coinbase L2)
+    this.addSpenders("base", [
+      {
+        address: "0x2626664c2603336E57B271c5C0b26F421741e481",
+        name: "Uniswap V3 Router",
+        protocol: "uniswap-v3",
+        type: "router",
+        chain: "base",
+        verified: true,
+        notes: "Official Uniswap V3 SwapRouter on Base",
+      },
+      {
+        address: "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+        name: "Uniswap V3 Position Manager",
+        protocol: "uniswap-v3",
+        type: "position_manager",
+        chain: "base",
+        verified: true,
+        notes: "NonfungiblePositionManager for LP positions on Base",
+      },
+    ]);
+
+    // Solana (SPL Programs)
+    this.addSpenders("solana", [
+      {
+        address: "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",
+        name: "Orca Whirlpools Program",
+        protocol: "orca-whirlpools",
+        type: "swap",
+        chain: "solana",
+        verified: true,
+        notes: "Orca Whirlpools concentrated liquidity program",
+      },
+      {
+        address: "9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP",
+        name: "Orca Legacy Program",
+        protocol: "orca",
+        type: "swap",
+        chain: "solana",
+        verified: true,
+        notes: "Orca legacy swap program",
+      },
+      {
+        address: "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
+        name: "Raydium AMM V4",
+        protocol: "raydium-v4",
+        type: "swap",
+        chain: "solana",
+        verified: true,
+        notes: "Raydium automated market maker V4",
+      },
+    ]);
+
+    // TRON (TRC20 Protocols)
+    this.addSpenders("tron", [
+      {
+        address: "TKzxdSv2FZKQrEqkKVgp5DcwEXBEKMg2Ax",
+        name: "SunSwap V2 Router",
+        protocol: "sunswap-v2",
+        type: "router",
+        chain: "tron",
+        verified: true,
+        notes: "Official SunSwap V2 Router on TRON",
+      },
+      {
+        address: "TXF6TkXzLhKvJGqRCTqYzFhHKPKVjVYhJP",
+        name: "JustSwap Router",
+        protocol: "justswap",
+        type: "router",
+        chain: "tron",
+        verified: true,
+        notes: "Official JustSwap Router on TRON",
+      },
+    ]);
+
+    // XRPL (XRP Ledger) - Uses trust lines, not traditional contracts
+    this.addSpenders("xrpl", [
+      {
+        address: "rN7n7otQDd6FczFgLdlqtyMVrn3HMgp8fM",
+        name: "Sologenic DEX",
+        protocol: "sologenic",
+        type: "swap",
+        chain: "xrpl",
+        verified: true,
+        notes: "Sologenic DEX on XRPL (uses trust lines)",
+      },
+      {
+        address: "rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz",
+        name: "Solo DEX",
+        protocol: "solo-dex",
+        type: "swap",
+        chain: "xrpl",
+        verified: true,
+        notes: "Solo DEX aggregator on XRPL",
+      },
+    ]);
+
+    // Bitcoin - Native BTC (no smart contracts, used for display purposes)
+    this.addSpenders("bitcoin", [
+      {
+        address: "native",
+        name: "Bitcoin Native",
+        protocol: "bitcoin-native",
+        type: "swap",
+        chain: "bitcoin",
+        verified: true,
+        notes: "Native Bitcoin support (no smart contracts)",
+      },
+    ]);
+
+    console.log("[SpenderAllowlist] Initialized with", this.getTotalSpendersCount(), "whitelisted spenders across", this.getSupportedChains().length, "chains");
   }
 
   /**
