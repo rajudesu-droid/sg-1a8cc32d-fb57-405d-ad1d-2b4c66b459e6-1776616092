@@ -5,143 +5,216 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { 
   Activity, 
   CheckCircle2, 
   XCircle, 
   Clock, 
-  Zap,
   AlertTriangle,
-  PlayCircle,
-  PauseCircle,
+  Play,
+  Pause,
+  RotateCcw,
+  Shield
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { triggerEngine } from "@/core/engines/TriggerEngine";
-import { executionEngine } from "@/core/engines/AutomatedExecutionEngine";
-import type { ActionTrigger } from "@/core/contracts/actions";
+import { useAppStore } from "@/store";
+import { useState, useEffect } from "react";
 
 export function ExecutionMonitor() {
-  const [queuedTriggers, setQueuedTriggers] = useState<ActionTrigger[]>([]);
-  const [activeExecutions, setActiveExecutions] = useState<number>(0);
+  const executionJobs = useAppStore((state) => state.executionJobs);
+  const mode = useAppStore((state) => state.mode);
   
-  useEffect(() => {
-    // Poll trigger queue every 2 seconds
-    const interval = setInterval(() => {
-      const triggers = triggerEngine.getQueuedTriggers();
-      setQueuedTriggers(triggers);
-      
-      // Mock active executions count (in real app, would query executionEngine)
-      setActiveExecutions(0);
-    }, 2000);
-    
-    return () => clearInterval(interval);
-  }, []);
+  const [activeJobs, setActiveJobs] = useState<any[]>([]);
+  const [completedJobs, setCompletedJobs] = useState<any[]>([]);
 
-  const getActionIcon = (actionType: string) => {
-    switch (actionType) {
-      case "ADD_LIQUIDITY":
-      case "DEPOSIT":
-        return <PlayCircle className="h-4 w-4 text-cyan-400" />;
-      case "HARVEST_REWARDS":
-        return <Zap className="h-4 w-4 text-amber-400" />;
-      case "COMPOUND":
-        return <Activity className="h-4 w-4 text-emerald-400" />;
-      case "REBALANCE":
-        return <AlertTriangle className="h-4 w-4 text-orange-400" />;
-      case "EXIT_POSITION":
-      case "WITHDRAW_FUNDS":
-        return <PauseCircle className="h-4 w-4 text-red-400" />;
+  useEffect(() => {
+    const active = executionJobs.filter(j => 
+      ["pending", "validating", "planning", "previewing", "awaiting_authorization", "executing"].includes(j.status)
+    );
+    const completed = executionJobs.filter(j => 
+      ["completed", "failed", "cancelled"].includes(j.status)
+    ).slice(0, 5); // Last 5 completed
+
+    setActiveJobs(active);
+    setCompletedJobs(completed);
+  }, [executionJobs]);
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "completed":
+        return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+      case "failed":
+      case "cancelled":
+        return <XCircle className="w-4 h-4 text-red-500" />;
+      case "executing":
+        return <Activity className="w-4 h-4 text-blue-500 animate-pulse" />;
+      case "awaiting_authorization":
+        return <Shield className="w-4 h-4 text-amber-500" />;
       default:
-        return <Clock className="h-4 w-4 text-muted-foreground" />;
+        return <Clock className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
-  const getUrgencyBadge = (urgency: string) => {
-    const variants: Record<string, { variant: any; label: string }> = {
-      low: { variant: "secondary", label: "Low" },
-      normal: { variant: "default", label: "Normal" },
-      high: { variant: "default", label: "High" },
-      critical: { variant: "destructive", label: "Critical" },
-    };
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "completed":
+        return "bg-green-500/10 text-green-500 border-green-500/50";
+      case "failed":
+      case "cancelled":
+        return "bg-red-500/10 text-red-500 border-red-500/50";
+      case "executing":
+        return "bg-blue-500/10 text-blue-500 border-blue-500/50";
+      case "awaiting_authorization":
+        return "bg-amber-500/10 text-amber-500 border-amber-500/50";
+      default:
+        return "bg-muted/50 text-muted-foreground border-border";
+    }
+  };
+
+  const getApprovalSteps = (job: any) => {
+    if (!job.actionPlan?.substeps) return [];
     
-    const config = variants[urgency] || variants.normal;
-    return (
-      <Badge variant={config.variant} className="text-xs">
-        {config.label}
-      </Badge>
+    return job.actionPlan.substeps.filter((step: any) => 
+      step.operation === "approve_token" && step.requiredApproval
     );
   };
 
   return (
     <Card className="card-gradient border-border/50">
       <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-cyan-400" />
-            <span>Execution Monitor</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
-              {activeExecutions} Active
+        <CardTitle className="flex items-center gap-2">
+          <Activity className="w-5 h-5" />
+          Execution Monitor
+          {activeJobs.length > 0 && (
+            <Badge variant="outline" className="ml-auto">
+              {activeJobs.length} active
             </Badge>
-            <Badge variant="secondary" className="text-xs">
-              {queuedTriggers.length} Queued
-            </Badge>
-          </div>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {queuedTriggers.length === 0 && activeExecutions === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <CheckCircle2 className="h-12 w-12 text-muted-foreground/50 mb-3" />
-            <p className="text-sm text-muted-foreground">No pending actions</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              All executions complete
+        {activeJobs.length === 0 && completedJobs.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p>No active or recent executions</p>
+            <p className="text-xs mt-1">
+              Automated actions will appear here when triggered
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {queuedTriggers.map((trigger, index) => (
-              <div key={trigger.id}>
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
-                  <div className="mt-0.5">
-                    {getActionIcon(trigger.actionType)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <h4 className="text-sm font-medium truncate">
-                        {trigger.actionType.replace(/_/g, " ")}
-                      </h4>
-                      {getUrgencyBadge(trigger.urgency)}
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      {trigger.reason}
-                    </p>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      {trigger.protocol && (
-                        <span className="flex items-center gap-1">
-                          <span className="font-medium">{trigger.protocol}</span>
-                        </span>
+          <div className="space-y-4">
+            {/* Active Jobs */}
+            {activeJobs.length > 0 && (
+              <div className="space-y-3">
+                <div className="text-sm font-medium text-muted-foreground">Active</div>
+                {activeJobs.map((job) => {
+                  const approvalSteps = getApprovalSteps(job);
+                  
+                  return (
+                    <div 
+                      key={job.id}
+                      className="border border-border rounded-lg p-3 space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(job.status)}
+                          <span className="font-medium text-sm">
+                            {job.actionType.replace(/_/g, " ")}
+                          </span>
+                        </div>
+                        <Badge variant="outline" className={getStatusColor(job.status)}>
+                          {job.status}
+                        </Badge>
+                      </div>
+
+                      {job.poolAddress && (
+                        <div className="text-xs text-muted-foreground">
+                          Pool: {job.poolAddress.slice(0, 6)}...{job.poolAddress.slice(-4)}
+                        </div>
                       )}
-                      {trigger.chain && (
-                        <span className="flex items-center gap-1">
-                          <span className="font-medium">{trigger.chain}</span>
-                        </span>
+
+                      {/* Approval Steps */}
+                      {approvalSteps.length > 0 && (
+                        <Alert className="border-amber-500/50 bg-amber-500/10">
+                          <Shield className="h-4 w-4 text-amber-500" />
+                          <AlertDescription className="text-xs">
+                            <strong>Approvals Required:</strong> {approvalSteps.length} token approval(s)
+                            <ul className="mt-1 ml-4 list-disc">
+                              {approvalSteps.map((step: any, idx: number) => (
+                                <li key={idx}>
+                                  {step.requiredApproval.token} ({step.requiredApproval.amount === Number.MAX_SAFE_INTEGER ? "Unlimited" : step.requiredApproval.amount})
+                                </li>
+                              ))}
+                            </ul>
+                          </AlertDescription>
+                        </Alert>
                       )}
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {new Date(trigger.triggeredAt).toLocaleTimeString()}
-                      </span>
+
+                      {job.status === "awaiting_authorization" && (
+                        <Alert className="border-blue-500/50 bg-blue-500/10">
+                          <AlertTriangle className="h-4 w-4 text-blue-500" />
+                          <AlertDescription className="text-xs">
+                            Waiting for user approval. Review the action preview and authorize to continue.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
+                      {/* Progress */}
+                      {job.executionResult && (
+                        <div className="text-xs">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-muted-foreground">Progress:</span>
+                            <span className="font-medium">
+                              {job.executionResult.completedSteps} / {job.executionResult.totalSteps} steps
+                            </span>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-1.5">
+                            <div 
+                              className="bg-primary rounded-full h-1.5 transition-all"
+                              style={{ 
+                                width: `${(job.executionResult.completedSteps / job.executionResult.totalSteps) * 100}%` 
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </div>
-                {index < queuedTriggers.length - 1 && (
-                  <Separator className="my-2" />
-                )}
+                  );
+                })}
               </div>
-            ))}
+            )}
+
+            {/* Completed Jobs */}
+            {completedJobs.length > 0 && (
+              <div className="space-y-3">
+                <div className="text-sm font-medium text-muted-foreground">Recent</div>
+                {completedJobs.map((job) => (
+                  <div 
+                    key={job.id}
+                    className="border border-border rounded-lg p-3 opacity-75 hover:opacity-100 transition-opacity"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(job.status)}
+                        <span className="font-medium text-sm">
+                          {job.actionType.replace(/_/g, " ")}
+                        </span>
+                      </div>
+                      <Badge variant="outline" className={getStatusColor(job.status)}>
+                        {job.status}
+                      </Badge>
+                    </div>
+
+                    {job.completedAt && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {new Date(job.completedAt).toLocaleTimeString()}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </CardContent>
