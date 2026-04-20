@@ -68,8 +68,8 @@ class UserPreferencesService {
 
       return {
         enabledChains: data.enabled_chains || [],
-        enabledProtocols: data.enabled_protocols || [],
-        defaultSlippage: parseFloat(data.default_slippage) || 2.0,
+        enabledProtocols: (data.enabled_protocols as any) || [],
+        defaultSlippage: Number(data.default_slippage) || 2.0,
         autoApprove: data.auto_approve || false,
         notifyOutOfRange: data.notify_out_of_range ?? true,
         notifyHarvest: data.notify_harvest ?? true,
@@ -181,16 +181,16 @@ class UserPreferencesService {
         autoCompound: data.auto_compound ?? false,
         autoRebalance: data.auto_rebalance ?? false,
         emergencyPause: data.emergency_pause ?? false,
-        minHarvestValue: parseFloat(data.min_harvest_value) || 50,
-        compoundThreshold: parseFloat(data.compound_threshold) || 100,
-        rebalanceThreshold: parseFloat(data.rebalance_threshold) || 5.0,
-        maxPerPool: parseFloat(data.max_per_pool) || 10000,
-        maxPerChain: parseFloat(data.max_per_chain) || 50000,
-        maxTotalDeployed: parseFloat(data.max_total_deployed) || 100000,
-        dailyGasBudget: parseFloat(data.daily_gas_budget) || 100,
-        maxGasPrice: parseFloat(data.max_gas_price) || 100,
-        maxSlippage: parseFloat(data.max_slippage) || 2.0,
-        maxImpermanentLoss: parseFloat(data.max_impermanent_loss) || 10.0,
+        minHarvestValue: Number(data.min_harvest_value) || 50,
+        compoundThreshold: Number(data.compound_threshold) || 100,
+        rebalanceThreshold: Number(data.rebalance_threshold) || 5.0,
+        maxPerPool: Number(data.max_per_pool) || 10000,
+        maxPerChain: Number(data.max_per_chain) || 50000,
+        maxTotalDeployed: Number(data.max_total_deployed) || 100000,
+        dailyGasBudget: Number(data.daily_gas_budget) || 100,
+        maxGasPrice: Number(data.max_gas_price) || 100,
+        maxSlippage: Number(data.max_slippage) || 2.0,
+        maxImpermanentLoss: Number(data.max_impermanent_loss) || 10.0,
       };
     } catch (error) {
       console.error("[UserPreferencesService] Failed to load policy:", error);
