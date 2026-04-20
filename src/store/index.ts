@@ -77,6 +77,11 @@ interface AppState {
   auditLogs: AuditLog[];
   addAuditLog: (log: AuditLog) => void;
 
+  // ==================== EXECUTION JOBS ====================
+  executionJobs: any[];
+  addExecutionJob: (job: any) => void;
+  updateExecutionJob: (id: string, updates: any) => void;
+
   // ==================== SIMULATION ====================
   simulation: SimulationState;
   setSimulation: (simulation: Partial<SimulationState>) => void;
@@ -357,6 +362,19 @@ export const useAppStore = create<AppState>()(
         addAuditLog: (log) =>
           set((state) => ({
             auditLogs: [...state.auditLogs, log],
+          })),
+
+        // ==================== EXECUTION JOBS ====================
+        executionJobs: [],
+        addExecutionJob: (job) =>
+          set((state) => ({
+            executionJobs: [job, ...state.executionJobs],
+          })),
+        updateExecutionJob: (id, updates) =>
+          set((state) => ({
+            executionJobs: state.executionJobs.map((j) =>
+              j.id === id ? { ...j, ...updates } : j
+            ),
           })),
 
         // ==================== SIMULATION ====================
