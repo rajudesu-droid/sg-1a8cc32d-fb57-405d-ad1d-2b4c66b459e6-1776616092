@@ -325,19 +325,19 @@ export default function Portfolio() {
                 <div>
                   <div className="text-sm text-muted-foreground mb-1">Total Value</div>
                   <div className="text-2xl font-bold">
-                    ${portfolio.totalValue.toLocaleString()}
+                    ${(portfolio?.totalValue || 0).toLocaleString()}
                   </div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground mb-1">Deployed Capital</div>
                   <div className="text-2xl font-bold text-cyan-400">
-                    ${portfolio.deployedCapital.toLocaleString()}
+                    ${(portfolio?.deployedCapital || 0).toLocaleString()}
                   </div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground mb-1">Idle Capital</div>
                   <div className="text-2xl font-bold text-amber-400">
-                    ${portfolio.idleCapital.toLocaleString()}
+                    ${(portfolio?.idleCapital || 0).toLocaleString()}
                   </div>
                 </div>
               </div>
