@@ -7,7 +7,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import type { ExecutionResult, ActionPlan, ExecutionPreview, ReconciliationResult } from "@/core/execution/types";
-import type { ActionType } from "@/core/contracts";
+import type { ActionType } from "@/core/contracts/actions";
 
 export interface ExecutionRecord {
   id: string;
