@@ -243,7 +243,7 @@ export class ValidationEngine {
 
     // Check 6: Slippage tolerance
     if (trigger.metadata?.estimatedSlippage !== undefined) {
-      const maxSlippage = store.policy?.maxSlippage || 1.0;
+      const maxSlippage = (store.policy as any)?.maxSlippage || 1.0;
       const estimatedSlippage = trigger.metadata.estimatedSlippage as number;
       
       checks.push({
@@ -258,7 +258,7 @@ export class ValidationEngine {
 
     // Check 7: Gas budget
     if (trigger.metadata?.estimatedGas !== undefined) {
-      const dailyGasBudget = store.policy?.maxDailyGas || 1000000;
+      const dailyGasBudget = (store.policy as any)?.maxDailyGas || 1000000;
       const usedGasToday = 0; // TODO: Track from audit logs
       const estimatedGas = trigger.metadata.estimatedGas as number;
       

@@ -137,10 +137,10 @@ export class ActionPlanner {
     if (trigger.metadata?.requiredAssets && trigger.metadata?.spenderAddress) {
       const requiredAssets = trigger.metadata.requiredAssets as Array<{identity: any, amount: string}>;
       const spenderAddress = trigger.metadata.spenderAddress as string;
-      const ownerAddress = context.wallet?.address || "";
+      const ownerAddress = (context as any).wallet?.address || "";
       
       for (const required of requiredAssets) {
-        const walletAsset = findAssetByIdentity(context.walletAssets || [], required.identity) as Asset;
+        const walletAsset = findAssetByIdentity((context as any).walletAssets || [], required.identity) as Asset;
         
         if (walletAsset && walletAsset.contractAddress) {
           try {
@@ -164,7 +164,7 @@ export class ActionPlanner {
                 requiredApproval: {
                   token: walletAsset.symbol,
                   spender: spenderAddress,
-                  amount: allowanceCheck.recommendedApproval,
+                  amount: Number(allowanceCheck.recommendedApproval),
                 },
               }));
             }
