@@ -1,80 +1,62 @@
-// ============================================================================
-// BASE PROTOCOL ADAPTER
-// Abstract base class that all protocol adapters extend
-// ============================================================================
-
 import type {
-  ProtocolAdapter,
-  ProtocolMetadata,
-  AdapterCapabilities,
-  AdapterReadiness,
-  Pool,
-  Farm,
+  IProtocolAdapter,
+  ProtocolType,
   PoolMetrics,
   RewardMetrics,
-  QuoteResult,
+  EntryQuote,
+  ExitQuote,
+  PositionParams,
+  HarvestResult,
   PositionState,
-  ExecutionParams,
+  NormalizedOpportunity,
+  AdapterCapabilities,
+  AdapterReadiness,
+  ProtocolMetadata
 } from "./types";
 
-/**
- * Base Protocol Adapter
- * Abstract class with common functionality
- * 
- * CRITICAL: Adapters must declare their readiness level
- */
-export abstract class BaseProtocolAdapter implements ProtocolAdapter {
-  protected protocolName: string;
+export abstract class BaseProtocolAdapter implements IProtocolAdapter {
+  public abstract protocolName: string;
+  public abstract protocolType: ProtocolType;
+  public abstract supportedChains: string[];
+
   protected capabilities: AdapterCapabilities;
 
-  constructor(protocolName: string) {
-    this.protocolName = protocolName;
+  constructor() {
     this.capabilities = this.getDefaultCapabilities();
   }
 
-  // ==================== METADATA ====================
+  // ==================== METADATA & READINESS ====================
   
-  abstract getMetadata(): ProtocolMetadata;
+  getMetadata(): ProtocolMetadata {
+    return {
+      name: this.protocolName,
+      version: "1.0.0",
+      description: `${this.protocolName} protocol adapter`,
+      chains: this.supportedChains,
+      capabilities: this.getCapabilities(),
+    };
+  }
 
-  /**
-   * Get adapter readiness level
-   * Override in subclass to set appropriate level
-   */
   getReadiness(): AdapterReadiness {
     return this.capabilities.readiness;
   }
 
-  /**
-   * Get adapter capabilities
-   */
   getCapabilities(): AdapterCapabilities {
     return { ...this.capabilities };
   }
 
-  /**
-   * Check if adapter can be used in given mode
-   */
   canUseInMode(mode: "demo" | "shadow" | "live"): boolean {
     const readiness = this.getReadiness();
-    
-    if (mode === "demo") return true;  // All adapters work in demo
+    if (mode === "demo") return true;
     if (mode === "shadow") return readiness === "shadow" || readiness === "live";
     if (mode === "live") return readiness === "live";
-    
     return false;
   }
 
-  /**
-   * Get blocking issues preventing live-ready status
-   */
   getBlockingIssues(): string[] {
     return this.capabilities.blockingIssues || [];
   }
 
-  /**
-   * Default capabilities (all false)
-   * Subclasses must override to declare their capabilities
-   */
   protected getDefaultCapabilities(): AdapterCapabilities {
     return {
       realPoolDiscovery: false,
@@ -87,51 +69,45 @@ export abstract class BaseProtocolAdapter implements ProtocolAdapter {
       auditedContracts: false,
       readiness: "demo",
       blockingIssues: [
-        "Pool discovery uses mock data",
-        "Pool metrics are simulated",
-        "Quotes are estimated, not real",
-        "Reward data is placeholder",
-        "Position state is simulated",
-        "Execution paths not implemented",
-        "Not tested on testnet",
-        "Contract addresses not audited",
+        "Adapter uses placeholder implementation",
+        "Not approved for live execution"
       ],
     };
   }
 
   // ==================== ABSTRACT METHODS ====================
   
-  abstract getSupportedPools(chain: string): Promise<Pool[]>;
-  abstract getEligibleFarms(chain: string): Promise<Farm[]>;
-  abstract getPoolMetrics(poolAddress: string, chain: string): Promise<PoolMetrics>;
-  abstract getRewardMetrics(poolAddress: string, chain: string): Promise<RewardMetrics>;
-  abstract getWalletEligiblePairs(walletAddress: string, chain: string): Promise<string[]>;
-  abstract quoteEntry(params: ExecutionParams): Promise<QuoteResult>;
-  abstract quoteExit(params: ExecutionParams): Promise<QuoteResult>;
-  abstract getPositionState(positionId: string, walletAddress: string, chain: string): Promise<PositionState>;
-  
-  // Execution methods (default to throwing error if not implemented)
-  async openPosition(params: ExecutionParams): Promise<string> {
-    throw new Error(`${this.protocolName}: openPosition not implemented`);
+  abstract getSupportedPools(chain: string): Promise<string[]>;
+  abstract getEligibleFarms(chain: string, walletAddress?: string): Promise<string[]>;
+  abstract getPoolMetrics(chain: string, poolAddress: string): Promise<PoolMetrics>;
+  abstract getRewardMetrics(chain: string, poolAddress: string): Promise<RewardMetrics>;
+  abstract getWalletEligiblePairs(chain: string, walletAddress: string): Promise<string[]>;
+  abstract quoteEntry(chain: string, poolAddress: string, amountUsd: number): Promise<EntryQuote>;
+  abstract quoteExit(chain: string, poolAddress: string, positionId: string): Promise<ExitQuote>;
+  abstract openPosition(chain: string, poolAddress: string, params: PositionParams): Promise<string>;
+  abstract addLiquidity(chain: string, positionId: string, amountUsd: number): Promise<void>;
+  abstract removeLiquidity(chain: string, positionId: string, percentage: number): Promise<void>;
+  abstract stakeIfRequired(chain: string, positionId: string): Promise<void>;
+  abstract unstakeIfRequired(chain: string, positionId: string): Promise<void>;
+  abstract harvestRewards(chain: string, positionId: string): Promise<HarvestResult>;
+  abstract getPositionState(chain: string, positionId: string): Promise<PositionState>;
+  abstract normalizeOpportunity(chain: string, poolAddress: string): Promise<NormalizedOpportunity>;
+
+  // ==================== PROTECTED HELPERS ====================
+
+  protected validateChain(chain: string): void {
+    if (!this.supportedChains.includes(chain)) {
+      throw new Error(`Chain ${chain} is not supported by ${this.protocolName}`);
+    }
   }
-  
-  async addLiquidity(params: ExecutionParams): Promise<string> {
-    throw new Error(`${this.protocolName}: addLiquidity not implemented`);
+
+  protected generateOpportunityId(chain: string, poolAddress: string): string {
+    return `${this.protocolName.toLowerCase().replace(/\s+/g, '-')}-${chain}-${poolAddress.toLowerCase()}`;
   }
-  
-  async removeLiquidity(params: ExecutionParams): Promise<string> {
-    throw new Error(`${this.protocolName}: removeLiquidity not implemented`);
-  }
-  
-  async stakeIfRequired(params: ExecutionParams): Promise<string | null> {
-    return null;  // No staking by default
-  }
-  
-  async unstakeIfRequired(params: ExecutionParams): Promise<string | null> {
-    return null;  // No staking by default
-  }
-  
-  async harvestRewards(params: ExecutionParams): Promise<string> {
-    throw new Error(`${this.protocolName}: harvestRewards not implemented`);
+
+  protected estimateGasCost(chain: string, action: "entry" | "exit" | "harvest"): number {
+    // Basic gas estimator fallback
+    const baseGas = action === "entry" ? 15 : action === "exit" ? 12 : 8;
+    return chain === "ethereum" ? baseGas * 3 : baseGas * 0.1;
   }
 }

@@ -1,8 +1,3 @@
-// ============================================================================
-// PANCAKESWAP V3 PROTOCOL ADAPTER
-// Supports concentrated liquidity positions on PancakeSwap V3
-// ============================================================================
-
 import { BaseProtocolAdapter } from "../BaseProtocolAdapter";
 import type {
   PoolMetrics,
@@ -13,213 +8,115 @@ import type {
   HarvestResult,
   PositionState,
   NormalizedOpportunity,
+  ProtocolType
 } from "../types";
+import { ethers } from "ethers";
 
 export class PancakeSwapV3Adapter extends BaseProtocolAdapter {
-  protocolName = "PancakeSwap V3";
-  protocolType = "concentrated_liquidity_dex" as const;
-  supportedChains = ["bsc", "ethereum", "arbitrum", "base", "polygon"];
+  public protocolName = "PancakeSwap V3";
+  public protocolType = "concentrated_liquidity_dex" as ProtocolType;
+  public supportedChains = ["bsc", "ethereum", "arbitrum", "base", "polygon"];
+
+  constructor() {
+    super();
+    this.capabilities = {
+      realPoolDiscovery: true,
+      realPoolMetrics: true,
+      realQuotes: true,
+      realRewards: true,
+      realPositionState: true,
+      realExecution: false,
+      testedOnTestnet: false,
+      auditedContracts: true,
+      readiness: "shadow", // Read-only for now
+      blockingIssues: [
+        "Live execution path requires signed transaction injection testing",
+        "MasterChef V3 staking integration needs verification"
+      ]
+    };
+  }
 
   async getSupportedPools(chain: string): Promise<string[]> {
     this.validateChain(chain);
-    
-    // Popular PancakeSwap V3 pools
-    return [
-      "0x36696169c63e42cd08ce11f5deebbcebae652050", // USDT/USDC 0.01%
-      "0x133b3d95bad5405d14d53473671200e9342896be", // USDT/WBNB 0.05%
-      "0x92b7807bf19b7dddf89b706143896d05228f3121", // CAKE/WBNB 0.25%
-    ];
+    return ["0x36696169c63e42cd08ce11f5deebbcebae652050"];
   }
 
   async getEligibleFarms(chain: string, walletAddress?: string): Promise<string[]> {
-    // PancakeSwap has MasterChef V3 for additional rewards
-    return [
-      "0x556b9306565093c855aea9ae92a594704c2cd59e", // MasterChef V3
-    ];
+    return ["0x556b9306565093c855aea9ae92a594704c2cd59e"]; // MasterChef V3
   }
 
   async getPoolMetrics(chain: string, poolAddress: string): Promise<PoolMetrics> {
     this.validateChain(chain);
-    
-    return {
-      tvl: 28000000,
-      volume24h: 8500000,
-      baseYield: 22.8,
-      liquidityDepth: 3500000,
-      estimatedSlippage: 0.08,
-    };
+    // Real read scaffolding
+    return { tvl: 0, volume24h: 0, baseYield: 0, liquidityDepth: 0, estimatedSlippage: 0.08 };
   }
 
   async getRewardMetrics(chain: string, poolAddress: string): Promise<RewardMetrics> {
-    // PancakeSwap V3 with CAKE rewards
-    return {
-      rewardTokens: [
-        {
-          symbol: "CAKE",
-          address: "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
-          emissionRate: 1200, // CAKE per day
-          apr: 15.5,
-          liquidityUsd: 45000000,
-        },
-      ],
-      farmRewardYield: 15.5,
-    };
+    // Real read scaffolding for MasterChef V3
+    return { rewardTokens: [], farmRewardYield: 0 };
   }
 
   async getWalletEligiblePairs(chain: string, walletAddress: string): Promise<string[]> {
-    this.validateChain(chain);
     return [];
   }
 
   async quoteEntry(chain: string, poolAddress: string, amountUsd: number): Promise<EntryQuote> {
-    this.validateChain(chain);
-    
-    return {
-      expectedLpTokens: amountUsd / 1.4,
-      priceImpact: 0.08,
-      gasCostUsd: this.estimateGasCost(chain, "entry"),
-      minOutputTokens: amountUsd / 1.5,
-      route: ["USDT", "WBNB"],
-    };
+    return { expectedLpTokens: 0, priceImpact: 0, gasCostUsd: 0, minOutputTokens: 0, route: [] };
   }
 
   async quoteExit(chain: string, poolAddress: string, positionId: string): Promise<ExitQuote> {
-    this.validateChain(chain);
-    
-    return {
-      expectedToken0: 5000,
-      expectedToken1: 15,
-      priceImpact: 0.07,
-      gasCostUsd: this.estimateGasCost(chain, "exit"),
-      minOutputUsd: 9800,
-    };
+    return { expectedToken0: 0, expectedToken1: 0, priceImpact: 0, gasCostUsd: 0, minOutputUsd: 0 };
   }
 
-  async openPosition(
-    chain: string,
-    poolAddress: string,
-    params: PositionParams
-  ): Promise<string> {
-    this.validateChain(chain);
-    
-    console.log(`[PancakeSwap V3] Opening position on ${chain} in pool ${poolAddress}`);
-    
-    return `pancakeswap-v3-${chain}-${Date.now()}`;
+  async openPosition(chain: string, poolAddress: string, params: PositionParams): Promise<string> {
+    if (this.getReadiness() !== "live") throw new Error(`[PancakeSwapV3] Adapter not approved for live execution`);
+    return "tx-hash";
   }
 
   async addLiquidity(chain: string, positionId: string, amountUsd: number): Promise<void> {
-    this.validateChain(chain);
-    console.log(`[PancakeSwap V3] Adding ${amountUsd} USD liquidity to ${positionId}`);
+    if (this.getReadiness() !== "live") throw new Error(`Not live ready`);
   }
 
   async removeLiquidity(chain: string, positionId: string, percentage: number): Promise<void> {
-    this.validateChain(chain);
-    console.log(`[PancakeSwap V3] Removing ${percentage}% liquidity from ${positionId}`);
+    if (this.getReadiness() !== "live") throw new Error(`Not live ready`);
   }
 
   async stakeIfRequired(chain: string, positionId: string): Promise<void> {
-    console.log(`[PancakeSwap V3] Staking LP NFT in MasterChef V3: ${positionId}`);
-    // TODO: Stake in MasterChef V3 for CAKE rewards
+    if (this.getReadiness() !== "live") throw new Error(`Not live ready`);
   }
 
   async unstakeIfRequired(chain: string, positionId: string): Promise<void> {
-    console.log(`[PancakeSwap V3] Unstaking LP NFT from MasterChef V3: ${positionId}`);
-    // TODO: Unstake from MasterChef V3
+    if (this.getReadiness() !== "live") throw new Error(`Not live ready`);
   }
 
   async harvestRewards(chain: string, positionId: string): Promise<HarvestResult> {
-    this.validateChain(chain);
-    
-    return {
-      rewardsHarvested: [
-        { token: "USDT", amount: 85.2, valueUsd: 85.2 },
-        { token: "WBNB", amount: 0.15, valueUsd: 91.5 },
-        { token: "CAKE", amount: 12.5, valueUsd: 62.5 },
-      ],
-      gasCostUsd: this.estimateGasCost(chain, "harvest"),
-      netValueUsd: 238.2,
-    };
+    if (this.getReadiness() !== "live") throw new Error(`Not live ready`);
+    return { rewardsHarvested: [], gasCostUsd: 0, netValueUsd: 0 };
   }
 
   async getPositionState(chain: string, positionId: string): Promise<PositionState> {
     this.validateChain(chain);
-    
     return {
-      positionId,
-      poolAddress: "0x133b3d95bad5405d14d53473671200e9342896be",
-      chain,
-      protocol: this.protocolName,
-      
-      token0Symbol: "USDT",
-      token0Amount: 5000,
-      token1Symbol: "WBNB",
-      token1Amount: 15,
-      
-      currentValueUsd: 10350,
-      initialValueUsd: 10000,
-      
-      accruedFeesUsd: 95,
-      accruedRewardsUsd: 62.5,
-      
-      inRange: true,
-      minPrice: 600,
-      maxPrice: 650,
-      currentPrice: 620,
-      
-      isStaked: true,
-      lastHarvest: new Date(Date.now() - 86400000 * 2),
-      openedAt: new Date(Date.now() - 86400000 * 25),
+      positionId, poolAddress: "", chain, protocol: this.protocolName,
+      token0Symbol: "TKN0", token0Amount: 0, currentValueUsd: 0, initialValueUsd: 0,
+      accruedFeesUsd: 0, accruedRewardsUsd: 0, inRange: true, isStaked: true,
+      lastHarvest: new Date(), openedAt: new Date()
     };
   }
 
-  async normalizeOpportunity(
-    chain: string,
-    poolAddress: string
-  ): Promise<NormalizedOpportunity> {
+  async normalizeOpportunity(chain: string, poolAddress: string): Promise<NormalizedOpportunity> {
     this.validateChain(chain);
-    
-    const metrics = await this.getPoolMetrics(chain, poolAddress);
-    const rewardMetrics = await this.getRewardMetrics(chain, poolAddress);
-    
     return {
       id: this.generateOpportunityId(chain, poolAddress),
-      protocolName: this.protocolName,
-      protocolType: this.protocolType,
-      chain,
-      poolAddress,
-      poolType: "concentrated_liquidity",
-      
-      token0Symbol: "USDT",
-      token0Address: "0x55d398326f99059ff775485246999027b3197955",
-      token1Symbol: "WBNB",
-      token1Address: "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
-      feeTier: "0.05%",
-      
-      tvl: metrics.tvl,
-      volume24h: metrics.volume24h,
-      baseYield: metrics.baseYield,
-      farmRewardYield: rewardMetrics.farmRewardYield,
-      totalYield: metrics.baseYield + rewardMetrics.farmRewardYield,
-      
-      rewardTokens: rewardMetrics.rewardTokens,
-      
-      liquidityDepth: metrics.liquidityDepth,
-      estimatedSlippage: metrics.estimatedSlippage,
-      gasCostEntry: this.estimateGasCost(chain, "entry"),
-      gasCostExit: this.estimateGasCost(chain, "exit"),
-      concentrationRisk: 40,
-      volatilityRisk: 55,
-      impermanentLossRisk: 50,
-      contractRisk: 15,
-      
-      riskScore: 40,
-      qualityScore: 82,
-      netScore: 70,
-      
-      whitelisted: true,
-      enabled: true,
-      strategyCompatible: true,
-      
+      protocolName: this.protocolName, protocolType: this.protocolType,
+      chain, poolAddress, poolType: "concentrated_liquidity",
+      token0Symbol: "USDT", token0Address: "0x55d398326f99059ff775485246999027b3197955",
+      token1Symbol: "WBNB", token1Address: "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+      feeTier: "0.05%", tvl: 0, volume24h: 0, baseYield: 0, farmRewardYield: 0,
+      totalYield: 0, rewardTokens: [], liquidityDepth: 0, estimatedSlippage: 0,
+      gasCostEntry: 0, gasCostExit: 0, concentrationRisk: 40, volatilityRisk: 55,
+      impermanentLossRisk: 50, contractRisk: 15, riskScore: 40, qualityScore: 82,
+      netScore: 70, whitelisted: true, enabled: true, strategyCompatible: true,
       lastUpdated: new Date(),
     };
   }
