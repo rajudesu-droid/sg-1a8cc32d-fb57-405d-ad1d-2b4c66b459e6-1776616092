@@ -4,8 +4,17 @@
 // ============================================================================
 
 import type { ActionPlan, ExecutionAuthorization, ExecutionResult, ExecutionContext, ExecutionSubstep } from "./types";
+import { validationEngine } from "../engines/ValidationEngine";
+import { conflictDetector } from "../validation/ConflictDetector";
 
 export class ExecutionRunner {
+  private runnerId = "execution-runner";
+
+  constructor() {
+    orchestrator.registerEngine(this.runnerId, this);
+    console.log("[ExecutionRunner] Initialized and registered");
+  }
+
   async execute(
     plan: ActionPlan,
     auth: ExecutionAuthorization,
@@ -51,6 +60,48 @@ export class ExecutionRunner {
       result.completedSteps = plan.totalSteps;
       result.completedAt = new Date();
       return result;
+    }
+
+    // CRITICAL: Fresh revalidation before execution
+    if (context.mode === "live") {
+      console.log(`[ExecutionRunner] Performing pre-execution revalidation for ${plan.planId}`);
+      
+      const validationResult = await validationEngine.validateAction({
+        actionType: plan.actionType,
+        mode: context.mode,
+        chain: plan.chain,
+        poolAddress: plan.poolAddress,
+        walletAddress: plan.walletAddress,
+        metadata: {
+          spenderAddress: plan.substeps.find(s => s.operation === "approve_token")?.requiredApproval?.spender,
+          requiredAssets: [], // Would reconstruct from plan
+        }
+      } as any);
+
+      if (!validationResult.allowed) {
+        console.error(`[ExecutionRunner] Pre-execution revalidation failed:`, validationResult.blockingReasons);
+        result.status = "failed";
+        result.error = {
+          stepId: "pre_execution_revalidation",
+          message: `State changed after planning. Revalidation failed: ${validationResult.blockingReasons.join(", ")}`,
+          recoverable: false,
+        };
+        result.completedAt = new Date();
+        return result;
+      }
+
+      // Check for conflicts right before starting
+      const conflictCheck = conflictDetector.checkSyncConflicts(context.mode);
+      if (conflictCheck.hasConflict) {
+        result.status = "failed";
+        result.error = {
+          stepId: "pre_execution_revalidation",
+          message: `Execution blocked: ${conflictCheck.reason}`,
+          recoverable: false,
+        };
+        result.completedAt = new Date();
+        return result;
+      }
     }
 
     // 3. Process Sequence

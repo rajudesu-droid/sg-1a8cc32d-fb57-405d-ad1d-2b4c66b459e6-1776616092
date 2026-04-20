@@ -63,6 +63,7 @@ export interface Wallet {
   isConnected: boolean;
   connectedAt?: Date;
   sessionId?: string;
+  lastUpdated?: Date;
 }
 
 export interface WalletState {
