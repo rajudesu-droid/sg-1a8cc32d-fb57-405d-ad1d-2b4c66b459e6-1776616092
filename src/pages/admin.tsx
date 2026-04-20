@@ -23,7 +23,8 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  RefreshCw
+  RefreshCw,
+  Shield
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAppStore } from "@/store";
@@ -31,6 +32,7 @@ import { executionRecordService } from "@/services/ExecutionRecordService";
 import { serverAuditService } from "@/services/ServerAuditService";
 import type { ExecutionRecord } from "@/services/ExecutionRecordService";
 import type { ServerAuditLog } from "@/services/ServerAuditService";
+import { LiveReadinessPanel } from "@/components/LiveReadinessPanel";
 
 export default function AdminPage() {
   const wallet = useAppStore((state) => state.wallet);
@@ -216,22 +218,15 @@ export default function AdminPage() {
             </Card>
 
             {/* Tabs */}
-            <Tabs defaultValue="records" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="records" className="flex items-center gap-2">
-                  <Database className="w-4 h-4" />
-                  Execution Records
-                  <Badge variant="outline">{filteredRecords.length}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="audit" className="flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  Audit Logs
-                  <Badge variant="outline">{filteredLogs.length}</Badge>
-                </TabsTrigger>
+            <Tabs defaultValue="execution" className="space-y-6">
+              <TabsList>
+                <TabsTrigger value="execution">Execution Records</TabsTrigger>
+                <TabsTrigger value="audit">Audit Logs</TabsTrigger>
+                <TabsTrigger value="live-safety">Live Safety</TabsTrigger>
               </TabsList>
 
               {/* Execution Records */}
-              <TabsContent value="records" className="space-y-4">
+              <TabsContent value="execution" className="space-y-4">
                 {filteredRecords.length === 0 ? (
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-12">
@@ -429,6 +424,10 @@ export default function AdminPage() {
                     </Card>
                   ))
                 )}
+              </TabsContent>
+
+              <TabsContent value="live-safety" className="space-y-6">
+                <LiveReadinessPanel />
               </TabsContent>
             </Tabs>
           </>

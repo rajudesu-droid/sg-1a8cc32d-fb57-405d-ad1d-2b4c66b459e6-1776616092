@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { protocolRegistry } from "@/core/protocols/ProtocolRegistry";
 import { spenderAllowlist } from "@/core/config/SpenderAllowlist";
 import { ProtocolReadinessIndicator } from "@/components/ProtocolReadinessIndicator";
+import { LiveReadinessPanel } from "@/components/LiveReadinessPanel";
 
 export default function Settings() {
   const [chainSettings, setChainSettings] = useState<Array<{ id: string; name: string; enabled: boolean }>>([]);
@@ -195,6 +196,7 @@ export default function Settings() {
             <TabsTrigger value="chains">Chains & DEXes</TabsTrigger>
             <TabsTrigger value="wallet">Wallet</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
+            <TabsTrigger value="live-safety">Live Safety</TabsTrigger>
             <TabsTrigger value="advanced">Advanced</TabsTrigger>
           </TabsList>
 
@@ -426,6 +428,10 @@ export default function Settings() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="live-safety" className="space-y-6">
+            <LiveReadinessPanel />
           </TabsContent>
 
           <TabsContent value="advanced" className="space-y-6">

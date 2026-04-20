@@ -17,6 +17,8 @@ import { stalenessChecker } from "../validation/StalenessChecker";
 import { conflictDetector } from "../validation/ConflictDetector";
 import { protocolRegistry } from "../protocols/ProtocolRegistry";
 import type { Asset } from "../contracts";
+import { liveReadinessChecker } from "../validation/LiveReadinessChecker";
+import type { AppMode } from "../contracts";
 
 export class ValidationEngine {
   private engineId = "validation-engine";
@@ -40,6 +42,55 @@ export class ValidationEngine {
    */
   async validateAction(trigger: ActionTrigger): Promise<ValidationResult> {
     console.log(`[ValidationEngine] Validating action: ${trigger.actionType} in ${trigger.mode} mode`);
+
+    const result: ValidationResult = {
+      allowed: true,
+      blockingReasons: [],
+      warnings: [],
+      checks: {
+        modePermission: true,
+        walletConnection: true,
+        sufficientBalance: true,
+        requiredAssets: true,
+        stalenessCheck: true,
+        conflictCheck: true,
+        spenderWhitelist: true,
+        protocolReadiness: true,
+        liveReadiness: true,
+        assetIdentity: true,
+        approvalSafety: true,
+        reconciliationActive: true,
+        auditLoggingActive: true,
+        executionPipelineSafe: true,
+      },
+      metadata: {},
+    };
+
+    // CRITICAL: Live Safety Gate
+    if (trigger.mode === "live") {
+      console.log(`[ValidationEngine] Checking Live Mode safety gate...`);
+      
+      const liveReadiness = await liveReadinessChecker.checkLiveReadiness(
+        trigger.metadata?.protocolId,
+        trigger.chain
+      );
+
+      if (!liveReadiness.liveReady) {
+        result.allowed = false;
+        result.checks.liveReadiness = false;
+        result.blockingReasons.push(
+          `LIVE MODE BLOCKED: System not ready for real fund execution. ${liveReadiness.summary.blocking} critical issue(s) detected.`
+        );
+        liveReadiness.blockingIssues.forEach(issue => {
+          result.blockingReasons.push(`- ${issue.name}: ${issue.message}`);
+        });
+        
+        console.error(`[ValidationEngine] Live Mode blocked:`, liveReadiness.blockingIssues);
+        return result;
+      }
+
+      console.log(`[ValidationEngine] Live Mode safety gate passed`);
+    }
 
     const mode = trigger.mode || "demo";
     const store = useAppStore.getState();
