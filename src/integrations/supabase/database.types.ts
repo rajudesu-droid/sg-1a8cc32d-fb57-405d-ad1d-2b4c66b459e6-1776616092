@@ -137,6 +137,59 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          action_type: string
+          actor: string
+          details: Json
+          error_message: string | null
+          execution_record_id: string | null
+          id: string
+          metadata: Json | null
+          mode: string
+          success: boolean
+          timestamp: string | null
+          user_id: string | null
+          wallet_address: string | null
+        }
+        Insert: {
+          action_type: string
+          actor: string
+          details: Json
+          error_message?: string | null
+          execution_record_id?: string | null
+          id?: string
+          metadata?: Json | null
+          mode: string
+          success: boolean
+          timestamp?: string | null
+          user_id?: string | null
+          wallet_address?: string | null
+        }
+        Update: {
+          action_type?: string
+          actor?: string
+          details?: Json
+          error_message?: string | null
+          execution_record_id?: string | null
+          id?: string
+          metadata?: Json | null
+          mode?: string
+          success?: boolean
+          timestamp?: string | null
+          user_id?: string | null
+          wallet_address?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_execution_record_id_fkey"
+            columns: ["execution_record_id"]
+            isOneToOne: false
+            referencedRelation: "execution_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       balances: {
         Row: {
           asset_id: string
@@ -181,6 +234,126 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      execution_records: {
+        Row: {
+          action_id: string
+          action_plan_snapshot: Json | null
+          action_type: string
+          allowances_after: Json | null
+          allowances_before: Json | null
+          balances_after: Json | null
+          balances_before: Json | null
+          chain: string | null
+          completed_at: string | null
+          created_at: string | null
+          critical_discrepancies: number | null
+          discrepancy_flags: string[] | null
+          error_message: string | null
+          gas_used: number | null
+          id: string
+          metadata: Json | null
+          mode: string
+          pool_address: string | null
+          positions_after: Json | null
+          positions_before: Json | null
+          preview_snapshot: Json | null
+          protocol: string | null
+          receipts: Json | null
+          reconciled_at: string | null
+          reconciliation_result: Json | null
+          rewards_after: Json | null
+          rewards_before: Json | null
+          spender_addresses: string[] | null
+          started_at: string | null
+          state_drift_detected: boolean | null
+          status: string
+          target_contracts: string[] | null
+          total_cost_usd: number | null
+          tx_hashes: string[] | null
+          user_id: string | null
+          validation_snapshot: Json | null
+          wallet_address: string
+        }
+        Insert: {
+          action_id: string
+          action_plan_snapshot?: Json | null
+          action_type: string
+          allowances_after?: Json | null
+          allowances_before?: Json | null
+          balances_after?: Json | null
+          balances_before?: Json | null
+          chain?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          critical_discrepancies?: number | null
+          discrepancy_flags?: string[] | null
+          error_message?: string | null
+          gas_used?: number | null
+          id?: string
+          metadata?: Json | null
+          mode: string
+          pool_address?: string | null
+          positions_after?: Json | null
+          positions_before?: Json | null
+          preview_snapshot?: Json | null
+          protocol?: string | null
+          receipts?: Json | null
+          reconciled_at?: string | null
+          reconciliation_result?: Json | null
+          rewards_after?: Json | null
+          rewards_before?: Json | null
+          spender_addresses?: string[] | null
+          started_at?: string | null
+          state_drift_detected?: boolean | null
+          status: string
+          target_contracts?: string[] | null
+          total_cost_usd?: number | null
+          tx_hashes?: string[] | null
+          user_id?: string | null
+          validation_snapshot?: Json | null
+          wallet_address: string
+        }
+        Update: {
+          action_id?: string
+          action_plan_snapshot?: Json | null
+          action_type?: string
+          allowances_after?: Json | null
+          allowances_before?: Json | null
+          balances_after?: Json | null
+          balances_before?: Json | null
+          chain?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          critical_discrepancies?: number | null
+          discrepancy_flags?: string[] | null
+          error_message?: string | null
+          gas_used?: number | null
+          id?: string
+          metadata?: Json | null
+          mode?: string
+          pool_address?: string | null
+          positions_after?: Json | null
+          positions_before?: Json | null
+          preview_snapshot?: Json | null
+          protocol?: string | null
+          receipts?: Json | null
+          reconciled_at?: string | null
+          reconciliation_result?: Json | null
+          rewards_after?: Json | null
+          rewards_before?: Json | null
+          spender_addresses?: string[] | null
+          started_at?: string | null
+          state_drift_detected?: boolean | null
+          status?: string
+          target_contracts?: string[] | null
+          total_cost_usd?: number | null
+          tx_hashes?: string[] | null
+          user_id?: string | null
+          validation_snapshot?: Json | null
+          wallet_address?: string
+        }
+        Relationships: []
       }
       opportunities: {
         Row: {
