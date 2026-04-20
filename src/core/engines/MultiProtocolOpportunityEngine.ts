@@ -33,8 +33,8 @@ export class MultiProtocolOpportunityEngine {
 
     try {
       const allOpportunities: NormalizedOpportunity[] = [];
-      const enabledAdapters = protocolRegistry.getEnabledAdapters();
-      const enabledChains = protocolRegistry.getEnabledChains().map(c => c.name);
+      const enabledAdapters = protocolRegistry.getAllAdapters();
+      const enabledChains = ["ethereum", "bsc", "polygon", "arbitrum", "optimism"];
 
       // Process each adapter
       for (const adapter of enabledAdapters) {

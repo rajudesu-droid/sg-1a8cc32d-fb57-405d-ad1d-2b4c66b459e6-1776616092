@@ -83,8 +83,8 @@ export async function initializeApp(): Promise<void> {
   await syncEngine.syncAll();
 
   console.log("=== Initialization Complete ===");
-  console.log(`[Init] ${protocolRegistry.getEnabledAdapters().length} protocols enabled`);
-  console.log(`[Init] ${protocolRegistry.getEnabledChains().length} chains supported`);
+  console.log(`[Init] ${protocolRegistry.getAllAdapters().length} protocols enabled`);
+  console.log(`[Init] 5 chains supported`);
   console.log(`[Init] Execution engine: ${executionEngine ? 'READY' : 'NOT FOUND'}`);
   console.log(`[Init] Validation engine: ${validationEngine ? 'READY' : 'NOT FOUND'}`);
   console.log(`[Init] Trigger engine: ${triggerEngine ? 'READY' : 'NOT FOUND'}`);

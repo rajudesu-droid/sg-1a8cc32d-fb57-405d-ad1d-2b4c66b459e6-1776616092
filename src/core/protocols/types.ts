@@ -89,6 +89,12 @@ export interface IProtocolAdapter {
   protocolType: ProtocolType;
   supportedChains: string[];
   
+  // Readiness
+  getReadiness(): AdapterReadiness;
+  getBlockingIssues(): string[];
+  canUseInMode(mode: "demo" | "shadow" | "live"): boolean;
+  getCapabilities(): AdapterCapabilities;
+  
   // Discovery
   getSupportedPools(chain: string): Promise<string[]>;
   getEligibleFarms(chain: string, walletAddress?: string): Promise<string[]>;
