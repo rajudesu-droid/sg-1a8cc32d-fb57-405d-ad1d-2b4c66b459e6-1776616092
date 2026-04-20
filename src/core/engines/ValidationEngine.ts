@@ -15,6 +15,7 @@ import { spenderAllowlist } from "../config/SpenderAllowlist";
 import { allowanceService } from "../services/AllowanceService";
 import { stalenessChecker } from "../validation/StalenessChecker";
 import { conflictDetector } from "../validation/ConflictDetector";
+import { protocolRegistry } from "../protocols/ProtocolRegistry";
 import type { Asset } from "../contracts";
 
 export class ValidationEngine {
@@ -48,7 +49,43 @@ export class ValidationEngine {
     // ==================== LIVE MODE EXCLUSIVE CHECKS ====================
     
     if (mode === "live") {
-      // Check 0: Reject simulated data
+      // Check 0: Protocol adapter readiness
+      if (trigger.protocol) {
+        const adapter = protocolRegistry.getAdapter(trigger.protocol);
+        
+        if (!adapter) {
+          return {
+            allowed: false,
+            blockingReasons: [`Protocol ${trigger.protocol} not found in registry`],
+            warningFlags: [],
+            checks: [],
+            requiredNextSteps: ["Use a supported protocol"],
+            validatedAt: new Date(),
+          };
+        }
+        
+        const canUseLive = adapter.canUseInMode("live");
+        
+        if (!canUseLive) {
+          const blockingIssues = adapter.getBlockingIssues();
+          
+          checks.push({
+            checkName: "protocol_readiness",
+            passed: false,
+            blocking: true,  // BLOCKS in Live Mode
+            message: `Protocol ${trigger.protocol} not approved for Live Mode. Readiness: ${adapter.getReadiness()}. Issues: ${blockingIssues.join(", ")}`,
+          });
+        } else {
+          checks.push({
+            checkName: "protocol_readiness",
+            passed: true,
+            blocking: false,
+            message: `Protocol ${trigger.protocol} approved for Live Mode`,
+          });
+        }
+      }
+      
+      // Check 1: Reject simulated data
       const wallet = store.wallet;
       
       const hasSimulatedAssets = wallet.assets.some((asset: any) => 
@@ -78,7 +115,7 @@ export class ValidationEngine {
         };
       }
 
-      // Check 1: STALENESS - Wallet State
+      // Check 2: STALENESS - Wallet State
       const walletStaleness = stalenessChecker.checkWalletState(
         wallet.wallet.lastUpdated,
         mode
@@ -91,7 +128,7 @@ export class ValidationEngine {
         message: stalenessChecker.formatStalenessMessage(walletStaleness),
       });
 
-      // Check 2: STALENESS - Balance Snapshots
+      // Check 3: STALENESS - Balance Snapshots
       for (const asset of wallet.assets) {
         const balanceStaleness = stalenessChecker.checkBalanceSnapshot(asset, mode);
         
@@ -105,7 +142,7 @@ export class ValidationEngine {
         }
       }
 
-      // Check 3: CONFLICT DETECTION - Sync Conflicts
+      // Check 4: CONFLICT DETECTION - Sync Conflicts
       const syncConflict = conflictDetector.checkSyncConflicts(mode);
       
       if (syncConflict.hasConflict) {
@@ -117,7 +154,7 @@ export class ValidationEngine {
         });
       }
 
-      // Check 4: CONFLICT DETECTION - Execution Conflicts
+      // Check 5: CONFLICT DETECTION - Execution Conflicts
       if (trigger.metadata?.targetEntity) {
         const targetEntity = trigger.metadata.targetEntity as any;
         const executionConflict = conflictDetector.checkForConflicts(
@@ -136,7 +173,7 @@ export class ValidationEngine {
         }
       }
 
-      // Check 5: STALENESS - Position State
+      // Check 6: STALENESS - Position State
       if (trigger.metadata?.positionId) {
         const position = store.positions.find((p: any) => p.id === trigger.metadata?.positionId);
         
@@ -152,7 +189,7 @@ export class ValidationEngine {
         }
       }
 
-      // Check 6: STALENESS - Opportunity Data
+      // Check 7: STALENESS - Opportunity Data
       if (trigger.metadata?.opportunityId) {
         const opportunity = store.opportunities.find((o: any) => o.id === trigger.metadata?.opportunityId);
         
@@ -168,7 +205,7 @@ export class ValidationEngine {
         }
       }
 
-      // Check 7: CHAIN/NETWORK MISMATCH
+      // Check 8: CHAIN/NETWORK MISMATCH
       if (trigger.chain && wallet.wallet) {
         const walletNetwork = wallet.wallet.network.toLowerCase();
         const triggerChain = trigger.chain.toLowerCase();
@@ -188,7 +225,7 @@ export class ValidationEngine {
 
     // ==================== UNIVERSAL CHECKS (All Modes) ====================
 
-    // Check 8: Mode validation
+    // Check 9: Mode validation
     if (!["demo", "shadow", "live"].includes(mode)) {
       return {
         allowed: false,
@@ -200,7 +237,7 @@ export class ValidationEngine {
       };
     }
 
-    // Check 9: Wallet connection (Shadow and Live modes)
+    // Check 10: Wallet connection (Shadow and Live modes)
     if (mode === "shadow" || mode === "live") {
       if (!store.wallet.wallet) {
         return {
@@ -214,7 +251,7 @@ export class ValidationEngine {
       }
     }
 
-    // Check 10: Spender allowlist validation
+    // Check 11: Spender allowlist validation
     if (trigger.metadata?.spenderAddress && trigger.chain) {
       const spenderAddress = trigger.metadata.spenderAddress as string;
       const chain = trigger.chain;
@@ -239,7 +276,7 @@ export class ValidationEngine {
       }
     }
 
-    // Check 11: Pool whitelisting
+    // Check 12: Pool whitelisting
     if (trigger.poolAddress) {
       const isWhitelisted = true;  // STUB
       
@@ -253,7 +290,7 @@ export class ValidationEngine {
       });
     }
 
-    // Check 12: Token allowance validation
+    // Check 13: Token allowance validation
     if (trigger.metadata?.requiredAssets && trigger.metadata?.spenderAddress) {
       const requiredAssets = trigger.metadata.requiredAssets as Array<{
         identity: any;
@@ -334,7 +371,7 @@ export class ValidationEngine {
       }
     }
 
-    // Check 13: Slippage tolerance
+    // Check 14: Slippage tolerance
     if (trigger.metadata?.estimatedSlippage !== undefined) {
       const maxSlippage = (store.policy as any)?.maxSlippage || 1.0;
       const estimatedSlippage = trigger.metadata.estimatedSlippage as number;
@@ -351,7 +388,7 @@ export class ValidationEngine {
       });
     }
 
-    // Check 14: Gas budget
+    // Check 15: Gas budget
     if (trigger.metadata?.estimatedGas !== undefined) {
       const dailyGasBudget = (store.policy as any)?.maxDailyGas || 1000000;
       const usedGasToday = 0;

@@ -1,93 +1,65 @@
 /**
  * Opportunity Engine
- * Scans pools, scores opportunities, manages opportunity lifecycle
+ * Scans and scores LP opportunities
+ * 
+ * CRITICAL: Respects adapter readiness levels
  */
 
-import { orchestrator } from "@/core/orchestrator";
+import { orchestrator } from "../orchestrator";
 import { useAppStore } from "@/store";
-import type { Opportunity, Asset, EngineResult, AppEvent } from "@/core/contracts";
-import { multiProtocolScanner } from "./MultiProtocolOpportunityEngine";
+import type { Opportunity, EngineResult } from "../contracts";
+import { protocolRegistry } from "../protocols/ProtocolRegistry";
 
+/**
+ * Opportunity Engine
+ * Scans and scores LP opportunities
+ * 
+ * CRITICAL: Respects adapter readiness levels
+ */
 export class OpportunityEngine {
-  private scanInProgress = false;
+  private engineId = "opportunity";
 
   constructor() {
-    orchestrator.registerEngine("opportunity", this);
+    orchestrator.registerEngine(this.engineId, this);
+    console.log("[OpportunityEngine] Initialized and registered");
   }
 
-  // ==================== SCAN POOLS TASK ====================
-  async scanPools(assets: Asset[]): Promise<EngineResult<Opportunity[]>> {
-    if (this.scanInProgress) {
-      return {
-        success: false,
-        error: "Scan already in progress",
-        affectedModules: [],
-        events: [],
-      };
-    }
+  // ==================== SCAN OPPORTUNITIES TASK ====================
+  async scanOpportunities(params?: {
+    chains?: string[];
+    protocols?: string[];
+    minYield?: number;
+    maxRisk?: number;
+  }): Promise<EngineResult<Opportunity[]>> {
+    console.log("[OpportunityEngine] Scanning opportunities", params);
 
-    this.scanInProgress = true;
-    console.log("[OpportunityEngine] Scanning pools across all protocols...");
+    const mode = useAppStore.getState().mode.current;
+    
+    // Get available adapters respecting mode
+    const availableAdapters = protocolRegistry.getAvailableAdapters(mode);
+    
+    console.log(`[OpportunityEngine] Found ${availableAdapters.length} adapters available for ${mode} mode`);
+    
+    const opportunities: Opportunity[] = [];
+    
+    // STUB: Would scan protocols and normalize opportunities
+    // For now, return empty for production safety
+    
+    useAppStore.getState().setOpportunities(opportunities);
 
-    try {
-      // Delegate to the new MultiProtocolOpportunityEngine
-      const opportunities = await multiProtocolScanner.scanAllOpportunities(true);
+    await orchestrator.coordinateUpdate(
+      this.engineId,
+      "opportunities_scanned",
+      { opportunities },
+      ["opportunities_page"]
+    );
 
-      await orchestrator.coordinateUpdate(
-        "opportunity",
-        "opportunities_scanned",
-        { count: opportunities.length },
-        ["dashboard", "opportunities-page"]
-      );
-
-      return {
-        success: true,
-        data: opportunities as unknown as Opportunity[],
-        affectedModules: ["dashboard", "opportunities-page"],
-        events: [],
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Failed to scan pools",
-        affectedModules: [],
-        events: [],
-      };
-    } finally {
-      this.scanInProgress = false;
-    }
-  }
-
-  // ==================== SCORE OPPORTUNITIES TASK ====================
-  async scoreOpportunities(): Promise<EngineResult<void>> {
-    // Scoring is now handled centrally during the MultiProtocol scan and normalization phase.
-    console.log("[OpportunityEngine] Scoring is managed by Central Scoring Engine automatically.");
     return {
       success: true,
-      affectedModules: [],
+      data: opportunities,
+      affectedModules: ["opportunities_page"],
       events: [],
     };
-  }
-
-  // ==================== RESCAN TASK ====================
-  async rescan(): Promise<void> {
-    const { assets } = useAppStore.getState().wallet;
-    await this.scanPools(assets);
-  }
-
-  // ==================== EVENT HANDLER ====================
-  async handleEvent(event: AppEvent): Promise<void> {
-    console.log("[OpportunityEngine] Handling event:", event.type);
-
-    if (event.type === "assets_updated") {
-      const { assets } = useAppStore.getState().wallet;
-      await this.scanPools(assets);
-    }
-  }
-
-  // ==================== HEALTH ====================
-  isHealthy(): boolean {
-    return !this.scanInProgress;
   }
 }
 

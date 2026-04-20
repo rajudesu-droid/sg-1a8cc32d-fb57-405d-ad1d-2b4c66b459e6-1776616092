@@ -11,6 +11,7 @@ import { useAppStore } from "@/store";
 import { ModeBanner } from "@/components/ModeBanner";
 import { orchestrator } from "@/core/orchestrator";
 import { opportunityEngine } from "@/core/engines";
+import { ProtocolReadinessIndicator } from "@/components/ProtocolReadinessIndicator";
 
 type SortOption = "recommended" | "apy" | "tvl" | "risk";
 type RiskFilter = "all" | "low" | "medium" | "high";
@@ -321,6 +322,35 @@ export default function Opportunities() {
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground">24h Volume</span>
                       <span className="font-mono font-medium">${(opp.volume24h / 1000000).toFixed(2)}M</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-lg">{opp.pair}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-sm text-muted-foreground">{opp.protocol}</p>
+                        <Badge variant="outline" className="text-xs">
+                          {opp.chain}
+                        </Badge>
+                        {(() => {
+                          const readiness = protocolRegistry.getProtocolReadiness(opp.protocol);
+                          return readiness ? (
+                            <ProtocolReadinessIndicator
+                              readiness={readiness.readiness}
+                              blockingIssues={readiness.blockingIssues}
+                              showLabel={false}
+                              size="sm"
+                            />
+                          ) : null;
+                        })()}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-cyan-400">
+                        {opp.totalYield.toFixed(2)}%
+                      </div>
+                      <p className="text-xs text-muted-foreground">APR</p>
                     </div>
                   </div>
 
