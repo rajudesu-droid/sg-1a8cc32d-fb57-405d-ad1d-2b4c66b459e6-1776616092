@@ -4,6 +4,7 @@
 // ============================================================================
 
 import type { ActionPlan, ExecutionPreview, ExecutionContext } from "./types";
+import { validationEngine } from "../engines/ValidationEngine";
 
 export class PreviewEngine {
   async generatePreview(
@@ -11,6 +12,16 @@ export class PreviewEngine {
     context: ExecutionContext
   ): Promise<ExecutionPreview> {
     console.log(`[PreviewEngine] Generating preview for plan ${plan.planId}`);
+
+    // CRITICAL: Run validation to detect blockers
+    const validation = await validationEngine.validateAction({
+      actionType: plan.actionType,
+      mode: context.mode,
+      chain: plan.chain,
+      poolAddress: plan.poolAddress,
+      walletAddress: context.walletAddress,
+      metadata: {}
+    } as any);
 
     // Map plan steps to preview format
     const steps = plan.substeps.map((step) => {
@@ -30,46 +41,81 @@ export class PreviewEngine {
       };
     });
 
-    // Format risk indicators
-    const risks = plan.risks.map((risk) => ({
-      level: "medium" as const, // Derived in advanced engine
-      category: "execution",
-      message: risk,
-    }));
+    // Format risk indicators with validation results
+    const risks = [
+      ...plan.risks.map(r => ({
+        level: "medium" as const,
+        category: "execution",
+        message: r,
+      })),
+      // Add blocking validation failures as CRITICAL risks
+      ...validation.blockingReasons.map(reason => ({
+        level: "critical" as const,
+        category: "validation",
+        message: reason,
+      })),
+    ];
+
+    // Format warnings
+    const warnings = [
+      ...plan.warnings,
+      ...validation.warningFlags,
+    ];
 
     return {
       planId: plan.planId,
       actionType: plan.actionType,
       mode: context.mode,
+      
       summary: {
-        title: `Execute ${plan.actionType.replace(/_/g, " ")}`,
-        description: `Will execute ${plan.totalSteps} steps on ${plan.protocol}`,
+        title: `${plan.actionType.replace(/_/g, " ")}`,
+        description: `Execute ${plan.actionType} on ${plan.protocol}`,
         protocol: plan.protocol,
         chain: plan.chain,
       },
+      
       steps,
+      
       resources: {
         totalGas: plan.totalEstimatedGas,
         totalTime: plan.totalEstimatedTime,
         approvalCount: plan.requiredApprovals.length,
       },
+      
       outcome: {
-        tokensIn: plan.expectedOutcome.tokensIn.map((t) => ({ ...t, valueUsd: 0 })),
-        tokensOut: plan.expectedOutcome.tokensOut.map((t) => ({ ...t, valueUsd: 0 })),
-        netChange: plan.expectedOutcome.portfolioImpact.totalValueChange,
+        tokensIn: plan.expectedOutcome.tokensIn.map(t => ({
+          ...t,
+          valueUsd: t.amount * 1.0, // Would fetch real price
+        })),
+        tokensOut: plan.expectedOutcome.tokensOut.map(t => ({
+          ...t,
+          valueUsd: t.amount * 1.0,
+        })),
+        netChange: 0, // Calculate from tokensIn/Out
         projectedYield: 0,
       },
+      
       risks,
+      warnings,
+      
+      // CRITICAL: Include validation status
+      validationStatus: {
+        allowed: validation.allowed,
+        blockingReasons: validation.blockingReasons,
+        warningFlags: validation.warningFlags,
+        checks: validation.checks,
+      },
+      
       postExecutionState: {
-        balances: {}, // Populated with diff in real environment
+        balances: {},
         positions: 0,
         totalValue: 0,
         deployedCapital: 0,
         idleCapital: 0,
       },
-      warnings: plan.warnings,
+      
       generatedAt: new Date(),
-      validUntil: new Date(Date.now() + 5 * 60 * 1000), // 5 minute validity
+      validUntil: new Date(Date.now() + 5 * 60 * 1000),
     };
   }
 }

@@ -194,6 +194,14 @@ export interface ExecutionPreview {
     message: string;
   }>;
   
+  // CRITICAL: Validation status
+  validationStatus?: {
+    allowed: boolean;
+    blockingReasons: string[];
+    warningFlags: string[];
+    checks: any[];
+  };
+  
   // Post-execution state preview
   postExecutionState: {
     balances: Record<string, number>;

@@ -34,7 +34,7 @@ export function ExecutionMonitor() {
     );
     const completed = executionJobs.filter(j => 
       ["completed", "failed", "cancelled"].includes(j.status)
-    ).slice(0, 5); // Last 5 completed
+    ).slice(0, 5);
 
     setActiveJobs(active);
     setCompletedJobs(completed);
@@ -80,6 +80,16 @@ export function ExecutionMonitor() {
     );
   };
 
+  const getBlockingReasons = (job: any) => {
+    if (!job.executionPreview?.validationStatus) return [];
+    return job.executionPreview.validationStatus.blockingReasons || [];
+  };
+
+  const hasBlockers = (job: any) => {
+    const blockers = getBlockingReasons(job);
+    return blockers.length > 0;
+  };
+
   return (
     <Card className="card-gradient border-border/50">
       <CardHeader>
@@ -110,6 +120,8 @@ export function ExecutionMonitor() {
                 <div className="text-sm font-medium text-muted-foreground">Active</div>
                 {activeJobs.map((job) => {
                   const approvalSteps = getApprovalSteps(job);
+                  const blockingReasons = getBlockingReasons(job);
+                  const isBlocked = hasBlockers(job);
                   
                   return (
                     <div 
@@ -134,8 +146,27 @@ export function ExecutionMonitor() {
                         </div>
                       )}
 
+                      {/* CRITICAL: Show Blocking Reasons */}
+                      {isBlocked && mode.current === "live" && (
+                        <Alert className="border-red-500/50 bg-red-500/10">
+                          <XCircle className="h-4 w-4 text-red-500" />
+                          <AlertDescription className="text-xs">
+                            <strong className="text-red-500">EXECUTION BLOCKED:</strong>
+                            <ul className="mt-1 ml-4 list-disc">
+                              {blockingReasons.map((reason: string, idx: number) => (
+                                <li key={idx} className="text-red-400">{reason}</li>
+                              ))}
+                            </ul>
+                            <div className="mt-2 text-muted-foreground">
+                              Live Mode cannot proceed with stale or unsafe state. 
+                              Resolve blockers or switch to Demo/Shadow mode.
+                            </div>
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
                       {/* Approval Steps */}
-                      {approvalSteps.length > 0 && (
+                      {approvalSteps.length > 0 && !isBlocked && (
                         <Alert className="border-amber-500/50 bg-amber-500/10">
                           <Shield className="h-4 w-4 text-amber-500" />
                           <AlertDescription className="text-xs">
@@ -151,7 +182,7 @@ export function ExecutionMonitor() {
                         </Alert>
                       )}
 
-                      {job.status === "awaiting_authorization" && (
+                      {job.status === "awaiting_authorization" && !isBlocked && (
                         <Alert className="border-blue-500/50 bg-blue-500/10">
                           <AlertTriangle className="h-4 w-4 text-blue-500" />
                           <AlertDescription className="text-xs">
@@ -161,7 +192,7 @@ export function ExecutionMonitor() {
                       )}
 
                       {/* Progress */}
-                      {job.executionResult && (
+                      {job.executionResult && !isBlocked && (
                         <div className="text-xs">
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-muted-foreground">Progress:</span>
