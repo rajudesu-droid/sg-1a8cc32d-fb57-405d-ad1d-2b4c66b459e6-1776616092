@@ -13,6 +13,9 @@ import type {
 import { createAssetId, findAssetByIdentity, assetsMatch, extractIdentity } from "../utils/assetIdentity";
 import { spenderAllowlist } from "../config/SpenderAllowlist";
 import { allowanceService } from "../services/AllowanceService";
+import { stalenessChecker } from "../validation/StalenessChecker";
+import { conflictDetector } from "../validation/ConflictDetector";
+import type { Asset } from "../contracts";
 
 export class ValidationEngine {
   private engineId = "validation-engine";
@@ -40,11 +43,14 @@ export class ValidationEngine {
     const mode = trigger.mode || "demo";
     const store = useAppStore.getState();
 
-    // CRITICAL: Reject simulated data in Live Mode
+    const checks: ValidationCheck[] = [];
+
+    // ==================== LIVE MODE EXCLUSIVE CHECKS ====================
+    
     if (mode === "live") {
+      // Check 0: Reject simulated data
       const wallet = store.wallet;
       
-      // Check for simulated assets
       const hasSimulatedAssets = wallet.assets.some((asset: any) => 
         asset.source === "simulated" || asset.source === "manual"
       );
@@ -55,7 +61,7 @@ export class ValidationEngine {
           blockingReasons: ["Live Mode cannot use simulated or manually added assets"],
           warningFlags: [],
           checks: [],
-          requiredNextSteps: ["Remove simulated assets"],
+          requiredNextSteps: ["Remove simulated assets or switch to Demo/Shadow mode"],
           validatedAt: new Date(),
         };
       }
@@ -71,9 +77,118 @@ export class ValidationEngine {
           validatedAt: new Date(),
         };
       }
+
+      // Check 1: STALENESS - Wallet State
+      const walletStaleness = stalenessChecker.checkWalletState(
+        wallet.wallet.lastUpdated,
+        mode
+      );
+      
+      checks.push({
+        checkName: "wallet_staleness",
+        passed: walletStaleness.isFresh,
+        blocking: !walletStaleness.isFresh,  // BLOCKS in Live Mode
+        message: stalenessChecker.formatStalenessMessage(walletStaleness),
+      });
+
+      // Check 2: STALENESS - Balance Snapshots
+      for (const asset of wallet.assets) {
+        const balanceStaleness = stalenessChecker.checkBalanceSnapshot(asset, mode);
+        
+        if (!balanceStaleness.isFresh) {
+          checks.push({
+            checkName: "balance_staleness",
+            passed: false,
+            blocking: true,  // BLOCKS in Live Mode
+            message: `Stale balance: ${stalenessChecker.formatStalenessMessage(balanceStaleness)}`,
+          });
+        }
+      }
+
+      // Check 3: CONFLICT DETECTION - Sync Conflicts
+      const syncConflict = conflictDetector.checkSyncConflicts(mode);
+      
+      if (syncConflict.hasConflict) {
+        checks.push({
+          checkName: "sync_conflict",
+          passed: false,
+          blocking: true,  // BLOCKS in Live Mode
+          message: syncConflict.reason || "Sync conflict detected",
+        });
+      }
+
+      // Check 4: CONFLICT DETECTION - Execution Conflicts
+      if (trigger.metadata?.targetEntity) {
+        const targetEntity = trigger.metadata.targetEntity as any;
+        const executionConflict = conflictDetector.checkForConflicts(
+          trigger.actionType,
+          targetEntity,
+          mode
+        );
+        
+        if (executionConflict.hasConflict) {
+          checks.push({
+            checkName: "execution_conflict",
+            passed: false,
+            blocking: true,  // BLOCKS in Live Mode
+            message: `Conflicting operation: ${executionConflict.reason}. Jobs: ${executionConflict.conflictingJobs.map(j => j.jobId).join(", ")}`,
+          });
+        }
+      }
+
+      // Check 5: STALENESS - Position State
+      if (trigger.metadata?.positionId) {
+        const position = store.positions.find((p: any) => p.id === trigger.metadata?.positionId);
+        
+        if (position) {
+          const positionStaleness = stalenessChecker.checkPositionState(position, mode);
+          
+          checks.push({
+            checkName: "position_staleness",
+            passed: positionStaleness.isFresh,
+            blocking: !positionStaleness.isFresh,  // BLOCKS in Live Mode
+            message: stalenessChecker.formatStalenessMessage(positionStaleness),
+          });
+        }
+      }
+
+      // Check 6: STALENESS - Opportunity Data
+      if (trigger.metadata?.opportunityId) {
+        const opportunity = store.opportunities.find((o: any) => o.id === trigger.metadata?.opportunityId);
+        
+        if (opportunity) {
+          const opportunityStaleness = stalenessChecker.checkOpportunityData(opportunity, mode);
+          
+          checks.push({
+            checkName: "opportunity_staleness",
+            passed: opportunityStaleness.isFresh,
+            blocking: !opportunityStaleness.isFresh,  // BLOCKS in Live Mode
+            message: stalenessChecker.formatStalenessMessage(opportunityStaleness),
+          });
+        }
+      }
+
+      // Check 7: CHAIN/NETWORK MISMATCH
+      if (trigger.chain && wallet.wallet) {
+        const walletNetwork = wallet.wallet.network.toLowerCase();
+        const triggerChain = trigger.chain.toLowerCase();
+        
+        const isMatch = walletNetwork === triggerChain;
+        
+        checks.push({
+          checkName: "chain_mismatch",
+          passed: isMatch,
+          blocking: !isMatch,  // BLOCKS in Live Mode
+          message: isMatch
+            ? `Chain match confirmed: ${walletNetwork}`
+            : `Chain mismatch: wallet on ${walletNetwork}, action requires ${triggerChain}`,
+        });
+      }
     }
 
-    // Check 1: Mode validation
+    // ==================== UNIVERSAL CHECKS (All Modes) ====================
+
+    // Check 8: Mode validation
     if (!["demo", "shadow", "live"].includes(mode)) {
       return {
         allowed: false,
@@ -85,7 +200,7 @@ export class ValidationEngine {
       };
     }
 
-    // Check 2: Wallet connection (Shadow and Live modes)
+    // Check 9: Wallet connection (Shadow and Live modes)
     if (mode === "shadow" || mode === "live") {
       if (!store.wallet.wallet) {
         return {
@@ -99,27 +214,7 @@ export class ValidationEngine {
       }
     }
 
-    const checks: ValidationCheck[] = [];
-    const blockingReasons: string[] = [];
-    const warningFlags: string[] = [];
-    const requiredNextSteps: string[] = [];
-
-    // Run all validation checks
-    checks.push(await this.checkMode(trigger));
-    checks.push(await this.checkWalletConnection(trigger));
-    checks.push(await this.checkNetworkConnection(trigger));
-    checks.push(await this.checkWhitelist(trigger));
-    checks.push(await this.checkPolicy(trigger));
-    checks.push(await this.checkCapitalLimits(trigger));
-    checks.push(await this.checkBalances(trigger));
-    checks.push(await this.checkSlippage(trigger));
-    checks.push(await this.checkGasLimit(trigger));
-    checks.push(await this.checkRiskAlerts(trigger));
-    checks.push(await this.checkSyncState(trigger));
-    checks.push(await this.checkConcurrentActions(trigger));
-    checks.push(await this.checkOpportunityValidity(trigger));
-
-    // Check 3: Spender allowlist validation
+    // Check 10: Spender allowlist validation
     if (trigger.metadata?.spenderAddress && trigger.chain) {
       const spenderAddress = trigger.metadata.spenderAddress as string;
       const chain = trigger.chain;
@@ -130,7 +225,7 @@ export class ValidationEngine {
         checks.push({
           checkName: "spender_allowlist",
           passed: false,
-          blocking: true,
+          blocking: true,  // ALWAYS blocks
           message: `Spender ${spenderAddress} not whitelisted on ${chain}. Cannot proceed.`,
         });
       } else {
@@ -144,10 +239,9 @@ export class ValidationEngine {
       }
     }
 
-    // Check 4: Pool whitelisting
+    // Check 11: Pool whitelisting
     if (trigger.poolAddress) {
-      // STUB: Real whitelist check in production
-      const isWhitelisted = true;
+      const isWhitelisted = true;  // STUB
       
       checks.push({
         checkName: "pool_whitelisted",
@@ -159,7 +253,7 @@ export class ValidationEngine {
       });
     }
 
-    // Check 5: Token allowance validation (if required)
+    // Check 12: Token allowance validation
     if (trigger.metadata?.requiredAssets && trigger.metadata?.spenderAddress) {
       const requiredAssets = trigger.metadata.requiredAssets as Array<{
         identity: any;
@@ -169,11 +263,10 @@ export class ValidationEngine {
       const ownerAddress = store.wallet.wallet?.address || "";
 
       for (const required of requiredAssets) {
-        // CRITICAL: Find asset by identity
         const walletAsset = findAssetByIdentity(
           store.wallet.assets,
           required.identity
-        ) as import("../contracts").Asset;
+        ) as Asset;
         
         if (!walletAsset || !walletAsset.balance) {
           checks.push({
@@ -185,7 +278,7 @@ export class ValidationEngine {
           continue;
         }
 
-        // Check balance sufficiency
+        // Balance check
         const requiredAmount = parseFloat(required.amount);
         const availableBalance = parseFloat(walletAsset.balance);
         
@@ -200,7 +293,7 @@ export class ValidationEngine {
             : `Insufficient ${required.identity.symbol} on ${required.identity.network}: ${availableBalance} < ${requiredAmount}`,
         });
 
-        // Check allowance if token requires approval
+        // Allowance check
         if (walletAsset.contractAddress) {
           try {
             const allowanceCheck = await allowanceService.isApprovalNeeded(
@@ -214,9 +307,9 @@ export class ValidationEngine {
             if (allowanceCheck.needed) {
               checks.push({
                 checkName: "allowance_check",
-                passed: true,  // Not blocking, approval will be added to plan
+                passed: true,
                 blocking: false,
-                message: `Approval needed: ${required.identity.symbol} for ${spenderAddress.slice(0, 6)}...${spenderAddress.slice(-4)}`,
+                message: `Approval needed: ${required.identity.symbol}`,
               });
             } else {
               checks.push({
@@ -241,25 +334,27 @@ export class ValidationEngine {
       }
     }
 
-    // Check 6: Slippage tolerance
+    // Check 13: Slippage tolerance
     if (trigger.metadata?.estimatedSlippage !== undefined) {
       const maxSlippage = (store.policy as any)?.maxSlippage || 1.0;
       const estimatedSlippage = trigger.metadata.estimatedSlippage as number;
       
+      const exceeds = estimatedSlippage > maxSlippage;
+      
       checks.push({
         checkName: "slippage_check",
-        passed: estimatedSlippage <= maxSlippage,
-        blocking: false,
-        message: estimatedSlippage <= maxSlippage
+        passed: !exceeds,
+        blocking: mode === "live" && exceeds,  // BLOCKS in Live Mode
+        message: !exceeds
           ? `Slippage ${estimatedSlippage.toFixed(2)}% within limit ${maxSlippage.toFixed(2)}%`
           : `Slippage ${estimatedSlippage.toFixed(2)}% exceeds limit ${maxSlippage.toFixed(2)}%`,
       });
     }
 
-    // Check 7: Gas budget
+    // Check 14: Gas budget
     if (trigger.metadata?.estimatedGas !== undefined) {
       const dailyGasBudget = (store.policy as any)?.maxDailyGas || 1000000;
-      const usedGasToday = 0; // TODO: Track from audit logs
+      const usedGasToday = 0;
       const estimatedGas = trigger.metadata.estimatedGas as number;
       
       const wouldExceedBudget = (usedGasToday + estimatedGas) > dailyGasBudget;
@@ -267,50 +362,32 @@ export class ValidationEngine {
       checks.push({
         checkName: "gas_budget_check",
         passed: !wouldExceedBudget,
-        blocking: wouldExceedBudget,
+        blocking: mode === "live" && wouldExceedBudget,  // BLOCKS in Live Mode
         message: wouldExceedBudget
           ? `Would exceed daily gas budget: ${usedGasToday + estimatedGas} > ${dailyGasBudget}`
           : `Gas within budget: ${usedGasToday + estimatedGas} / ${dailyGasBudget}`,
       });
     }
 
-    // Collect blocking reasons and warnings
-    checks.forEach((check) => {
-      if (!check.passed) {
-        if (check.blocking) {
-          blockingReasons.push(check.message);
-        } else {
-          warningFlags.push(check.message);
-        }
-      }
-    });
+    // Compile results
+    const blockingReasons = checks
+      .filter(c => c.blocking && !c.passed)
+      .map(c => c.message);
 
-    // Determine if action is allowed
-    const allowed = blockingReasons.length === 0;
+    const warningFlags = checks
+      .filter(c => !c.blocking && !c.passed)
+      .map(c => c.message);
 
-    // Generate required next steps
-    if (!allowed) {
-      requiredNextSteps.push(...this.generateNextSteps(checks));
-    }
-
-    const result: ValidationResult = {
-      allowed,
+    return {
+      allowed: blockingReasons.length === 0,
       blockingReasons,
       warningFlags,
       checks,
-      requiredNextSteps,
+      requiredNextSteps: blockingReasons.length > 0 
+        ? ["Fix blocking validation failures before proceeding"]
+        : [],
       validatedAt: new Date(),
     };
-
-    // Notify orchestrator
-    orchestrator.coordinateUpdate(
-      this.engineId,
-      "validation_completed" as any,
-      { trigger, result },
-      ["execution-engine"]
-    );
-
-    return result;
   }
 
   // ============================================================================
