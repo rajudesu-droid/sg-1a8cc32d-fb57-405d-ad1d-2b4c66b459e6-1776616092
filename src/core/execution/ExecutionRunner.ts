@@ -7,6 +7,7 @@ import { orchestrator } from "../orchestrator";
 import type { ActionPlan, ExecutionAuthorization, ExecutionResult, ExecutionContext, ExecutionSubstep } from "./types";
 import { validationEngine } from "../engines/ValidationEngine";
 import { conflictDetector } from "../validation/ConflictDetector";
+import { executionRecordService } from "@/services/ExecutionRecordService";
 
 export class ExecutionRunner {
   private runnerId = "execution-runner";
@@ -16,6 +17,11 @@ export class ExecutionRunner {
     console.log("[ExecutionRunner] Initialized and registered");
   }
 
+  /**
+   * Execute action plan
+   * 
+   * CRITICAL: Creates server-side execution record before live execution
+   */
   async execute(
     plan: ActionPlan,
     auth: ExecutionAuthorization,
@@ -61,6 +67,40 @@ export class ExecutionRunner {
       result.completedSteps = plan.totalSteps;
       result.completedAt = new Date();
       return result;
+    }
+
+    // CRITICAL: Create server-side execution record BEFORE live execution
+    if (context.mode === "live") {
+      console.log(`[ExecutionRunner] Creating server-side execution record for ${plan.planId}`);
+      
+      try {
+        await executionRecordService.createRecord({
+          actionId: result.executionId,
+          actionType: plan.actionType,
+          mode: context.mode,
+          walletAddress: context.walletAddress,
+          protocol: plan.protocol,
+          chain: plan.chain,
+          poolAddress: plan.poolAddress,
+          targetContracts: plan.substeps
+            .filter(s => s.targetContract)
+            .map(s => s.targetContract!),
+          spenderAddresses: plan.substeps
+            .filter(s => s.requiredApproval?.spender)
+            .map(s => s.requiredApproval!.spender),
+          validationSnapshot: auth.validationSnapshot,
+          actionPlanSnapshot: plan,
+          previewSnapshot: auth.preview,
+          balancesBefore: result.stateChanges?.balancesBefore || {},
+          positionsBefore: [],
+          rewardsBefore: [],
+        });
+        
+        console.log(`[ExecutionRunner] Server-side execution record created: ${result.executionId}`);
+      } catch (error) {
+        console.error(`[ExecutionRunner] Failed to create server-side execution record:`, error);
+        // Continue execution even if record creation fails
+      }
     }
 
     // CRITICAL: Fresh revalidation before execution
@@ -156,6 +196,17 @@ export class ExecutionRunner {
             status: "confirmed",
           });
           result.logs.push(`[Runner] Step confirmed: Tx ${txResult.txHash.substring(0, 10)}...`);
+          
+          // CRITICAL: Update server-side execution record with tx hash
+          try {
+            await executionRecordService.updateRecord(result.executionId, {
+              status: "executing",
+              txHashes: result.transactions?.map(t => t.txHash) || [],
+              startedAt: result.startedAt,
+            });
+          } catch (error) {
+            console.error(`[ExecutionRunner] Failed to update server-side record:`, error);
+          }
         }
       } catch (error: any) {
         step.status = "failed";
@@ -175,6 +226,17 @@ export class ExecutionRunner {
           // CRITICAL: Live mode failures must not be marked as completed
           if (context.mode === "live") {
             result.logs.push("[Runner] Live execution failed - action remains pending/failed, NOT completed");
+            
+            // Update server-side record with failure
+            try {
+              await executionRecordService.updateRecord(result.executionId, {
+                status: "failed",
+                errorMessage: error.message,
+                completedAt: result.completedAt,
+              });
+            } catch (updateError) {
+              console.error(`[ExecutionRunner] Failed to update server-side record:`, updateError);
+            }
           }
           
           return result;
@@ -187,6 +249,18 @@ export class ExecutionRunner {
     result.status = "success";
     result.completedAt = new Date();
     result.logs.push("[Runner] Execution finished successfully");
+    
+    // CRITICAL: Update server-side record with success
+    if (context.mode === "live") {
+      try {
+        await executionRecordService.updateRecord(result.executionId, {
+          status: "completed",
+          completedAt: result.completedAt,
+        });
+      } catch (error) {
+        console.error(`[ExecutionRunner] Failed to update server-side record:`, error);
+      }
+    }
     
     return result;
   }
