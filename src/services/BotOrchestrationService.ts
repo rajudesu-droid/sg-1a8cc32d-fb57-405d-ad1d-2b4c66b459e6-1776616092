@@ -512,17 +512,15 @@ class BotOrchestrationService {
     try {
       const { useAppStore } = await import("@/store");
       const { orchestrator } = await import("@/core/orchestrator");
+      const { assetExtractionService } = await import("@/core/services/AssetExtractionService");
       
-      // Get wallet assets from correct store path
-      const walletState = useAppStore.getState().wallet;
-      const assets = walletState?.assets || [];
+      // Use AssetExtractionService to get tradeable assets (mode-aware)
+      const assets = assetExtractionService.getTradeableAssets();
       
-      console.log(`[BotOrchestration] Wallet assets: ${assets.length}`);
+      console.log(`[BotOrchestration] Tradeable assets: ${assets.length}`);
       
-      // Calculate total idle capital (non-LP assets)
-      const idleCapital = assets
-        .filter((a: any) => a.assetKind !== "lp" && a.assetKind !== "position")
-        .reduce((sum: number, a: any) => sum + (a.valueUsd || 0), 0);
+      // Calculate total idle capital
+      const idleCapital = assets.reduce((sum, a) => sum + (a.valueUsd || 0), 0);
 
       console.log(`[BotOrchestration] Total idle capital: $${idleCapital.toFixed(2)}`);
       console.log(`[BotOrchestration] ✓ Checkpoint 1: Idle capital calculation complete`);
