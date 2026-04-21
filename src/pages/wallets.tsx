@@ -13,22 +13,100 @@ import { ModeBanner } from "@/components/ModeBanner";
 import { Wallet, Network, DollarSign, PlusCircle, Trash2, RefreshCw, X, ChevronUp, ChevronDown, Coins, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { actionHandler } from "@/services/ActionHandlerService";
+import { supabase } from "@/integrations/supabase/client";
 
-// Helpers
-const SUPPORTED_CHAINS = [
-  { id: "ethereum", name: "Ethereum", symbol: "ETH", color: "bg-blue-500" },
-  { id: "arbitrum", name: "Arbitrum", symbol: "ARB", color: "bg-blue-400" },
-  { id: "optimism", name: "Optimism", symbol: "OP", color: "bg-red-500" },
-  { id: "polygon", name: "Polygon", symbol: "MATIC", color: "bg-purple-500" },
-  { id: "base", name: "Base", symbol: "BASE", color: "bg-blue-600" }
+// State for supported assets from database
+const [supportedNetworks, setSupportedNetworks] = useState<Array<{ id: string; name: string; enabled: boolean }>>([]);
+const [networkTokensDb, setNetworkTokensDb] = useState<Record<string, Array<{ symbol: string; name: string; address?: string }>>>({});
+
+// Fetch supported assets from database on mount
+useEffect(() => {
+  async function fetchSupportedAssets() {
+    const { data, error } = await supabase
+      .from("supported_assets")
+      .select("*")
+      .eq("is_active", true)
+      .order("network", { ascending: true })
+      .order("symbol", { ascending: true });
+
+    if (error) {
+      console.error("Failed to fetch supported assets:", error);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      console.warn("No supported assets found in database");
+      return;
+    }
+
+    // Group by network
+    const networkMap: Record<string, Array<{ symbol: string; name: string; address?: string }>> = {};
+    const networksSet = new Set<string>();
+
+    data.forEach((asset: any) => {
+      const network = asset.network;
+      networksSet.add(network);
+
+      if (!networkMap[network]) {
+        networkMap[network] = [];
+      }
+
+      networkMap[network].push({
+        symbol: asset.symbol,
+        name: asset.name,
+        address: asset.contract_address || asset.mint_address || undefined,
+      });
+    });
+
+    // Convert networks to array
+    const networks = Array.from(networksSet).map(name => ({
+      id: name.toLowerCase().replace(/\s+/g, "-"),
+      name,
+      enabled: true,
+    }));
+
+    setSupportedNetworks(networks);
+    setNetworkTokensDb(networkMap);
+
+    console.log(`Loaded ${data.length} supported assets across ${networks.length} networks`);
+  }
+
+  fetchSupportedAssets();
+}, []);
+
+// Use database data if available, fallback to hardcoded
+const SUPPORTED_CHAINS = supportedNetworks.length > 0 ? supportedNetworks : [
+  { id: "ethereum", name: "Ethereum", enabled: true },
+  { id: "arbitrum", name: "Arbitrum", enabled: true },
+  { id: "optimism", name: "Optimism", enabled: true },
+  { id: "polygon", name: "Polygon", enabled: true },
+  { id: "base", name: "Base", enabled: true },
 ];
 
-const networkTokens: Record<string, {symbol: string, name: string}[]> = {
-  ethereum: [{symbol: "ETH", name: "Ethereum"}, {symbol: "USDC", name: "USD Coin"}, {symbol: "USDT", name: "Tether"}],
-  arbitrum: [{symbol: "ETH", name: "Ethereum"}, {symbol: "USDC", name: "USD Coin"}, {symbol: "ARB", name: "Arbitrum"}],
-  optimism: [{symbol: "ETH", name: "Ethereum"}, {symbol: "USDC", name: "USD Coin"}, {symbol: "OP", name: "Optimism"}],
-  polygon: [{symbol: "MATIC", name: "Polygon"}, {symbol: "USDC", name: "USD Coin"}],
-  base: [{symbol: "ETH", name: "Ethereum"}, {symbol: "USDC", name: "USD Coin"}]
+const networkTokens = Object.keys(networkTokensDb).length > 0 ? networkTokensDb : {
+  ethereum: [
+    { symbol: "ETH", name: "Ethereum" },
+    { symbol: "USDC", name: "USD Coin", address: "0xA0b8..." },
+    { symbol: "USDT", name: "Tether", address: "0xdAC1..." },
+  ],
+  arbitrum: [
+    { symbol: "ETH", name: "Ethereum" },
+    { symbol: "USDC", name: "USD Coin" },
+    { symbol: "ARB", name: "Arbitrum" },
+  ],
+  optimism: [
+    { symbol: "ETH", name: "Ethereum" },
+    { symbol: "USDC", name: "USD Coin" },
+    { symbol: "OP", name: "Optimism" },
+  ],
+  polygon: [
+    { symbol: "MATIC", name: "Polygon" },
+    { symbol: "USDC", name: "USD Coin" },
+  ],
+  base: [
+    { symbol: "ETH", name: "Ethereum" },
+    { symbol: "USDC", name: "USD Coin" },
+  ],
 };
 
 interface TokenHolding {
@@ -560,7 +638,7 @@ export default function Wallets() {
                   </SelectTrigger>
                   <SelectContent>
                     {SUPPORTED_CHAINS.map((chain) => (
-                      <SelectItem key={chain.id} value={chain.id}>
+                      <SelectItem key={chain.id} value={chain.name}>
                         {chain.name}
                       </SelectItem>
                     ))}
