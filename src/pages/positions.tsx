@@ -12,6 +12,8 @@ import { useAppStore } from "@/store";
 import { ModeBanner } from "@/components/ModeBanner";
 import { orchestrator } from "@/core/orchestrator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { actionHandler } from "@/services/ActionHandlerService";
+import type { ActionContext } from "@/services/ActionHandlerService";
 
 type PositionStatus = "active" | "out-of-range" | "closed";
 
@@ -36,6 +38,7 @@ export default function Positions() {
   const [filterStatus, setFilterStatus] = useState<PositionStatus | "all">("all");
   const [filterChain, setFilterChain] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const { toast } = useToast();
   const mode = useAppStore((state) => state.mode);
   const storePositions = useAppStore((state) => state.positions);
@@ -60,85 +63,114 @@ export default function Positions() {
     return matchesStatus && matchesChain && matchesSearch;
   });
 
-  const handleAddLiquidity = (position: any) => {
-    if (mode.current === "shadow") {
-      toast({
-        title: "Shadow Mode - Read Only",
-        description: "Cannot add liquidity in Shadow mode. Switch to Demo or Live.",
-        variant: "default",
-      });
-      return;
-    }
+  const getActionContext = (): ActionContext => ({
+    mode: mode.current,
+    metadata: { source: "positions_page" },
+  });
 
-    toast({
-      title: mode.current === "demo" ? "Simulating Add Liquidity" : "Adding Liquidity",
-      description: `${mode.current === "demo" ? "Simulating increase" : "Increasing"} position size for ${position.pair}`,
-    });
+  const handleAddLiquidity = async (position: any) => {
+    setActionLoading(`add-${position.id}`);
+    try {
+      const result = await actionHandler.addLiquidity(position.id, 1000, getActionContext());
+      
+      toast({
+        title: result.success ? "Liquidity Added" : "Action Failed",
+        description: result.message,
+        variant: result.success ? "default" : "destructive",
+      });
+    } catch (error) {
+      toast({
+        title: "Action Failed",
+        description: "Failed to add liquidity",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
+    }
   };
 
-  const handleHarvest = (position: any) => {
-    if (mode.current === "shadow") {
+  const handleHarvest = async (position: any) => {
+    setActionLoading(`harvest-${position.id}`);
+    try {
+      const result = await actionHandler.harvestRewards(position.id, getActionContext());
+      
       toast({
-        title: "Shadow Mode - Read Only",
-        description: "Cannot harvest in Shadow mode. Switch to Demo or Live.",
-        variant: "default",
+        title: result.success ? "Harvest Complete" : "Action Failed",
+        description: result.message,
+        variant: result.success ? "default" : "destructive",
       });
-      return;
+    } catch (error) {
+      toast({
+        title: "Action Failed",
+        description: "Failed to harvest rewards",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
     }
-
-    toast({
-      title: mode.current === "demo" ? "Simulating Harvest" : "Harvesting Rewards",
-      description: `${mode.current === "demo" ? "Simulating claim" : "Claiming"} ${position.accruedFees} in fees and ${position.accruedRewards} in rewards`,
-    });
   };
 
-  const handleCompound = (position: any) => {
-    if (mode.current === "shadow") {
+  const handleCompound = async (position: any) => {
+    setActionLoading(`compound-${position.id}`);
+    try {
+      const result = await actionHandler.compoundRewards(position.id, getActionContext());
+      
       toast({
-        title: "Shadow Mode - Read Only",
-        description: "Cannot compound in Shadow mode. Switch to Demo or Live.",
-        variant: "default",
+        title: result.success ? "Compound Complete" : "Action Failed",
+        description: result.message,
+        variant: result.success ? "default" : "destructive",
       });
-      return;
+    } catch (error) {
+      toast({
+        title: "Action Failed",
+        description: "Failed to compound rewards",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
     }
-
-    toast({
-      title: mode.current === "demo" ? "Simulating Compound" : "Compounding",
-      description: `${mode.current === "demo" ? "Simulating reinvestment" : "Reinvesting"} rewards into ${position.pair} position`,
-    });
   };
 
-  const handleRebalance = (position: any) => {
-    if (mode.current === "shadow") {
+  const handleRebalance = async (position: any) => {
+    setActionLoading(`rebalance-${position.id}`);
+    try {
+      const result = await actionHandler.rebalancePosition(position.id, getActionContext());
+      
       toast({
-        title: "Shadow Mode - Read Only",
-        description: "Cannot rebalance in Shadow mode. Switch to Demo or Live.",
-        variant: "default",
+        title: result.success ? "Rebalance Complete" : "Action Failed",
+        description: result.message,
+        variant: result.success ? "default" : "destructive",
       });
-      return;
+    } catch (error) {
+      toast({
+        title: "Action Failed",
+        description: "Failed to rebalance position",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
     }
-
-    toast({
-      title: mode.current === "demo" ? "Simulating Rebalance" : "Rebalancing Position",
-      description: `${mode.current === "demo" ? "Simulating range adjustment" : "Adjusting range"} for ${position.pair}`,
-    });
   };
 
-  const handleClosePosition = (position: any) => {
-    if (mode.current === "shadow") {
+  const handleClosePosition = async (position: any) => {
+    setActionLoading(`close-${position.id}`);
+    try {
+      const result = await actionHandler.closePosition(position.id, getActionContext());
+      
       toast({
-        title: "Shadow Mode - Read Only",
-        description: "Cannot close positions in Shadow mode. Switch to Demo or Live.",
-        variant: "default",
+        title: result.success ? "Position Closed" : "Action Failed",
+        description: result.message,
+        variant: result.success ? "default" : "destructive",
       });
-      return;
+    } catch (error) {
+      toast({
+        title: "Action Failed",
+        description: "Failed to close position",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
     }
-
-    toast({
-      title: mode.current === "demo" ? "Simulating Close" : "Closing Position",
-      description: `${mode.current === "demo" ? "Simulating withdrawal" : "Withdrawing"} all liquidity from ${position.pair}`,
-      variant: "destructive",
-    });
   };
 
   const handleViewDetails = (position: any) => {
@@ -375,20 +407,38 @@ export default function Positions() {
                         size="sm" 
                         className="gap-2" 
                         onClick={() => handleAddLiquidity(position)}
-                        disabled={mode.current === "shadow"}
+                        disabled={mode.current === "shadow" || actionLoading === `add-${position.id}`}
                       >
-                        <TrendingUp className="h-4 w-4" />
-                        Add Liquidity
+                        {actionLoading === `add-${position.id}` ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                            Adding...
+                          </>
+                        ) : (
+                          <>
+                            <TrendingUp className="h-4 w-4" />
+                            Add Liquidity
+                          </>
+                        )}
                       </Button>
                       <Button 
                         size="sm" 
                         variant="outline" 
                         className="gap-2" 
                         onClick={() => handleHarvest(position)}
-                        disabled={mode.current === "shadow"}
+                        disabled={mode.current === "shadow" || actionLoading === `harvest-${position.id}` || position.accruedRewards <= 0}
                       >
-                        <Coins className="h-4 w-4" />
-                        Harvest
+                        {actionLoading === `harvest-${position.id}` ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                            Harvesting...
+                          </>
+                        ) : (
+                          <>
+                            <Coins className="h-4 w-4" />
+                            Harvest
+                          </>
+                        )}
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => handleViewDetails(position)}>
                         View Details
@@ -400,25 +450,25 @@ export default function Positions() {
                         size="sm" 
                         variant="outline" 
                         onClick={() => handleCompound(position)}
-                        disabled={mode.current === "shadow"}
+                        disabled={mode.current === "shadow" || actionLoading === `compound-${position.id}` || position.accruedRewards <= 0}
                       >
-                        Compound
+                        {actionLoading === `compound-${position.id}` ? "Compounding..." : "Compound"}
                       </Button>
                       <Button 
                         size="sm" 
                         variant="outline" 
                         onClick={() => handleRebalance(position)}
-                        disabled={mode.current === "shadow"}
+                        disabled={mode.current === "shadow" || actionLoading === `rebalance-${position.id}`}
                       >
-                        Rebalance
+                        {actionLoading === `rebalance-${position.id}` ? "Rebalancing..." : "Rebalance"}
                       </Button>
                       <Button 
                         size="sm" 
                         variant="destructive" 
                         onClick={() => handleClosePosition(position)}
-                        disabled={mode.current === "shadow"}
+                        disabled={mode.current === "shadow" || actionLoading === `close-${position.id}`}
                       >
-                        Close Position
+                        {actionLoading === `close-${position.id}` ? "Closing..." : "Close Position"}
                       </Button>
                     </div>
                   </div>
