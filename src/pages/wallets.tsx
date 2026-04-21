@@ -4,18 +4,15 @@ import { useAppStore } from "@/store";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { ModeBanner } from "@/components/ModeBanner";
-import { Wallet, Network, DollarSign, PlusCircle, Trash2, RefreshCw, X, ChevronUp, ChevronDown, Loader2, Coins, Plus } from "lucide-react";
+import { Wallet, Network, DollarSign, PlusCircle, Trash2, RefreshCw, X, ChevronUp, ChevronDown, Coins, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { actionHandler } from "@/services/ActionHandlerService";
-import { orchestrator } from "@/core/orchestrator";
 
 // Helpers
 const SUPPORTED_CHAINS = [
@@ -51,7 +48,6 @@ export default function Wallets() {
   const addPaperWallet = useAppStore((state) => state.addPaperWallet);
   const deletePaperWallet = useAppStore((state) => state.deletePaperWallet);
   const updatePaperWallet = useAppStore((state) => state.updatePaperWallet);
-  const refreshPaperWalletPrices = useAppStore((state) => state.refreshPaperWalletPrices);
 
   const { toast } = useToast();
 
@@ -148,7 +144,12 @@ export default function Wallets() {
       address: `0x${Math.random().toString(16).substring(2, 42)}`,
       chains: selectedChains,
       tokens: initialTokens.map(t => ({
-        symbol: t.symbol, name: t.name, network: t.network, quantity: parseFloat(t.balance), priceUsd: parseFloat(t.price), totalValue: t.valueUsd
+        symbol: t.symbol, 
+        name: t.name, 
+        network: t.network, 
+        quantity: parseFloat(t.balance), 
+        priceUsd: parseFloat(t.price), 
+        totalValue: t.valueUsd
       })),
       totalValue,
       createdAt: new Date(),
@@ -175,7 +176,12 @@ export default function Wallets() {
 
   const updateWallet = (id: string, updatedTokens: TokenHolding[]) => {
     const storeTokens = updatedTokens.map(t => ({
-      symbol: t.symbol, name: t.name, network: t.network, quantity: parseFloat(t.balance), priceUsd: parseFloat(t.price), totalValue: t.valueUsd
+      symbol: t.symbol, 
+      name: t.name, 
+      network: t.network, 
+      quantity: parseFloat(t.balance), 
+      priceUsd: parseFloat(t.price), 
+      totalValue: t.valueUsd
     }));
     updatePaperWallet(id, storeTokens);
   };
@@ -189,23 +195,34 @@ export default function Wallets() {
     const newToken: TokenHolding = {
       id: `token-${Date.now()}`,
       network: SUPPORTED_CHAINS.find((c) => c.id === tokenNetwork)?.name || tokenNetwork,
-      symbol: tokenInfo.symbol, name: tokenInfo.name, balance: tokenBalance, price: fetchedPrice.toString(), valueUsd,
+      symbol: tokenInfo.symbol, 
+      name: tokenInfo.name, 
+      balance: tokenBalance, 
+      price: fetchedPrice.toString(), 
+      valueUsd,
     };
     if (currentWalletForToken) {
       const w = displayWallets.find((w) => w.id === currentWalletForToken);
-      if (w) updateWallet(currentWalletForToken, [...w.tokens, newToken]);
+      if (w) {
+        updateWallet(currentWalletForToken, [...w.tokens, newToken]);
+      }
       setShowAddToken(false);
       setCurrentWalletForToken(null);
     } else {
       setInitialTokens((prev) => [...prev, newToken]);
     }
-    setTokenNetwork(""); setSelectedToken(""); setTokenBalance(""); setFetchedPrice(null);
+    setTokenNetwork(""); 
+    setSelectedToken(""); 
+    setTokenBalance(""); 
+    setFetchedPrice(null);
   };
 
   const removeToken = (tokenId: string, walletId?: string) => {
     if (walletId) {
       const w = displayWallets.find((w) => w.id === walletId);
-      if (w) updateWallet(walletId, w.tokens.filter((t) => t.id !== tokenId));
+      if (w) {
+        updateWallet(walletId, w.tokens.filter((t) => t.id !== tokenId));
+      }
     } else {
       setInitialTokens((prev) => prev.filter((t) => t.id !== tokenId));
     }
@@ -219,23 +236,43 @@ export default function Wallets() {
   const toggleWalletExpand = (walletId: string) => {
     setExpandedWallets((prev) => {
       const newSet = new Set(prev);
-      newSet.has(walletId) ? newSet.delete(walletId) : newSet.add(walletId);
+      if (newSet.has(walletId)) {
+        newSet.delete(walletId);
+      } else {
+        newSet.add(walletId);
+      }
       return newSet;
     });
   };
 
   const toggleChain = (chainId: string) => {
-    setSelectedChains((prev) => prev.includes(chainId) ? prev.filter((id) => id !== chainId) : [...prev, chainId]);
+    setSelectedChains((prev) => {
+      if (prev.includes(chainId)) {
+        return prev.filter((id) => id !== chainId);
+      }
+      return [...prev, chainId];
+    });
+  };
+
+  const handleAddTokenDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      setTokenNetwork("");
+      setSelectedToken("");
+      setTokenBalance("");
+      setFetchedPrice(null);
+    }
+    setShowAddToken(open);
   };
 
   // Mock price fetch logic
   useEffect(() => {
     if (tokenNetwork && selectedToken) {
       setIsFetchingPrice(true);
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         setFetchedPrice(Math.random() * 100 + 1);
         setIsFetchingPrice(false);
       }, 500);
+      return () => clearTimeout(timer);
     } else {
       setFetchedPrice(null);
     }
@@ -244,11 +281,15 @@ export default function Wallets() {
   const displayWallets = paperWallets.map(w => ({
     ...w,
     tokens: w.tokens.map((t, idx) => ({
-      id: `token-${w.id}-${idx}`, network: t.network, symbol: t.symbol, name: t.name, balance: t.quantity.toString(), price: t.priceUsd.toString(), valueUsd: t.totalValue
+      id: `token-${w.id}-${idx}`, 
+      network: t.network, 
+      symbol: t.symbol, 
+      name: t.name, 
+      balance: t.quantity.toString(), 
+      price: t.priceUsd.toString(), 
+      valueUsd: t.totalValue
     }))
   }));
-
-  const totalInitialValue = initialTokens.reduce((sum, t) => sum + t.valueUsd, 0);
 
   return (
     <AppLayout>
@@ -256,7 +297,9 @@ export default function Wallets() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Wallets</h1>
-            <p className="text-muted-foreground">{mode.current === "demo" ? "Manage your simulated assets" : "Manage your connected wallets"}</p>
+            <p className="text-muted-foreground">
+              {mode.current === "demo" ? "Manage your simulated assets" : "Manage your connected wallets"}
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <Badge variant={mode.current === "demo" ? "secondary" : mode.current === "shadow" ? "outline" : "default"}>
@@ -264,22 +307,52 @@ export default function Wallets() {
             </Badge>
             
             {mode.current === "demo" && (
-              <Button onClick={handleCreatePaperWallet}><PlusCircle className="mr-2 h-4 w-4" /> Create Paper Wallet</Button>
+              <Button onClick={handleCreatePaperWallet}>
+                <PlusCircle className="mr-2 h-4 w-4" /> 
+                Create Paper Wallet
+              </Button>
             )}
             
             {mode.current !== "demo" && !wallet.wallet && (
               <Button onClick={handleConnectWallet} disabled={connectLoading}>
-                {connectLoading ? <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Connecting...</> : <><Wallet className="mr-2 h-4 w-4" /> Connect Wallet</>}
+                {connectLoading ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> 
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    <Wallet className="mr-2 h-4 w-4" /> 
+                    Connect Wallet
+                  </>
+                )}
               </Button>
             )}
             
             {mode.current !== "demo" && wallet.wallet && (
               <>
                 <Button variant="outline" onClick={handleRefreshBalances} disabled={refreshLoading}>
-                  {refreshLoading ? <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Refreshing...</> : <><RefreshCw className="mr-2 h-4 w-4" /> Refresh Balances</>}
+                  {refreshLoading ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> 
+                      Refreshing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" /> 
+                      Refresh Balances
+                    </>
+                  )}
                 </Button>
                 <Button variant="destructive" onClick={handleDisconnectWallet} disabled={disconnectLoading}>
-                  {disconnectLoading ? <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Disconnecting...</> : "Disconnect"}
+                  {disconnectLoading ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> 
+                      Disconnecting...
+                    </>
+                  ) : (
+                    "Disconnect"
+                  )}
                 </Button>
               </>
             )}
@@ -288,20 +361,48 @@ export default function Wallets() {
 
         <div className="grid gap-4 md:grid-cols-4">
           <Card className="card-gradient border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Wallets</CardTitle><Wallet className="h-4 w-4 text-muted-foreground" /></CardHeader>
-            <CardContent><div className="text-2xl font-bold">{mode.current === "demo" ? paperWallets.length : wallet.wallet ? 1 : 0}</div></CardContent>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Wallets</CardTitle>
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {mode.current === "demo" ? paperWallets.length : wallet.wallet ? 1 : 0}
+              </div>
+            </CardContent>
           </Card>
           <Card className="card-gradient border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Value</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader>
-            <CardContent><div className="text-2xl font-bold">${mode.current === "demo" ? paperWallets.reduce((sum, w) => sum + w.totalValue, 0).toLocaleString() : wallet.totalValueUsd.toLocaleString()}</div></CardContent>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${mode.current === "demo" ? paperWallets.reduce((sum, w) => sum + w.totalValue, 0).toLocaleString() : wallet.totalValueUsd.toLocaleString()}
+              </div>
+            </CardContent>
           </Card>
           <Card className="card-gradient border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Tokens</CardTitle><Coins className="h-4 w-4 text-muted-foreground" /></CardHeader>
-            <CardContent><div className="text-2xl font-bold">{mode.current === "demo" ? paperWallets.reduce((sum, w) => sum + w.tokens.length, 0) : wallet.assets.length}</div></CardContent>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Tokens</CardTitle>
+              <Coins className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {mode.current === "demo" ? paperWallets.reduce((sum, w) => sum + w.tokens.length, 0) : wallet.assets.length}
+              </div>
+            </CardContent>
           </Card>
           <Card className="card-gradient border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Networks</CardTitle><Network className="h-4 w-4 text-muted-foreground" /></CardHeader>
-            <CardContent><div className="text-2xl font-bold">{mode.current === "demo" ? new Set(paperWallets.flatMap((w) => w.tokens.map((t) => t.network))).size : new Set(wallet.assets.map((a) => a.network)).size}</div></CardContent>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Networks</CardTitle>
+              <Network className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {mode.current === "demo" ? new Set(paperWallets.flatMap((w) => w.tokens.map((t) => t.network))).size : new Set(wallet.assets.map((a) => a.network)).size}
+              </div>
+            </CardContent>
           </Card>
         </div>
 
@@ -310,30 +411,70 @@ export default function Wallets() {
         {mode.current === "demo" && displayWallets.length > 0 && (
           <div className="space-y-4">
             <h2 className="text-xl font-semibold">Your Paper Wallets</h2>
-            {displayWallets.map((wallet) => {
-              const isExpanded = expandedWallets.has(wallet.id);
+            {displayWallets.map((walletItem) => {
+              const isExpanded = expandedWallets.has(walletItem.id);
               return (
-                <Card key={wallet.id} className="card-gradient border-border/50">
+                <Card key={walletItem.id} className="card-gradient border-border/50">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <CardTitle className="flex items-center gap-3">{wallet.name}</CardTitle>
-                        <p className="text-sm text-muted-foreground mt-1 font-mono">{wallet.address}</p>
+                        <CardTitle className="flex items-center gap-3">{walletItem.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground mt-1 font-mono">{walletItem.address}</p>
                       </div>
                       <div className="text-right">
-                        <div className="text-2xl font-bold">${wallet.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                        <div className="text-2xl font-bold">${walletItem.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                       </div>
                       <div className="flex items-center gap-2 ml-4">
-                        <Button size="sm" variant="outline" onClick={() => openAddTokenForWallet(wallet.id)}><Plus className="h-4 w-4" /></Button>
-                        <Button size="sm" variant="ghost" onClick={() => toggleWalletExpand(wallet.id)}>{isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</Button>
+                        <Button size="sm" variant="outline" onClick={() => openAddTokenForWallet(walletItem.id)}>
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => toggleWalletExpand(walletItem.id)}>
+                          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </Button>
                       </div>
                     </div>
                   </CardHeader>
                   {isExpanded && (
                     <CardContent>
+                      <div className="space-y-3 mb-4">
+                        {walletItem.tokens.length === 0 ? (
+                          <p className="text-sm text-muted-foreground text-center py-4">No tokens added yet</p>
+                        ) : (
+                          walletItem.tokens.map((token) => (
+                            <div key={token.id} className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-card/30">
+                              <div className="flex items-center gap-3">
+                                <Badge variant="outline">{token.network}</Badge>
+                                <div>
+                                  <p className="font-semibold">{token.symbol}</p>
+                                  <p className="text-xs text-muted-foreground">{token.name}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <div className="text-right">
+                                  <p className="font-medium">{token.balance} {token.symbol}</p>
+                                  <p className="text-xs text-muted-foreground">${token.valueUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                </div>
+                                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => removeToken(token.id, walletItem.id)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
                       <div className="flex items-center justify-between pt-4 border-t border-border">
-                        <Button size="sm" variant="destructive" onClick={() => handleDeletePaperWallet(wallet.id)} disabled={deleteLoading === wallet.id}>
-                          {deleteLoading === wallet.id ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Deleting...</> : <><Trash2 className="h-4 w-4 mr-2" /> Delete Wallet</>}
+                        <Button size="sm" variant="destructive" onClick={() => handleDeletePaperWallet(walletItem.id)} disabled={deleteLoading === walletItem.id}>
+                          {deleteLoading === walletItem.id ? (
+                            <>
+                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> 
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="h-4 w-4 mr-2" /> 
+                              Delete Wallet
+                            </>
+                          )}
                         </Button>
                       </div>
                     </CardContent>
@@ -351,14 +492,23 @@ export default function Wallets() {
               <DialogDescription>Create a simulated multi-chain wallet.</DialogDescription>
             </DialogHeader>
             <div className="space-y-6 py-4">
-              <div className="space-y-2"><Label>Wallet Name</Label><Input value={walletName} onChange={(e) => setWalletName(e.target.value)} /></div>
+              <div className="space-y-2">
+                <Label>Wallet Name</Label>
+                <Input value={walletName} onChange={(e) => setWalletName(e.target.value)} />
+              </div>
               <div className="space-y-3">
                 <Label>Supported Chains</Label>
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                   {SUPPORTED_CHAINS.map((chain) => (
                     <div key={chain.id} className="flex items-center space-x-2">
-                      <Checkbox id={`chain-${chain.id}`} checked={selectedChains.includes(chain.id)} onCheckedChange={() => toggleChain(chain.id)} />
-                      <Label htmlFor={`chain-${chain.id}`} className="flex items-center gap-2 cursor-pointer">{chain.name}</Label>
+                      <Checkbox 
+                        id={`chain-${chain.id}`} 
+                        checked={selectedChains.includes(chain.id)} 
+                        onCheckedChange={() => toggleChain(chain.id)} 
+                      />
+                      <Label htmlFor={`chain-${chain.id}`} className="flex items-center gap-2 cursor-pointer">
+                        {chain.name}
+                      </Label>
                     </div>
                   ))}
                 </div>
@@ -366,33 +516,70 @@ export default function Wallets() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label>Initial Token Holdings</Label>
-                  <Button size="sm" variant="outline" onClick={() => setShowAddToken(true)}><Plus className="h-4 w-4 mr-2" /> Add Token</Button>
+                  <Button size="sm" variant="outline" onClick={() => setShowAddToken(true)}>
+                    <Plus className="h-4 w-4 mr-2" /> 
+                    Add Token
+                  </Button>
                 </div>
-                {initialTokens.map((token) => (
-                   <div key={token.id} className="flex justify-between items-center p-2 border rounded"><Badge>{token.symbol}</Badge><Button size="sm" variant="ghost" onClick={() => removeToken(token.id)}><X className="h-4 w-4" /></Button></div>
-                ))}
+                {initialTokens.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-2 text-center">No tokens added</p>
+                ) : (
+                  initialTokens.map((token) => (
+                    <div key={token.id} className="flex justify-between items-center p-2 border rounded">
+                      <div className="flex items-center gap-2">
+                        <Badge>{token.symbol}</Badge>
+                        <span className="text-sm">{token.balance}</span>
+                      </div>
+                      <Button size="sm" variant="ghost" onClick={() => removeToken(token.id)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
-            <DialogFooter><Button variant="outline" onClick={() => setShowCreateWallet(false)}>Cancel</Button><Button onClick={createPaperWallet}>Create</Button></DialogFooter>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowCreateWallet(false)}>Cancel</Button>
+              <Button onClick={createPaperWallet}>Create</Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        <Dialog open={showAddToken} onOpenChange={(open) => { if (!open) { setTokenNetwork(""); setSelectedToken(""); setTokenBalance(""); setFetchedPrice(null); } setShowAddToken(open); }}>
+        <Dialog open={showAddToken} onOpenChange={handleAddTokenDialogOpenChange}>
           <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle>Add Token</DialogTitle><DialogDescription>Select a network and token.</DialogDescription></DialogHeader>
+            <DialogHeader>
+              <DialogTitle>Add Token</DialogTitle>
+              <DialogDescription>Select a network and token.</DialogDescription>
+            </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Network</Label>
                 <Select value={tokenNetwork} onValueChange={(val) => { setTokenNetwork(val); setSelectedToken(""); }}>
-                  <SelectTrigger><SelectValue placeholder="Select network" /></SelectTrigger>
-                  <SelectContent>{SUPPORTED_CHAINS.map((chain) => (<SelectItem key={chain.id} value={chain.id}>{chain.name}</SelectItem>))}</SelectContent>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select network" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SUPPORTED_CHAINS.map((chain) => (
+                      <SelectItem key={chain.id} value={chain.id}>
+                        {chain.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Token</Label>
                 <Select value={selectedToken} onValueChange={setSelectedToken} disabled={!tokenNetwork}>
-                  <SelectTrigger><SelectValue placeholder={tokenNetwork ? "Select token" : "Select network first"} /></SelectTrigger>
-                  <SelectContent>{tokenNetwork && networkTokens[tokenNetwork]?.map((token) => (<SelectItem key={token.symbol} value={token.symbol}>{token.symbol} - {token.name}</SelectItem>))}</SelectContent>
+                  <SelectTrigger>
+                    <SelectValue placeholder={tokenNetwork ? "Select token" : "Select network first"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tokenNetwork && networkTokens[tokenNetwork]?.map((token) => (
+                      <SelectItem key={token.symbol} value={token.symbol}>
+                        {token.symbol} - {token.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
@@ -400,7 +587,12 @@ export default function Wallets() {
                 <Input type="number" step="any" placeholder="0.0" value={tokenBalance} onChange={(e) => setTokenBalance(e.target.value)} />
               </div>
             </div>
-            <DialogFooter><Button variant="outline" onClick={() => setShowAddToken(false)}>Cancel</Button><Button onClick={addTokenToHoldings} disabled={isFetchingPrice || !tokenNetwork || !selectedToken || !tokenBalance}>Add to Holdings</Button></DialogFooter>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAddToken(false)}>Cancel</Button>
+              <Button onClick={addTokenToHoldings} disabled={isFetchingPrice || !tokenNetwork || !selectedToken || !tokenBalance}>
+                Add to Holdings
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
