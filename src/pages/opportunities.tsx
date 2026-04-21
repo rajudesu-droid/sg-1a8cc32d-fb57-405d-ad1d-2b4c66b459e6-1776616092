@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, Search, Activity, DollarSign, Percent } from "lucide-react";
+import { TrendingUp, Search, Activity, DollarSign, Percent, RefreshCw, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store";
 import { ModeBanner } from "@/components/ModeBanner";
@@ -13,6 +13,8 @@ import { orchestrator } from "@/core/orchestrator";
 import { opportunityEngine } from "@/core/engines";
 import { ProtocolReadinessIndicator } from "@/components/ProtocolReadinessIndicator";
 import { protocolRegistry } from "@/core/protocols/ProtocolRegistry";
+import { actionHandler } from "@/services/ActionHandlerService";
+import type { ActionContext } from "@/services/ActionHandlerService";
 
 type SortOption = "recommended" | "apy" | "tvl" | "risk";
 type RiskFilter = "all" | "low" | "medium" | "high";
@@ -29,23 +31,12 @@ export default function Opportunities() {
   const opportunities = useAppStore((state) => state.opportunities);
   const [isScanning, setIsScanning] = useState(false);
 
-  // Listen for mode changes
-  useEffect(() => {
-    const unsubscribe = orchestrator.subscribe((event) => {
-      if (event.type === "mode_changed") {
-        handleRefreshPools();
-      }
-    });
-    
-    // Initial scan if empty
-    if (opportunities.length === 0) {
-      handleRefreshPools();
-    }
-    
-    return () => unsubscribe();
-  }, []);
+  const getActionContext = (): ActionContext => ({
+    mode: mode.current,
+    metadata: { source: "opportunities_page" },
+  });
 
-  const handleRefreshPools = async () => {
+  const handleRefresh = async () => {
     setIsScanning(true);
     toast({
       title: "Scanning Protocols",
@@ -56,12 +47,58 @@ export default function Opportunities() {
     setIsScanning(false);
   };
 
+  const handleOpenPosition = async (opportunity: any) => {
+    if (mode.current === "shadow") {
+      toast({
+        title: "Shadow Mode",
+        description: "Preview only - switch to Demo or Live mode to open positions",
+        variant: "default",
+      });
+      return;
+    }
+
+    toast({
+      title: mode.current === "demo" ? "Simulating Deployment" : "Deploying Position",
+      description: `${mode.current === "demo" ? "Simulating" : "Opening"} LP position on ${opportunity.protocolName}`,
+    });
+  };
+
+  const handleClearFilters = () => {
+    setSortBy("recommended");
+    setRiskFilter("all");
+    setChainFilter("all");
+    setProtocolFilter("all");
+    setSearchTerm("");
+    
+    toast({
+      title: "Filters Cleared",
+      description: "All filters reset to defaults",
+    });
+  };
+
+  // Listen for mode changes
+  useEffect(() => {
+    const unsubscribe = orchestrator.subscribe((event) => {
+      if (event.type === "mode_changed") {
+        handleRefresh();
+      }
+    });
+    
+    // Initial scan if empty
+    if (opportunities.length === 0) {
+      handleRefresh();
+    }
+    
+    return () => unsubscribe();
+  }, []);
+
   const getRiskLevel = (score: number) => {
     if (score < 30) return "low";
     if (score < 60) return "medium";
     return "high";
   };
 
+  // Filter and sort opportunities
   const filteredOpportunities = opportunities
     .filter(opp => {
       const riskLevel = getRiskLevel(opp.riskScore);
@@ -86,22 +123,6 @@ export default function Opportunities() {
     return "border-destructive/50 text-destructive bg-destructive/10";
   };
 
-  const handleQuickDeploy = (opp: any) => {
-    if (mode.current === "shadow") {
-      toast({
-        title: "Shadow Mode - Action Simulated",
-        description: `Would deploy to ${opp.token0Symbol}/${opp.token1Symbol} on ${opp.protocolName}.`,
-        variant: "default",
-      });
-      return;
-    }
-
-    toast({
-      title: mode.current === "demo" ? "Simulating Deployment" : "Deploying Position",
-      description: `${mode.current === "demo" ? "Simulating" : "Opening"} LP position on ${opp.protocolName}`,
-    });
-  };
-
   const uniqueChains = Array.from(new Set(opportunities.map(o => o.chain)));
   const uniqueProtocols = Array.from(new Set(opportunities.map(o => o.protocolName)));
 
@@ -113,12 +134,31 @@ export default function Opportunities() {
           <div>
             <h1 className="text-3xl font-bold">LP Opportunities</h1>
             <p className="text-muted-foreground">
-              Discover and compare liquidity pool opportunities across supported DEXes
+              Discover and analyze liquidity provision opportunities
             </p>
           </div>
-          <Button onClick={handleRefreshPools} disabled={isScanning}>
-            {isScanning ? "Scanning..." : "Scan Protocols"}
-          </Button>
+          <div className="flex items-center gap-3">
+            <Badge variant={mode.current === "demo" ? "secondary" : mode.current === "shadow" ? "outline" : "default"}>
+              {mode.current === "demo" ? "Demo Mode" : mode.current === "shadow" ? "Shadow Mode" : "Live Mode"}
+            </Badge>
+            <Button 
+              variant="outline" 
+              onClick={handleRefresh}
+              disabled={isScanning}
+            >
+              {isScanning ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Refreshing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Summary Report */}
@@ -356,13 +396,26 @@ export default function Opportunities() {
 
                   <div className="flex items-center gap-3 mt-4 pt-4 border-t border-border/30">
                     <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex-1"
-                      onClick={() => handleQuickDeploy(opp)}
-                      disabled={mode.current === "shadow"}
+                      className="w-full" 
+                      onClick={() => handleOpenPosition(opp)}
+                      disabled={mode.current === "shadow" || openLoading === opp.id}
                     >
-                      {mode.current === "shadow" ? "Preview Only" : "Quick Deploy"}
+                      {openLoading === opp.id ? (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                          Opening...
+                        </>
+                      ) : mode.current === "shadow" ? (
+                        <>
+                          <Eye className="mr-2 h-4 w-4" />
+                          Preview Only
+                        </>
+                      ) : (
+                        <>
+                          <TrendingUp className="mr-2 h-4 w-4" />
+                          Open Position
+                        </>
+                      )}
                     </Button>
                   </div>
                 </CardContent>

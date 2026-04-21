@@ -29,7 +29,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAppStore } from "@/store";
 import { ModeBanner } from "@/components/ModeBanner";
+import { WalletConnectionModal } from "@/components/WalletConnectionModal";
+import { AssetSearch } from "@/components/AssetSearch";
 import { orchestrator } from "@/core/orchestrator";
+import { actionHandler } from "@/services/ActionHandlerService";
+import type { ActionContext } from "@/services/ActionHandlerService";
 import { fetchTokenPrice, getFallbackPrice, fetchMultipleTokenPrices } from "@/lib/cryptoPriceService";
 
 // Supported chains with colors
@@ -166,7 +170,7 @@ export default function Wallets() {
   const [isFetchingPrice, setIsFetchingPrice] = useState(false);
   const [fetchedPrice, setFetchedPrice] = useState<number | null>(null);
 
-  const { isConnected, connectWallet } = useWallet();
+  const { isConnected, connectWallet, connectLoading, disconnectLoading, deleteLoading } = useWallet();
   const { toast } = useToast();
   const mode = useAppStore((state) => state.mode);
   const paperWallets = useAppStore((state) => state.paperWallets);
@@ -252,6 +256,11 @@ export default function Wallets() {
       setFetchedPrice(null);
     }
   }, [tokenNetwork, selectedToken, toast]);
+
+  const getActionContext = (): ActionContext => ({
+    mode: mode.current,
+    metadata: { source: "wallets_page" },
+  });
 
   const handleRefreshBalances = async () => {
     setIsRefreshing(true);
@@ -528,41 +537,76 @@ export default function Wallets() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">
-              Wallets {mode.current === "demo" ? "(Paper Wallets)" : ""}
-            </h1>
+            <h1 className="text-3xl font-bold">Wallets</h1>
             <p className="text-muted-foreground">
-              {mode.current === "demo"
-                ? "Create and manage simulated paper wallets for testing strategies"
-                : mode.current === "shadow"
-                ? "Connect wallets for read-only monitoring"
-                : "Connect and manage your Web3 wallets"}
+              {mode.current === "demo" 
+                ? "Manage your simulated assets and balances"
+                : "Manage your connected wallets and assets"}
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex items-center gap-3">
+            <Badge variant={mode.current === "demo" ? "secondary" : mode.current === "shadow" ? "outline" : "default"}>
+              {mode.current === "demo" ? "Demo Mode" : mode.current === "shadow" ? "Shadow Mode" : "Live Mode"}
+            </Badge>
+            
             {mode.current === "demo" && (
-              <>
-                <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 text-sm">
-                  <Activity className={`h-4 w-4 ${isAutoRefreshEnabled ? "text-cyan-400 animate-pulse" : "text-muted-foreground"}`} />
-                  <span className="text-muted-foreground">
-                    {isAutoRefreshEnabled ? `Auto-refresh in ${autoRefreshCountdown}s` : "Auto-refresh paused"}
-                  </span>
-                </div>
-                <Button onClick={() => setShowCreateWallet(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Paper Wallet
-                </Button>
-              </>
+              <Button onClick={handleCreatePaperWallet}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Create Paper Wallet
+              </Button>
             )}
-            {mode.current !== "demo" && (
+            
+            {mode.current !== "demo" && !wallet.wallet && (
+              <Button 
+                onClick={() => setShowConnectionModal(true)}
+                disabled={connectLoading}
+              >
+                {connectLoading ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    <Wallet className="mr-2 h-4 w-4" />
+                    Connect Wallet
+                  </>
+                )}
+              </Button>
+            )}
+            
+            {mode.current !== "demo" && wallet.wallet && (
               <>
-                <Button variant="outline" onClick={handleRefreshBalances} disabled={isRefreshing}>
-                  <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-                  Refresh Balances
+                <Button 
+                  variant="outline" 
+                  onClick={handleRefreshBalances}
+                  disabled={refreshLoading}
+                >
+                  {refreshLoading ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Refreshing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Refresh Balances
+                    </>
+                  )}
                 </Button>
-                <Button onClick={connectWallet}>
-                  <Wallet className="mr-2 h-4 w-4" />
-                  Connect Wallet
+                <Button 
+                  variant="destructive" 
+                  onClick={handleDisconnectWallet}
+                  disabled={disconnectLoading}
+                >
+                  {disconnectLoading ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Disconnecting...
+                    </>
+                  ) : (
+                    "Disconnect"
+                  )}
                 </Button>
               </>
             )}
@@ -740,6 +784,34 @@ export default function Wallets() {
                             No tokens in this wallet. Click the + button to add some.
                           </div>
                         )}
+                        <div className="flex items-center justify-between pt-4 border-t border-border">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => handleAddAsset(wallet.id)}
+                          >
+                            <PlusCircle className="h-4 w-4 mr-2" />
+                            Add Asset
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="destructive" 
+                            onClick={() => handleDeletePaperWallet(wallet.id)}
+                            disabled={deleteLoading === wallet.id}
+                          >
+                            {deleteLoading === wallet.id ? (
+                              <>
+                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                Deleting...
+                              </>
+                            ) : (
+                              <>
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete Wallet
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   )}
