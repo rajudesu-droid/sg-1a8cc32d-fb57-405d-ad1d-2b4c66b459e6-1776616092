@@ -127,11 +127,19 @@ class BotOrchestrationService {
    * Main automation loop
    */
   private async automationLoop(config: BotConfig): Promise<void> {
+    console.log("[BotOrchestration] ========================================");
     console.log("[BotOrchestration] Running automation loop");
-
+    console.log("[BotOrchestration] Config:", config);
+    
     try {
-      // Load user policy to check what automation is enabled
-      const policy = await this.loadPolicy();
+      const { useAppStore } = await import("@/store");
+      const { orchestrator } = await import("@/core/orchestrator");
+
+      // Get current policy from store
+      const policy = useAppStore.getState().policy;
+      
+      console.log("[BotOrchestration] Policy from store:", policy);
+      console.log("[BotOrchestration] Policy autoDeployIdle:", policy?.autoDeployIdle);
 
       if (!policy) {
         console.warn("[BotOrchestration] No policy found, skipping automation");
@@ -144,18 +152,24 @@ class BotOrchestrationService {
       // Execute automation actions based on policy
       let actionsExecuted = 0;
 
+      console.log("[BotOrchestration] ========================================");
+      console.log("[BotOrchestration] Checking automation actions...");
+      console.log("[BotOrchestration] Policy exists:", !!policy);
+      console.log("[BotOrchestration] Opportunities count:", opportunities.length);
+
       // Auto-deploy idle funds
-      console.log(`[BotOrchestration] Policy autoDeployIdle: ${policy.autoDeployIdle}`);
-      if (policy.autoDeployIdle) {
-        console.log("[BotOrchestration] Executing auto-deploy idle funds");
+      console.log(`[BotOrchestration] Checking auto-deploy: policy.autoDeployIdle = ${policy?.autoDeployIdle}`);
+      if (policy?.autoDeployIdle) {
+        console.log("[BotOrchestration] ✓ Auto-deploy is enabled - executing...");
         const deployed = await this.executeAutoDeployIdle(config.mode, opportunities, policy);
         actionsExecuted += deployed;
       } else {
-        console.log("[BotOrchestration] Auto-deploy is disabled in policy");
+        console.log("[BotOrchestration] ✗ Auto-deploy is disabled - skipping");
+        console.log("[BotOrchestration] Policy autoDeployIdle value:", policy?.autoDeployIdle);
       }
 
       // Auto-harvest
-      console.log(`[BotOrchestration] Config autoHarvest: ${config.autoHarvest}, Policy autoHarvest: ${policy.autoHarvest}`);
+      console.log(`[BotOrchestration] Checking auto-harvest: config.autoHarvest = ${config.autoHarvest}, policy.autoHarvest = ${policy?.autoHarvest}`);
       if (config.autoHarvest && policy.autoHarvest) {
         const harvested = await this.executeAutoHarvest(config.mode, policy);
         actionsExecuted += harvested;
