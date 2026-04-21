@@ -458,9 +458,11 @@ class BotOrchestrationService {
       const { useAppStore } = await import("@/store");
       const { orchestrator } = await import("@/core/orchestrator");
       
-      // Get wallet assets to check for idle funds
-      const state = useAppStore.getState() as any;
-      const assets = state.assets || state.walletState?.assets || [];
+      // Get wallet assets from correct store path
+      const walletState = useAppStore.getState().wallet;
+      const assets = walletState?.assets || [];
+      
+      console.log(`[BotOrchestration] Found ${assets.length} assets in wallet`);
       
       // Calculate total idle capital (non-LP assets)
       let idleCapital = assets
