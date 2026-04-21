@@ -14,6 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store";
 import { orchestrator } from "@/core/orchestrator";
 import { actionHandler } from "@/services/ActionHandlerService";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Save, Zap, Shield, DollarSign, Activity, AlertTriangle, Eye, RefreshCw, Play, Square } from "lucide-react";
 
 export default function Automation() {
   const mode = useAppStore((state) => state.mode);
@@ -88,6 +90,13 @@ export default function Automation() {
         autoRebalance: false,
         rebalanceFrequency: "weekly" as const,
         autoDeployIdle: false,
+        minIdleAmount: 100,
+        maxAutoDeployAmount: 1000,
+        deployStrategy: "best_score" as const,
+        minAutoDeployScore: 75,
+        deployFrequency: "hourly" as const,
+        diversifyDeployments: false,
+        maxConcurrentPositions: 5,
         minHarvestAmount: 50,
         minRebalanceEdge: 5,
         dailyGasBudget: 100,
@@ -249,7 +258,7 @@ export default function Automation() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {[localPolicy.autoHarvest, localPolicy.autoCompound, localPolicy.autoRebalance].filter(Boolean).length}/3
+                {[localPolicy.autoHarvest, localPolicy.autoCompound, localPolicy.autoRebalance, localPolicy.autoDeployIdle].filter(Boolean).length}/4
               </div>
               <p className="text-xs text-muted-foreground">Automation enabled</p>
             </CardContent>
@@ -419,6 +428,214 @@ export default function Automation() {
                   disabled={localPolicy.emergencyPause}
                 />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Auto-Deploy Idle Funds */}
+        <Card className="card-gradient border-border/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" /> 
+              Auto-Deploy Idle Funds
+            </CardTitle>
+            <CardDescription>
+              Automatically deploy idle capital to high-scoring opportunities
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Master Toggle */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="auto-deploy-idle">Enable Auto-Deploy</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically deploy idle wallet funds to qualifying opportunities
+                  </p>
+                </div>
+                <Switch 
+                  id="auto-deploy-idle" 
+                  checked={localPolicy.autoDeployIdle}
+                  onCheckedChange={(checked) => updateField('autoDeployIdle', checked)}
+                  disabled={localPolicy.emergencyPause}
+                />
+              </div>
+
+              {localPolicy.autoDeployIdle && (
+                <>
+                  <Separator />
+
+                  {/* Minimum Idle Threshold */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="min-idle-amount">Minimum Idle Amount (USD)</Label>
+                      <span className="text-sm font-mono text-muted-foreground">
+                        ${localPolicy.minIdleAmount || 100}
+                      </span>
+                    </div>
+                    <Input 
+                      id="min-idle-amount" 
+                      type="number" 
+                      step="50"
+                      min="0"
+                      value={localPolicy.minIdleAmount || 100}
+                      onChange={(e) => updateField('minIdleAmount', Number(e.target.value))}
+                      disabled={localPolicy.emergencyPause}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Only deploy when idle balance exceeds this amount
+                    </p>
+                  </div>
+
+                  <Separator />
+
+                  {/* Maximum Auto-Deploy Amount */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="max-auto-deploy">Maximum Per Deployment (USD)</Label>
+                      <span className="text-sm font-mono text-muted-foreground">
+                        ${localPolicy.maxAutoDeployAmount || 1000}
+                      </span>
+                    </div>
+                    <Input 
+                      id="max-auto-deploy" 
+                      type="number" 
+                      step="100"
+                      min="0"
+                      value={localPolicy.maxAutoDeployAmount || 1000}
+                      onChange={(e) => updateField('maxAutoDeployAmount', Number(e.target.value))}
+                      disabled={localPolicy.emergencyPause}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Maximum amount to deploy in a single transaction
+                    </p>
+                  </div>
+
+                  <Separator />
+
+                  {/* Deployment Strategy */}
+                  <div className="space-y-2">
+                    <Label htmlFor="deploy-strategy">Deployment Strategy</Label>
+                    <Select 
+                      value={localPolicy.deployStrategy || "best_score"}
+                      onValueChange={(value) => updateField('deployStrategy', value)}
+                      disabled={localPolicy.emergencyPause}
+                    >
+                      <SelectTrigger id="deploy-strategy">
+                        <SelectValue placeholder="Select strategy" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="best_score">Best Overall Score</SelectItem>
+                        <SelectItem value="highest_apy">Highest APY</SelectItem>
+                        <SelectItem value="lowest_risk">Lowest Risk</SelectItem>
+                        <SelectItem value="balanced">Balanced (Score + APY)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Strategy for selecting opportunities to deploy idle funds
+                    </p>
+                  </div>
+
+                  <Separator />
+
+                  {/* Minimum Pool Score */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="min-auto-deploy-score">Minimum Opportunity Score</Label>
+                      <span className="text-sm font-mono text-muted-foreground">
+                        {localPolicy.minAutoDeployScore || 75}
+                      </span>
+                    </div>
+                    <Input 
+                      id="min-auto-deploy-score" 
+                      type="number" 
+                      step="5"
+                      min="0"
+                      max="100"
+                      value={localPolicy.minAutoDeployScore || 75}
+                      onChange={(e) => updateField('minAutoDeployScore', Number(e.target.value))}
+                      disabled={localPolicy.emergencyPause}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Only deploy to opportunities with score above this threshold
+                    </p>
+                  </div>
+
+                  <Separator />
+
+                  {/* Deployment Frequency */}
+                  <div className="space-y-2">
+                    <Label htmlFor="deploy-frequency">Deployment Check Frequency</Label>
+                    <Select 
+                      value={localPolicy.deployFrequency || "hourly"}
+                      onValueChange={(value) => updateField('deployFrequency', value)}
+                      disabled={localPolicy.emergencyPause}
+                    >
+                      <SelectTrigger id="deploy-frequency">
+                        <SelectValue placeholder="Select frequency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="continuous">Continuous (Every 5 min)</SelectItem>
+                        <SelectItem value="hourly">Hourly</SelectItem>
+                        <SelectItem value="daily">Daily</SelectItem>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      How often to check for idle funds and deploy
+                    </p>
+                  </div>
+
+                  <Separator />
+
+                  {/* Diversification */}
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label htmlFor="diversify-deployments">Diversify Deployments</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Split idle funds across multiple opportunities
+                      </p>
+                    </div>
+                    <Switch 
+                      id="diversify-deployments" 
+                      checked={localPolicy.diversifyDeployments || false}
+                      onCheckedChange={(checked) => updateField('diversifyDeployments', checked)}
+                      disabled={localPolicy.emergencyPause}
+                    />
+                  </div>
+
+                  {localPolicy.diversifyDeployments && (
+                    <>
+                      <div className="space-y-2 pl-4 border-l-2 border-border">
+                        <Label htmlFor="max-positions">Maximum Concurrent Positions</Label>
+                        <Input 
+                          id="max-positions" 
+                          type="number" 
+                          step="1"
+                          min="1"
+                          max="20"
+                          value={localPolicy.maxConcurrentPositions || 5}
+                          onChange={(e) => updateField('maxConcurrentPositions', Number(e.target.value))}
+                          disabled={localPolicy.emergencyPause}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Maximum number of positions to maintain across all protocols
+                        </p>
+                      </div>
+                    </>
+                  )}
+
+                  <Separator />
+
+                  {/* Risk Management Alert */}
+                  <Alert className="border-accent/20 bg-accent/5">
+                    <AlertTriangle className="h-4 w-4 text-accent" />
+                    <AlertDescription className="text-xs">
+                      <strong>Risk Notice:</strong> Auto-deployment uses your defined risk limits (Max Per Pool, Max Per Chain) to ensure safe capital allocation. Review your risk limits below before enabling.
+                    </AlertDescription>
+                  </Alert>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
