@@ -23,7 +23,7 @@ export interface BotConfig {
 }
 
 class BotOrchestrationService {
-  private runningInterval: ReturnType<typeof setInterval> | null = null;
+  private runningTimeout: ReturnType<typeof setTimeout> | null = null;
   private status: BotStatus = {
     isRunning: false,
     startedAt: null,
@@ -56,13 +56,8 @@ class BotOrchestrationService {
       // Persist status to database
       await this.saveBotStatus();
 
-      // Start the automation loop
-      this.runningInterval = setInterval(() => {
-        this.automationLoop(config);
-      }, config.checkIntervalMs);
-
-      // Run immediately on start
-      await this.automationLoop(config);
+      // Start the continuous automation loop
+      this.startContinuousLoop(config);
 
       console.log("[BotOrchestration] Bot started successfully");
       return true;
@@ -70,6 +65,22 @@ class BotOrchestrationService {
       console.error("[BotOrchestration] Failed to start bot:", error);
       this.status.isRunning = false;
       return false;
+    }
+  }
+
+  /**
+   * Continuous loop using recursive setTimeout
+   * Waits for each cycle to complete before scheduling the next
+   */
+  private async startContinuousLoop(config: BotConfig): Promise<void> {
+    // Run one cycle
+    await this.automationLoop(config);
+
+    // Schedule next cycle only if bot is still running
+    if (this.status.isRunning) {
+      this.runningTimeout = setTimeout(() => {
+        this.startContinuousLoop(config);
+      }, config.checkIntervalMs);
     }
   }
 
@@ -85,10 +96,10 @@ class BotOrchestrationService {
     }
 
     try {
-      // Clear interval
-      if (this.runningInterval) {
-        clearInterval(this.runningInterval);
-        this.runningInterval = null;
+      // Clear timeout
+      if (this.runningTimeout) {
+        clearTimeout(this.runningTimeout);
+        this.runningTimeout = null;
       }
 
       // Update status
