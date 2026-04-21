@@ -56,9 +56,15 @@ export default function Automation() {
       return;
     }
 
+    console.log("[Automation] Saving policy:", localPolicy);
+    console.log("[Automation] autoDeployIdle value:", localPolicy.autoDeployIdle);
+
     setSaveLoading(true);
     try {
       updatePolicy(localPolicy);
+      
+      console.log("[Automation] Policy saved to store");
+      
       await orchestrator.publishEvent({
         type: "policy_updated",
         source: "automation_page",
@@ -321,7 +327,12 @@ export default function Automation() {
   };
 
   const updateField = (key: keyof typeof localPolicy, value: any) => {
-    setLocalPolicy(prev => ({ ...prev, [key]: value }));
+    console.log(`[Automation] Updating policy field: ${key} = ${value}`);
+    setLocalPolicy(prev => {
+      const updated = { ...prev, [key]: value };
+      console.log("[Automation] Updated localPolicy:", updated);
+      return updated;
+    });
   };
 
   return (
