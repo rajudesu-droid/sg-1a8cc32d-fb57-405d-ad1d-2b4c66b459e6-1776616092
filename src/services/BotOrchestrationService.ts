@@ -657,7 +657,7 @@ class BotOrchestrationService {
       // CRITICAL: Trigger portfolio recalculation
       const { portfolioEngine } = await import("@/core/engines");
       console.log(`[BotOrchestration] Triggering portfolio recalculation...`);
-      await portfolioEngine.recalculate();
+      await portfolioEngine.calculatePortfolio();
       
       // CRITICAL: Trigger sync engine to update all pages
       const { syncEngine } = await import("@/core/sync");
