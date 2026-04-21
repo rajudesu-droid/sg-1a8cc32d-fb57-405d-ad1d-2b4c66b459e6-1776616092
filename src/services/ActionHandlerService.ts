@@ -273,7 +273,7 @@ class ActionHandlerService {
       });
 
       // Trigger sync
-      await syncEngine.syncModules(["positions", "rewards", "portfolio"]);
+      await syncEngine.syncAffectedModules(["positions", "rewards", "portfolio"]);
 
       return { 
         success: true, 
