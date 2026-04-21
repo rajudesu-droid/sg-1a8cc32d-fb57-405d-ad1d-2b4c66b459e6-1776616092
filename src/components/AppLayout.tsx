@@ -105,12 +105,23 @@ export function AppLayout({ children }: AppLayoutProps) {
           </SidebarContent>
         </Sidebar>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto bg-gradient-to-br from-background via-background to-primary/5">
-          <div className="container mx-auto p-6 space-y-6 pb-24">
-            {children}
-          </div>
-        </main>
+        {/* Main Content Area */}
+        <SidebarInset>
+          {/* Header */}
+          <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6">
+            <SidebarTrigger className="-ml-1" />
+            <div className="flex-1" />
+            <ModeSelector />
+            <WalletButton />
+          </header>
+
+          {/* Main Content */}
+          <main className="flex-1 overflow-auto bg-gradient-to-br from-background via-background to-primary/5">
+            <div className="container mx-auto p-6 space-y-6 pb-24">
+              {children}
+            </div>
+          </main>
+        </SidebarInset>
       </div>
 
       {/* Live Activity Bar */}
