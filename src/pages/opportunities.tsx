@@ -14,7 +14,6 @@ import { opportunityEngine } from "@/core/engines";
 import { ProtocolReadinessIndicator } from "@/components/ProtocolReadinessIndicator";
 import { protocolRegistry } from "@/core/protocols/ProtocolRegistry";
 import { actionHandler } from "@/services/ActionHandlerService";
-import type { ActionContext } from "@/services/ActionHandlerService";
 
 type SortOption = "recommended" | "apy" | "tvl" | "risk";
 type RiskFilter = "all" | "low" | "medium" | "high";
@@ -26,10 +25,12 @@ export default function Opportunities() {
   const [protocolFilter, setProtocolFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   
+  const [isScanning, setIsScanning] = useState(false);
+  const [openLoading, setOpenLoading] = useState<string | null>(null);
+  
   const { toast } = useToast();
   const mode = useAppStore((state) => state.mode);
   const opportunities = useAppStore((state) => state.opportunities);
-  const [isScanning, setIsScanning] = useState(false);
 
   // Listen for mode changes
   useEffect(() => {
@@ -47,15 +48,82 @@ export default function Opportunities() {
     return () => unsubscribe();
   }, []);
 
+  const getActionContext = () => ({
+    mode: mode.current,
+    metadata: { source: "opportunities_page" },
+  });
+
   const handleRefreshPools = async () => {
     setIsScanning(true);
-    toast({
-      title: "Scanning Protocols",
-      description: `Discovering opportunities across DEXs...`,
-    });
-    
-    await opportunityEngine.scanOpportunities();
-    setIsScanning(false);
+    try {
+      const result = await actionHandler.refreshOpportunities(getActionContext());
+      toast({
+        title: result.success ? "Opportunities Refreshed" : "Refresh Failed",
+        description: result.message,
+        variant: result.success ? "default" : "destructive",
+      });
+    } catch (error) {
+      toast({
+        title: "Refresh Failed",
+        description: "Failed to refresh opportunities",
+        variant: "destructive",
+      });
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleOpenPosition = async (opp: any) => {
+    if (mode.current === "shadow") {
+      toast({
+        title: "Shadow Mode - Action Simulated",
+        description: `Would deploy to ${opp.token0Symbol}/${opp.token1Symbol} on ${opp.protocolName}.`,
+        variant: "default",
+      });
+      return;
+    }
+
+    setOpenLoading(opp.id);
+    try {
+      await orchestrator.publishEvent({
+        type: "position_opened",
+        source: "opportunities_page",
+        timestamp: new Date(),
+        affectedModules: ["position", "portfolio"],
+        data: { opportunity: opp },
+      });
+
+      // Optimistically add to store for demo/live simulation
+      useAppStore.getState().addPosition({
+        id: `pos-${Date.now()}`,
+        pair: `${opp.token0Symbol}/${opp.token1Symbol || 'Native'}`,
+        chain: opp.chain,
+        dex: opp.protocolName,
+        status: "active",
+        valueUsd: 1000, 
+        rangeMin: 0,
+        rangeMax: 0,
+        currentPrice: 0,
+        liquidity: 1000,
+        accruedFees: 0,
+        accruedRewards: 0,
+        health: 100,
+        openedAt: new Date(),
+      } as any);
+
+      toast({
+        title: mode.current === "demo" ? "Simulating Deployment" : "Deploying Position",
+        description: `${mode.current === "demo" ? "Simulating" : "Opening"} LP position on ${opp.protocolName}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Action Failed",
+        description: "Failed to open position",
+        variant: "destructive",
+      });
+    } finally {
+      setOpenLoading(null);
+    }
   };
 
   const getRiskLevel = (score: number) => {
@@ -86,22 +154,6 @@ export default function Opportunities() {
     if (level === "low") return "border-success/50 text-success bg-success/10";
     if (level === "medium") return "border-accent/50 text-accent bg-accent/10";
     return "border-destructive/50 text-destructive bg-destructive/10";
-  };
-
-  const handleQuickDeploy = (opp: any) => {
-    if (mode.current === "shadow") {
-      toast({
-        title: "Shadow Mode - Action Simulated",
-        description: `Would deploy to ${opp.token0Symbol}/${opp.token1Symbol} on ${opp.protocolName}.`,
-        variant: "default",
-      });
-      return;
-    }
-
-    toast({
-      title: mode.current === "demo" ? "Simulating Deployment" : "Deploying Position",
-      description: `${mode.current === "demo" ? "Simulating" : "Opening"} LP position on ${opp.protocolName}`,
-    });
   };
 
   const uniqueChains = Array.from(new Set(opportunities.map(o => o.chain)));
@@ -358,7 +410,7 @@ export default function Opportunities() {
                           const readiness = protocolRegistry.getProtocolReadiness(opp.protocolName);
                           return readiness ? (
                             <ProtocolReadinessIndicator
-                              readiness={readiness.readiness}
+                              readiness={readiness.readiness as any}
                               blockingIssues={readiness.blockingIssues}
                               showLabel={false}
                               size="sm"
