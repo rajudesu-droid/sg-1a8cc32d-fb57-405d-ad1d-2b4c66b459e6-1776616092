@@ -202,11 +202,18 @@ export interface RewardsState {
 // ==================== POLICY ====================
 export interface PolicyRules {
   autoHarvest: boolean;
-  harvestFrequency: "hourly" | "daily" | "weekly";
+  harvestFrequency: "daily" | "weekly" | "monthly";
   autoCompound: boolean;
   autoRebalance: boolean;
   rebalanceFrequency: "daily" | "weekly" | "monthly";
   autoDeployIdle: boolean;
+  minIdleAmount?: number;
+  maxAutoDeployAmount?: number;
+  deployStrategy?: "best_score" | "highest_apy" | "lowest_risk" | "balanced";
+  minAutoDeployScore?: number;
+  deployFrequency?: "continuous" | "hourly" | "daily" | "weekly";
+  diversifyDeployments?: boolean;
+  maxConcurrentPositions?: number;
   minHarvestAmount: number;
   minRebalanceEdge: number;
   dailyGasBudget: number;
