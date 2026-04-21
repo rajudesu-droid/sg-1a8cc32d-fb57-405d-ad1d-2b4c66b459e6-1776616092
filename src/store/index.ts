@@ -337,6 +337,7 @@ export const useAppStore = create<AppState>()(
           autoRebalance: false,
           rebalanceFrequency: "weekly",
           autoDeployIdle: false,
+          autoReinvest: false,
           minHarvestAmount: 50,
           minRebalanceEdge: 5,
           dailyGasBudget: 100,
