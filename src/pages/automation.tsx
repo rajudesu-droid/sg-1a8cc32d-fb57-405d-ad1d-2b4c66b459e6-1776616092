@@ -656,6 +656,21 @@ export default function Automation() {
           <CardContent>
             <div className="space-y-4">
               <div className="space-y-2">
+                <Label htmlFor="min-pool-score">Minimum Pool Score</Label>
+                <Input 
+                  id="min-pool-score" 
+                  type="number" 
+                  min="0" 
+                  max="100"
+                  value={localPolicy.minPoolScore}
+                  onChange={(e) => updateField('minPoolScore', Number(e.target.value))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Only deploy to opportunities with score ≥ this value (0-100). Lower = more pools qualify.
+                </p>
+              </div>
+              <Separator />
+              <div className="space-y-2">
                 <Label htmlFor="daily-gas">Daily Gas Budget (USD)</Label>
                 <Input 
                   id="daily-gas" type="number"
