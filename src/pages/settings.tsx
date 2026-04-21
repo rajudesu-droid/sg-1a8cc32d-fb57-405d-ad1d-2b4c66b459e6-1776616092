@@ -571,8 +571,8 @@ export default function Settings() {
                             </div>
                             <p className="text-xs text-muted-foreground">
                               {protocol.spenderCount > 0
-                                ? `${protocol.spenderCount} whitelisted contract${protocol.spenderCount !== 1 ? 's' : ''} on ${protocol.chain}`
-                                : "No whitelisted contracts"}
+                                ? `${protocol.spenderCount} whitelisted spender${protocol.spenderCount !== 1 ? 's' : ''} on ${protocol.chain}`
+                                : "No whitelisted spenders - cannot enable"}
                             </p>
                           </div>
                           <Switch
