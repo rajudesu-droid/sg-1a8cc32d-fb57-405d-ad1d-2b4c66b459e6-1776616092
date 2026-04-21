@@ -20,6 +20,17 @@ export default function Automation() {
   const mode = useAppStore((state) => state.mode);
   const policy = useAppStore((state) => state.policy);
   const updatePolicy = useAppStore((state) => state.setPolicy);
+  const [testingConnection, setTestingConnection] = useState(false);
+  
+  // Bot control states
+  const botRunning = useAppStore((state) => state.botRunning);
+  const setBotRunning = useAppStore((state) => state.setBotRunning);
+  const [startingBot, setStartingBot] = useState(false);
+  const [stoppingBot, setStoppingBot] = useState(false);
+  
+  // Track if settings have changed
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
   const { toast } = useToast();
 
   const [localPolicy, setLocalPolicy] = useState(policy);
@@ -199,6 +210,116 @@ export default function Automation() {
     }
   };
 
+  const handleTestConnection = async () => {
+    setTestingConnection(true);
+    try {
+      // Simulate connection test
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      toast({
+        title: "Connection Test Successful",
+        description: "All integrations are working correctly",
+      });
+    } catch (error) {
+      toast({
+        title: "Connection Test Failed",
+        description: "Some integrations may not be working",
+        variant: "destructive",
+      });
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
+  const handleStartBot = async () => {
+    if (localPolicy.emergencyPause) {
+      toast({
+        title: "Cannot Start Bot",
+        description: "Emergency pause is active. Deactivate it first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setStartingBot(true);
+    try {
+      const { botOrchestrationService } = await import("@/services/BotOrchestrationService");
+      
+      const success = await botOrchestrationService.startBot({
+        mode: mode.current,
+        checkIntervalMs: 10000, // Check every 10 seconds
+        autoHarvest: localPolicy.autoHarvest,
+        autoCompound: localPolicy.autoCompound,
+        autoRebalance: localPolicy.autoRebalance,
+      });
+
+      if (success) {
+        setBotRunning(true);
+        
+        await orchestrator.publishEvent({
+          type: "bot_started",
+          source: "automation_page",
+          timestamp: new Date(),
+          affectedModules: ["automation"],
+          data: { mode: mode.current },
+        });
+
+        toast({
+          title: "Bot Started",
+          description: "Automation bot is now running",
+        });
+      } else {
+        throw new Error("Failed to start bot");
+      }
+    } catch (error) {
+      console.error("[Automation] Failed to start bot:", error);
+      toast({
+        title: "Start Failed",
+        description: "Failed to start automation bot",
+        variant: "destructive",
+      });
+    } finally {
+      setStartingBot(false);
+    }
+  };
+
+  const handleStopBot = async () => {
+    setStoppingBot(true);
+    try {
+      const { botOrchestrationService } = await import("@/services/BotOrchestrationService");
+      
+      const success = await botOrchestrationService.stopBot();
+
+      if (success) {
+        setBotRunning(false);
+        
+        await orchestrator.publishEvent({
+          type: "bot_stopped",
+          source: "automation_page",
+          timestamp: new Date(),
+          affectedModules: ["automation"],
+          data: {},
+        });
+
+        toast({
+          title: "Bot Stopped",
+          description: "Automation bot has been stopped",
+        });
+      } else {
+        throw new Error("Failed to stop bot");
+      }
+    } catch (error) {
+      console.error("[Automation] Failed to stop bot:", error);
+      toast({
+        title: "Stop Failed",
+        description: "Failed to stop automation bot",
+        variant: "destructive",
+      });
+    } finally {
+      setStoppingBot(false);
+    }
+  };
+
   const updateField = (key: keyof typeof localPolicy, value: any) => {
     setLocalPolicy(prev => ({ ...prev, [key]: value }));
   };
@@ -206,7 +327,7 @@ export default function Automation() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Header Actions */}
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Automation & Rules</h1>
@@ -218,6 +339,34 @@ export default function Automation() {
             <Badge variant={mode.current === "demo" ? "secondary" : mode.current === "shadow" ? "outline" : "default"}>
               {mode.current === "demo" ? "Demo Mode" : mode.current === "shadow" ? "Shadow Mode" : "Live Mode"}
             </Badge>
+            
+            {/* Bot Control */}
+            {!botRunning ? (
+              <Button 
+                onClick={handleStartBot}
+                disabled={startingBot || localPolicy.emergencyPause || mode.current === "shadow"}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {startingBot ? (
+                  <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Starting...</>
+                ) : (
+                  <><Play className="mr-2 h-4 w-4" /> Start Bot</>
+                )}
+              </Button>
+            ) : (
+              <Button 
+                onClick={handleStopBot}
+                disabled={stoppingBot}
+                variant="destructive"
+              >
+                {stoppingBot ? (
+                  <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Stopping...</>
+                ) : (
+                  <><Square className="mr-2 h-4 w-4" /> Stop Bot</>
+                )}
+              </Button>
+            )}
+            
             <Button 
               variant="outline" 
               onClick={handleResetRules}

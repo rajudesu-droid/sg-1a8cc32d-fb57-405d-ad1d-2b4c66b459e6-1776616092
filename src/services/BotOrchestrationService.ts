@@ -204,28 +204,22 @@ class BotOrchestrationService {
         const rewardValueUSD = position.accruedRewards;
 
         // Check if rewards exceed minimum harvest threshold
-        if (rewardValueUSD >= policy.minHarvestValue) {
+        const minHarvestAmount = policy.minHarvestAmount || 50;
+        if (rewardValueUSD >= minHarvestAmount) {
           console.log(`[BotOrchestration] Harvesting position ${position.id}: $${rewardValueUSD.toFixed(2)} in rewards`);
           
-          // Publish harvest action via orchestrator
+          // Publish harvest event via orchestrator
           const { orchestrator } = await import("@/core/orchestrator");
           await orchestrator.publishEvent({
-            type: "action_triggered",
+            type: "rewards_harvested",
             source: "bot_automation",
             timestamp: new Date(),
-            affectedModules: [],
+            affectedModules: ["positions", "rewards"],
             data: {
-              type: "harvest_rewards",
-              payload: {
-                positionId: position.id,
-                expectedRewards: position.accruedRewards,
-              },
-              metadata: {
-                mode: mode as any,
-                source: "bot_automation",
-                timestamp: new Date(),
-              },
-            }
+              positionId: position.id,
+              pair: position.pair,
+              amount: rewardValueUSD,
+            },
           });
 
           harvested++;
@@ -239,7 +233,7 @@ class BotOrchestrationService {
             timestamp: new Date(),
           });
         } else {
-          console.log(`[BotOrchestration] Position ${position.id} rewards ($${rewardValueUSD.toFixed(2)}) below threshold ($${policy.minHarvestValue})`);
+          console.log(`[BotOrchestration] Position ${position.id} rewards ($${rewardValueUSD.toFixed(2)}) below threshold ($${minHarvestAmount})`);
         }
       }
 
@@ -284,29 +278,23 @@ class BotOrchestrationService {
 
         const rewardValueUSD = position.accruedRewards;
 
-        // Check if harvested rewards exceed compound threshold
-        if (rewardValueUSD >= policy.compoundThreshold) {
+        // Check if harvested rewards exceed compound threshold (use minHarvestAmount as proxy)
+        const compoundThreshold = policy.minHarvestAmount || 50;
+        if (rewardValueUSD >= compoundThreshold) {
           console.log(`[BotOrchestration] Compounding position ${position.id}: $${rewardValueUSD.toFixed(2)} in rewards`);
           
-          // Publish compound action via orchestrator
+          // Publish compound event via orchestrator
           const { orchestrator } = await import("@/core/orchestrator");
           await orchestrator.publishEvent({
-            type: "action_triggered",
+            type: "rewards_compounded",
             source: "bot_automation",
             timestamp: new Date(),
-            affectedModules: [],
+            affectedModules: ["positions", "rewards"],
             data: {
-              type: "compound_rewards",
-              payload: {
-                positionId: position.id,
-                rewardAmount: position.accruedRewards,
-              },
-              metadata: {
-                mode: mode as any,
-                source: "bot_automation",
-                timestamp: new Date(),
-              },
-            }
+              positionId: position.id,
+              pair: position.pair,
+              amount: rewardValueUSD,
+            },
           });
 
           compounded++;
@@ -320,7 +308,7 @@ class BotOrchestrationService {
             timestamp: new Date(),
           });
         } else {
-          console.log(`[BotOrchestration] Position ${position.id} rewards ($${rewardValueUSD.toFixed(2)}) below compound threshold ($${policy.compoundThreshold})`);
+          console.log(`[BotOrchestration] Position ${position.id} rewards ($${rewardValueUSD.toFixed(2)}) below compound threshold ($${compoundThreshold})`);
         }
       }
 
@@ -362,10 +350,11 @@ class BotOrchestrationService {
         const currentAPY = 0; // APY tracking placeholder
 
         // Find better opportunities for the same token pair
+        const minRebalanceEdge = policy.minRebalanceEdge || 5;
         const betterOpportunities = opportunities.filter(opp => {
           // Same pair, different pool or protocol
           return opp.pair === position.pair && 
-                 opp.estimatedAPY > currentAPY * (1 + policy.rebalanceThreshold / 100);
+                 opp.estimatedAPY > currentAPY * (1 + minRebalanceEdge / 100);
         });
 
         if (betterOpportunities.length > 0 || isOutOfRange) {
@@ -374,26 +363,19 @@ class BotOrchestrationService {
           
           console.log(`[BotOrchestration] Rebalancing position ${position.id}: ${isOutOfRange ? 'Out of range' : `+${apyImprovement}% APY improvement`}`);
           
-          // Publish rebalance action via orchestrator
+          // Publish rebalance event via orchestrator
           const { orchestrator } = await import("@/core/orchestrator");
           await orchestrator.publishEvent({
-            type: "action_triggered",
+            type: "position_rebalanced",
             source: "bot_automation",
             timestamp: new Date(),
-            affectedModules: [],
+            affectedModules: ["positions"],
             data: {
-              type: "rebalance_position",
-              payload: {
-                positionId: position.id,
-                reason: isOutOfRange ? "out-of-range" : "better_opportunity",
-                targetOpportunity: bestOpp?.id,
-              },
-              metadata: {
-                mode: mode as any,
-                source: "bot_automation",
-                timestamp: new Date(),
-              },
-            }
+              positionId: position.id,
+              pair: position.pair,
+              reason: isOutOfRange ? "out-of-range" : "better_opportunity",
+              targetOpportunity: bestOpp?.id,
+            },
           });
 
           rebalanced++;
