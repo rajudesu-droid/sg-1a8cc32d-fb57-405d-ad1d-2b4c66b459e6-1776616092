@@ -522,7 +522,7 @@ export default function Settings() {
                             id={`chain-${chain.id}`}
                             checked={chain.enabled}
                             onCheckedChange={(checked) => handleChainToggle(index, checked)}
-                            disabled={saving}
+                            disabled={saving || loading}
                           />
                         </div>
                         {index !== chainSettings.length - 1 && <Separator className="mt-4" />}
@@ -570,7 +570,7 @@ export default function Settings() {
                               )}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                              {protocol.enabled 
+                              {protocol.spenderCount > 0
                                 ? `${protocol.spenderCount} whitelisted contract${protocol.spenderCount !== 1 ? 's' : ''} on ${protocol.chain}`
                                 : "No whitelisted contracts"}
                             </p>
@@ -578,7 +578,7 @@ export default function Settings() {
                           <Switch
                             id={`protocol-${protocol.id}`}
                             checked={protocol.enabled}
-                            disabled={!protocol.enabled || saving} // Can't enable if no spenders
+                            disabled={protocol.spenderCount === 0 || saving || loading}
                             onCheckedChange={(checked) => handleProtocolToggle(index, checked)}
                           />
                         </div>

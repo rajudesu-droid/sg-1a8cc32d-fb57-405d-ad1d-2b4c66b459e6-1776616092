@@ -465,21 +465,16 @@ class BotOrchestrationService {
       console.log(`[BotOrchestration] Found ${assets.length} assets in wallet`);
       
       // Calculate total idle capital (non-LP assets)
-      let idleCapital = assets
+      const idleCapital = assets
         .filter((a: any) => a.assetKind !== "lp" && a.assetKind !== "position")
         .reduce((sum: number, a: any) => sum + (a.valueUsd || 0), 0);
 
-      // Mock some idle capital for demo mode simulation if empty
-      if (idleCapital === 0 && mode === "demo") {
-        idleCapital = 5000;
-      }
+      console.log(`[BotOrchestration] Total idle capital: $${idleCapital.toFixed(2)}`);
 
       if (idleCapital === 0) {
         console.log("[BotOrchestration] No idle capital found for auto-deploy");
         return 0;
       }
-
-      console.log(`[BotOrchestration] Total idle capital: $${idleCapital.toFixed(2)}`);
 
       // Check if idle capital meets minimum threshold (simplified default)
       const minIdleAmount = 100;
