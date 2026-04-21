@@ -273,15 +273,11 @@ class BotOrchestrationService {
               // Find matching token or add to first token
               const updatedTokens = [...wallet.tokens];
               if (updatedTokens.length > 0) {
-                updatedTokens[0].quantity += rewardValueUSD / (updatedTokens[0].currentPrice || 1);
+                updatedTokens[0].quantity += rewardValueUSD / (updatedTokens[0].priceUsd || 1);
                 updatedTokens[0].totalValue += rewardValueUSD;
               }
 
-              useAppStore.getState().updatePaperWallet(wallet.id, {
-                ...wallet,
-                tokens: updatedTokens,
-                totalValue: updatedTokens.reduce((sum, t) => sum + t.totalValue, 0),
-              });
+              useAppStore.getState().updatePaperWallet(wallet.id, updatedTokens);
             }
 
             console.log(`[BotOrchestration] Harvested rewards added to Paper Wallet`);
@@ -368,8 +364,7 @@ class BotOrchestrationService {
               p.id === position.id 
                 ? { 
                     ...p, 
-                    deployed: p.deployed + rewardValueUSD,
-                    currentValue: p.currentValue + rewardValueUSD,
+                    valueUsd: (p as any).valueUsd + rewardValueUSD,
                     accruedRewards: 0,
                     lastUpdated: new Date()
                   }
@@ -563,14 +558,17 @@ class BotOrchestrationService {
         const newPosition = {
           id: `pos-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           opportunityId: bestOpp.id,
+          dex: bestOpp.protocolName,
           protocol: bestOpp.protocolName,
           chain: bestOpp.chain,
           pair: `${bestOpp.token0Symbol}/${bestOpp.token1Symbol || "?"}`,
           token0: bestOpp.token0Symbol,
           token1: bestOpp.token1Symbol || "?",
           feeTier: bestOpp.feeTier || "0.30%",
-          deployed: deployAmount,
-          currentValue: deployAmount,
+          liquidity: deployAmount,
+          valueUsd: deployAmount,
+          estimatedIL: 0,
+          health: 100,
           status: "in-range" as const,
           rangeMin: 0.95,
           rangeMax: 1.05,
@@ -581,7 +579,7 @@ class BotOrchestrationService {
           estimatedAPY: bestOpp.totalYield,
           openedAt: new Date(),
           lastUpdated: new Date(),
-        };
+        } as any;
 
         // Add position to store
         useAppStore.getState().addPosition(newPosition);
@@ -604,14 +602,8 @@ class BotOrchestrationService {
             return token;
           });
 
-          useAppStore.getState().updatePaperWallet(wallet.id, {
-            ...wallet,
-            tokens: updatedTokens,
-            totalValue: updatedTokens.reduce((sum, t) => sum + t.totalValue, 0),
-          });
+          useAppStore.getState().updatePaperWallet(wallet.id, updatedTokens);
         }
-
-        console.log(`[BotOrchestration] Created position ${newPosition.id} and deducted $${deployAmount.toFixed(2)} from Paper Wallet`);
       }
 
       // Emit deployment event
