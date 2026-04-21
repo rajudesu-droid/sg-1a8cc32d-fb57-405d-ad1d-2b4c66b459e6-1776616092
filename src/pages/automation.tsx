@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store";
 import { orchestrator } from "@/core/orchestrator";
 import { actionHandler } from "@/services/ActionHandlerService";
+import type { BotConfig } from "@/services/BotOrchestrationService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Save, Zap, Shield, DollarSign, Activity, AlertTriangle, Eye, RefreshCw, Play, Square } from "lucide-react";
 
