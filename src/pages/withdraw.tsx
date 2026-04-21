@@ -4,21 +4,63 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, TrendingDown, Zap, AlertTriangle } from "lucide-react";
+import { DollarSign, TrendingDown, Zap, AlertTriangle, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useAppStore } from "@/store";
+import { useToast } from "@/hooks/use-toast";
+import { actionHandler } from "@/services/ActionHandlerService";
 
 export default function Withdraw() {
   const positions = useAppStore((state) => state.positions);
   const mode = useAppStore((state) => state.mode);
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [optimizeLoading, setOptimizeLoading] = useState(false);
+  const { toast } = useToast();
 
   // Calculate totals from real positions
   const totalPositionValue = positions.reduce((sum, p) => sum + p.valueUsd, 0);
   const totalPositions = positions.length;
 
-  const handleOptimize = () => {
-    console.log("Optimize withdrawal plan for:", withdrawAmount);
+  const handleOptimize = async () => {
+    if (!withdrawAmount || isNaN(parseFloat(withdrawAmount)) || parseFloat(withdrawAmount) <= 0) {
+      toast({ 
+        title: "Invalid Amount", 
+        description: "Please enter a valid withdrawal amount.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    if (parseFloat(withdrawAmount) > totalPositionValue) {
+      toast({ 
+        title: "Insufficient Funds", 
+        description: "Withdrawal amount exceeds total active position value.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setOptimizeLoading(true);
+    try {
+      const result = await actionHandler.generateWithdrawalPlan(
+        parseFloat(withdrawAmount),
+        { mode: mode.current, metadata: { source: "withdraw_page" } }
+      );
+      
+      toast({
+        title: result.success ? "Plan Generated" : "Generation Failed",
+        description: result.message,
+        variant: result.success ? "default" : "destructive",
+      });
+    } catch (error) {
+      toast({
+        title: "Action Failed",
+        description: "Failed to generate withdrawal plan.",
+        variant: "destructive",
+      });
+    } finally {
+      setOptimizeLoading(false);
+    }
   };
 
   return (
@@ -75,9 +117,22 @@ export default function Withdraw() {
                       onChange={(e) => setWithdrawAmount(e.target.value)}
                     />
                   </div>
-                  <Button onClick={handleOptimize} className="w-full">
-                    <Zap className="mr-2 h-4 w-4" />
-                    Generate Optimal Unwind Plan
+                  <Button 
+                    onClick={handleOptimize} 
+                    className="w-full"
+                    disabled={optimizeLoading || positions.length === 0}
+                  >
+                    {optimizeLoading ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Generating Plan...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="mr-2 h-4 w-4" />
+                        Generate Optimal Unwind Plan
+                      </>
+                    )}
                   </Button>
                 </div>
               </CardContent>
