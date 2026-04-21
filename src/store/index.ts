@@ -397,10 +397,17 @@ export const useAppStore = create<AppState>()(
           mode: state.mode,
           wallet: state.wallet,
           portfolio: state.portfolio,
+          demoPortfolio: state.demoPortfolio,
+          shadowPortfolio: state.shadowPortfolio,
+          livePortfolio: state.livePortfolio,
           policy: state.policy,
           simulation: state.simulation,
           botRunning: state.botRunning,
-          paperWallets: state.paperWallets, // Persist paper wallets
+          paperWallets: state.paperWallets,
+          // CRITICAL: Persist positions so they survive page refresh
+          demoPositions: state.demoPositions,
+          shadowPositions: state.shadowPositions,
+          livePositions: state.livePositions,
           // Don't persist alerts - they should be fresh on each session
         }),
       }

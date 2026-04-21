@@ -675,6 +675,63 @@ export type Database = {
           },
         ]
       }
+      supported_assets: {
+        Row: {
+          asset_kind: string
+          chain_family: string
+          coingecko_id: string | null
+          contract_address: string | null
+          created_at: string | null
+          currency_code: string | null
+          decimals: number
+          id: string
+          is_active: boolean | null
+          issuer: string | null
+          logo_url: string | null
+          mint_address: string | null
+          name: string
+          network: string
+          symbol: string
+          updated_at: string | null
+        }
+        Insert: {
+          asset_kind: string
+          chain_family: string
+          coingecko_id?: string | null
+          contract_address?: string | null
+          created_at?: string | null
+          currency_code?: string | null
+          decimals?: number
+          id?: string
+          is_active?: boolean | null
+          issuer?: string | null
+          logo_url?: string | null
+          mint_address?: string | null
+          name: string
+          network: string
+          symbol: string
+          updated_at?: string | null
+        }
+        Update: {
+          asset_kind?: string
+          chain_family?: string
+          coingecko_id?: string | null
+          contract_address?: string | null
+          created_at?: string | null
+          currency_code?: string | null
+          decimals?: number
+          id?: string
+          is_active?: boolean | null
+          issuer?: string | null
+          logo_url?: string | null
+          mint_address?: string | null
+          name?: string
+          network?: string
+          symbol?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       supported_pools: {
         Row: {
           chain_family: string
