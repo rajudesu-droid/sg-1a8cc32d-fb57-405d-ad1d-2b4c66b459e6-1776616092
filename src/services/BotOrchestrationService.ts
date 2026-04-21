@@ -593,7 +593,6 @@ class BotOrchestrationService {
 
       // In Demo Mode, create simulated position
       if (mode === "demo") {
-        // Create new position
         const newPosition = {
           id: `pos-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           opportunityId: bestOpp.id,
@@ -620,30 +619,52 @@ class BotOrchestrationService {
           lastUpdated: new Date(),
         } as any;
 
-        // Add position to store
+        console.log(`[BotOrchestration] Creating position:`, newPosition);
+
+        // Add position to store (this adds to generic positions array)
         useAppStore.getState().addPosition(newPosition);
+        
+        // Also add to demo-specific positions array
+        const currentDemoPositions = useAppStore.getState().demoPositions;
+        useAppStore.getState().setDemoPositions([...currentDemoPositions, newPosition]);
 
-        // Deduct deployed amount from Paper Wallet
-        const paperWallets = useAppStore.getState().paperWallets;
-        if (paperWallets.length > 0) {
-          const wallet = paperWallets[0];
-          const updatedTokens = wallet.tokens.map(token => {
-            // Deduct proportionally from assets with value
-            if (token.totalValue > 0) {
-              const deductionRatio = deployAmount / idleCapital;
-              const deductAmount = token.quantity * deductionRatio;
-              return {
-                ...token,
-                quantity: Math.max(0, token.quantity - deductAmount),
-                totalValue: Math.max(0, token.totalValue - (token.totalValue * deductionRatio)),
-              };
-            }
-            return token;
-          });
-
-          useAppStore.getState().updatePaperWallet(wallet.id, updatedTokens);
-        }
+        console.log(`[BotOrchestration] Position added to store`);
       }
+
+      // Deduct deployed amount from Paper Wallet
+      const paperWallets = useAppStore.getState().paperWallets;
+      if (paperWallets.length > 0) {
+        const wallet = paperWallets[0];
+        const updatedTokens = wallet.tokens.map(token => {
+          // Deduct proportionally from assets with value
+          if (token.totalValue > 0) {
+            const deductionRatio = deployAmount / idleCapital;
+            const deductAmount = token.quantity * deductionRatio;
+            return {
+              ...token,
+              quantity: Math.max(0, token.quantity - deductAmount),
+              totalValue: Math.max(0, token.totalValue - (token.totalValue * deductionRatio)),
+            };
+          }
+          return token;
+        });
+
+        useAppStore.getState().updatePaperWallet(wallet.id, updatedTokens);
+        
+        console.log(`[BotOrchestration] Deducted $${deployAmount.toFixed(2)} from Paper Wallet`);
+      }
+      
+      // CRITICAL: Trigger portfolio recalculation
+      const { portfolioEngine } = await import("@/core/engines");
+      console.log(`[BotOrchestration] Triggering portfolio recalculation...`);
+      await portfolioEngine.recalculate();
+      
+      // CRITICAL: Trigger sync engine to update all pages
+      const { syncEngine } = await import("@/core/sync");
+      console.log(`[BotOrchestration] Triggering sync engine...`);
+      await syncEngine.syncAll();
+      
+      console.log(`[BotOrchestration] Dashboard metrics should now update`);
 
       // Emit deployment event
       await orchestrator.publishEvent({
