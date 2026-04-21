@@ -15,67 +15,17 @@ import { useToast } from "@/hooks/use-toast";
 import { actionHandler } from "@/services/ActionHandlerService";
 import { supabase } from "@/integrations/supabase/client";
 
-// State for supported assets from database
-const [supportedNetworks, setSupportedNetworks] = useState<Array<{ id: string; name: string; enabled: boolean }>>([]);
-const [networkTokensDb, setNetworkTokensDb] = useState<Record<string, Array<{ symbol: string; name: string; address?: string }>>>({});
+interface TokenHolding {
+  id: string;
+  network: string;
+  symbol: string;
+  name: string;
+  balance: string;
+  price: string;
+  valueUsd: number;
+}
 
-// Fetch supported assets from database on mount
-useEffect(() => {
-  async function fetchSupportedAssets() {
-    const { data, error } = await supabase
-      .from("supported_assets")
-      .select("*")
-      .eq("is_active", true)
-      .order("network", { ascending: true })
-      .order("symbol", { ascending: true });
-
-    if (error) {
-      console.error("Failed to fetch supported assets:", error);
-      return;
-    }
-
-    if (!data || data.length === 0) {
-      console.warn("No supported assets found in database");
-      return;
-    }
-
-    // Group by network
-    const networkMap: Record<string, Array<{ symbol: string; name: string; address?: string }>> = {};
-    const networksSet = new Set<string>();
-
-    data.forEach((asset: any) => {
-      const network = asset.network;
-      networksSet.add(network);
-
-      if (!networkMap[network]) {
-        networkMap[network] = [];
-      }
-
-      networkMap[network].push({
-        symbol: asset.symbol,
-        name: asset.name,
-        address: asset.contract_address || asset.mint_address || undefined,
-      });
-    });
-
-    // Convert networks to array
-    const networks = Array.from(networksSet).map(name => ({
-      id: name.toLowerCase().replace(/\s+/g, "-"),
-      name,
-      enabled: true,
-    }));
-
-    setSupportedNetworks(networks);
-    setNetworkTokensDb(networkMap);
-
-    console.log(`Loaded ${data.length} supported assets across ${networks.length} networks`);
-  }
-
-  fetchSupportedAssets();
-}, []);
-
-// Use database data if available, fallback to hardcoded
-const SUPPORTED_CHAINS = supportedNetworks.length > 0 ? supportedNetworks : [
+const FALLBACK_CHAINS = [
   { id: "ethereum", name: "Ethereum", enabled: true },
   { id: "arbitrum", name: "Arbitrum", enabled: true },
   { id: "optimism", name: "Optimism", enabled: true },
@@ -83,7 +33,7 @@ const SUPPORTED_CHAINS = supportedNetworks.length > 0 ? supportedNetworks : [
   { id: "base", name: "Base", enabled: true },
 ];
 
-const networkTokens = Object.keys(networkTokensDb).length > 0 ? networkTokensDb : {
+const FALLBACK_TOKENS: Record<string, Array<{ symbol: string; name: string; address?: string }>> = {
   ethereum: [
     { symbol: "ETH", name: "Ethereum" },
     { symbol: "USDC", name: "USD Coin", address: "0xA0b8..." },
@@ -109,16 +59,6 @@ const networkTokens = Object.keys(networkTokensDb).length > 0 ? networkTokensDb 
   ],
 };
 
-interface TokenHolding {
-  id: string;
-  network: string;
-  symbol: string;
-  name: string;
-  balance: string;
-  price: string;
-  valueUsd: number;
-}
-
 export default function Wallets() {
   const mode = useAppStore((state) => state.mode);
   const wallet = useAppStore((state) => state.wallet);
@@ -128,6 +68,10 @@ export default function Wallets() {
   const updatePaperWallet = useAppStore((state) => state.updatePaperWallet);
 
   const { toast } = useToast();
+
+  // State for supported assets from database
+  const [supportedNetworks, setSupportedNetworks] = useState<Array<{ id: string; name: string; enabled: boolean }>>([]);
+  const [networkTokensDb, setNetworkTokensDb] = useState<Record<string, Array<{ symbol: string; name: string; address?: string }>>>({});
 
   const [connectLoading, setConnectLoading] = useState(false);
   const [disconnectLoading, setDisconnectLoading] = useState(false);
@@ -148,6 +92,64 @@ export default function Wallets() {
   const [isFetchingPrice, setIsFetchingPrice] = useState(false);
 
   const [expandedWallets, setExpandedWallets] = useState<Set<string>>(new Set());
+
+  // Fetch supported assets from database on mount
+  useEffect(() => {
+    async function fetchSupportedAssets() {
+      const { data, error } = await supabase
+        .from("supported_assets")
+        .select("*")
+        .eq("is_active", true)
+        .order("network", { ascending: true })
+        .order("symbol", { ascending: true });
+
+      if (error) {
+        console.error("Failed to fetch supported assets:", error);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        console.warn("No supported assets found in database");
+        return;
+      }
+
+      // Group by network
+      const networkMap: Record<string, Array<{ symbol: string; name: string; address?: string }>> = {};
+      const networksSet = new Set<string>();
+
+      data.forEach((asset: any) => {
+        const network = asset.network;
+        networksSet.add(network);
+
+        if (!networkMap[network]) {
+          networkMap[network] = [];
+        }
+
+        networkMap[network].push({
+          symbol: asset.symbol,
+          name: asset.name,
+          address: asset.contract_address || asset.mint_address || undefined,
+        });
+      });
+
+      // Convert networks to array
+      const networks = Array.from(networksSet).map(name => ({
+        id: name.toLowerCase().replace(/\s+/g, "-"),
+        name,
+        enabled: true,
+      }));
+
+      setSupportedNetworks(networks);
+      setNetworkTokensDb(networkMap);
+
+      console.log(`Loaded ${data.length} supported assets across ${networks.length} networks`);
+    }
+
+    fetchSupportedAssets();
+  }, []);
+
+  const SUPPORTED_CHAINS = supportedNetworks.length > 0 ? supportedNetworks : FALLBACK_CHAINS;
+  const networkTokens = Object.keys(networkTokensDb).length > 0 ? networkTokensDb : FALLBACK_TOKENS;
 
   const getActionContext = () => ({
     mode: mode.current,
@@ -272,7 +274,7 @@ export default function Wallets() {
     const valueUsd = numericBalance * fetchedPrice;
     const newToken: TokenHolding = {
       id: `token-${Date.now()}`,
-      network: SUPPORTED_CHAINS.find((c) => c.id === tokenNetwork)?.name || tokenNetwork,
+      network: SUPPORTED_CHAINS.find((c) => c.name === tokenNetwork)?.name || tokenNetwork,
       symbol: tokenInfo.symbol, 
       name: tokenInfo.name, 
       balance: tokenBalance, 
