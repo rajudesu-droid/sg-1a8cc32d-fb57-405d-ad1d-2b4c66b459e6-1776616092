@@ -303,7 +303,7 @@ export default function Positions() {
                         </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Opened {position.openedAt} • APR {position.apr || position.expectedApy || "18.5%"}
+                        Opened {position.openedAt}
                       </p>
                     </div>
 
