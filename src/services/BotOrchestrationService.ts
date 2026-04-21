@@ -179,6 +179,7 @@ class BotOrchestrationService {
     try {
       const { useAppStore } = await import("@/store");
       const { orchestrator } = await import("@/core/orchestrator");
+      const { opportunityEngine } = await import("@/core/engines");
       
       // Emit scanning event
       await orchestrator.publishEvent({
@@ -192,6 +193,9 @@ class BotOrchestrationService {
           chain: "All Networks",
         },
       });
+
+      // Scan for opportunities using engine
+      await opportunityEngine.scanOpportunities();
 
       // Get opportunities from store
       const opportunities = useAppStore.getState().opportunities;

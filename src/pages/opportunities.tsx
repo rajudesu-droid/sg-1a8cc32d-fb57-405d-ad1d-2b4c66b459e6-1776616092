@@ -35,7 +35,7 @@ export default function Opportunities() {
   const opportunities = useAppStore((state) => state.opportunities);
   const wallet = useAppStore((state) => state.wallet);
 
-  // Listen for mode changes
+  // Listen for mode changes and trigger initial scan
   useEffect(() => {
     const unsubscribe = orchestrator.subscribe((event) => {
       if (event.type === "mode_changed") {
