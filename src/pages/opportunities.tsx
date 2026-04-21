@@ -1,11 +1,11 @@
 import { AppLayout } from "@/components/AppLayout";
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, Search, Activity, DollarSign, Percent, RefreshCw, Eye } from "lucide-react";
+import { TrendingUp, Search, Activity, DollarSign, Percent, RefreshCw, Eye, Separator, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store";
 import { ModeBanner } from "@/components/ModeBanner";
@@ -27,10 +27,12 @@ export default function Opportunities() {
   
   const [isScanning, setIsScanning] = useState(false);
   const [openLoading, setOpenLoading] = useState<string | null>(null);
+  const [showDiagnostic, setShowDiagnostic] = useState(false);
   
   const { toast } = useToast();
   const mode = useAppStore((state) => state.mode);
   const opportunities = useAppStore((state) => state.opportunities);
+  const wallet = useAppStore((state) => state.wallet);
 
   // Listen for mode changes
   useEffect(() => {
@@ -56,16 +58,21 @@ export default function Opportunities() {
   const handleRefreshPools = async () => {
     setIsScanning(true);
     try {
-      const result = await actionHandler.refreshOpportunities(getActionContext());
+      // Import engines
+      const { opportunityEngine } = await import("@/core/engines");
+      
+      // Scan opportunities using current wallet assets
+      await opportunityEngine.scanOpportunities();
+      
       toast({
-        title: result.success ? "Opportunities Refreshed" : "Refresh Failed",
-        description: result.message,
-        variant: result.success ? "default" : "destructive",
+        title: "Opportunities Refreshed",
+        description: `Found ${useAppStore.getState().opportunities.length} opportunities`,
       });
     } catch (error) {
+      console.error("[Opportunities] Failed to refresh:", error);
       toast({
         title: "Refresh Failed",
-        description: "Failed to refresh opportunities",
+        description: "Failed to scan opportunities",
         variant: "destructive",
       });
     } finally {
@@ -257,6 +264,130 @@ export default function Opportunities() {
         </div>
 
         <ModeBanner />
+
+        {/* Diagnostic Panel */}
+        <Card className="card-gradient border-border/50">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Opportunity Scanner
+                </CardTitle>
+                <CardDescription>
+                  {mode.current === "demo" 
+                    ? "Scanning Paper Wallet assets for eligible opportunities"
+                    : mode.current === "shadow"
+                    ? "Scanning connected wallet assets (read-only)"
+                    : "Scanning connected wallet assets for eligible opportunities"}
+                </CardDescription>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowDiagnostic(!showDiagnostic)}
+              >
+                {showDiagnostic ? <Eye className="mr-2 h-4 w-4" /> : <Activity className="mr-2 h-4 w-4" />}
+                {showDiagnostic ? "Hide Details" : "Show Details"}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Summary */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Scanner Input</p>
+                  <p className="text-lg font-semibold">
+                    {mode.current === "demo" ? "Paper Wallet" : "Connected Wallet"}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Tradeable Assets</p>
+                  <p className="text-lg font-semibold">
+                    {wallet?.assets?.filter(a => a.assetKind === "native" || a.assetKind === "token").length || 0}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Opportunities Found</p>
+                  <p className="text-lg font-semibold">
+                    {opportunities.length}
+                  </p>
+                </div>
+              </div>
+
+              {showDiagnostic && (
+                <>
+                  <Separator />
+                  
+                  {/* Asset Breakdown */}
+                  <div>
+                    <h4 className="text-sm font-semibold mb-3">Scanner Inputs (Assets)</h4>
+                    {wallet?.assets?.filter(a => a.assetKind === "native" || a.assetKind === "token").length === 0 ? (
+                      <div className="text-center py-6 text-muted-foreground border border-dashed rounded-lg">
+                        <p className="text-sm">No tradeable assets found</p>
+                        <p className="text-xs mt-1">
+                          {mode.current === "demo" 
+                            ? "Add assets to your Paper Wallet to discover opportunities"
+                            : "Connect a wallet with assets to discover opportunities"}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {wallet?.assets
+                          ?.filter(a => a.assetKind === "native" || a.assetKind === "token")
+                          .map((asset, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-2 rounded bg-muted/30">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-xs">
+                                  {asset.network}
+                                </Badge>
+                                <span className="font-medium">{asset.symbol}</span>
+                                <span className="text-xs text-muted-foreground">{asset.name}</span>
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {asset.quantity.toLocaleString()} {asset.symbol}
+                                {asset.valueUsd && (
+                                  <span className="ml-2">${asset.valueUsd.toLocaleString()}</span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Empty State Reasons */}
+                  {opportunities.length === 0 && wallet?.assets?.length > 0 && (
+                    <>
+                      <Separator />
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3">Why No Opportunities?</h4>
+                        <div className="space-y-2">
+                          <div className="flex items-start gap-2 p-3 rounded bg-amber-500/10 border border-amber-500/30">
+                            <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                            <div className="text-sm">
+                              <p className="font-medium text-amber-600 dark:text-amber-400">Possible Reasons:</p>
+                              <ul className="mt-2 space-y-1 text-muted-foreground">
+                                <li>• No enabled protocols for your asset networks</li>
+                                <li>• No whitelisted pools for your specific tokens</li>
+                                <li>• Chains may be disabled in Settings</li>
+                                <li>• Protocols may need spender contracts configured</li>
+                              </ul>
+                              <p className="mt-2 text-xs">
+                                Go to <strong>Settings → Chains & DEXes</strong> to enable protocols
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         <Card className="card-gradient border-border/50">
           <CardContent className="p-6">
@@ -462,7 +593,32 @@ export default function Opportunities() {
             <CardContent className="py-12 text-center">
               <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-lg font-semibold mb-2">No opportunities found</h3>
-              <p className="text-muted-foreground">Try adjusting your filters or search term</p>
+              {wallet?.assets?.filter(a => a.assetKind === "native" || a.assetKind === "token").length === 0 ? (
+                <div className="space-y-3">
+                  <p className="text-muted-foreground">
+                    {mode.current === "demo" 
+                      ? "Add assets to your Paper Wallet to discover opportunities"
+                      : "Connect a wallet to discover opportunities"}
+                  </p>
+                  {mode.current === "demo" && (
+                    <Button onClick={() => window.location.href = "/wallets"}>
+                      Go to Paper Wallet
+                    </Button>
+                  )}
+                </div>
+              ) : opportunities.length === 0 ? (
+                <div className="space-y-3">
+                  <p className="text-muted-foreground">
+                    Click "Show Details" above to see why no opportunities were found
+                  </p>
+                  <Button variant="outline" onClick={handleRefreshPools}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Refresh Opportunities
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">Try adjusting your filters or search term</p>
+              )}
             </CardContent>
           </Card>
         )}
