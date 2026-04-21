@@ -134,12 +134,17 @@ class BotOrchestrationService {
       let actionsExecuted = 0;
 
       // Auto-deploy idle funds
+      console.log(`[BotOrchestration] Policy autoDeployIdle: ${policy.autoDeployIdle}`);
       if (policy.autoDeployIdle) {
+        console.log("[BotOrchestration] Executing auto-deploy idle funds");
         const deployed = await this.executeAutoDeployIdle(config.mode, opportunities, policy);
         actionsExecuted += deployed;
+      } else {
+        console.log("[BotOrchestration] Auto-deploy is disabled in policy");
       }
 
       // Auto-harvest
+      console.log(`[BotOrchestration] Config autoHarvest: ${config.autoHarvest}, Policy autoHarvest: ${policy.autoHarvest}`);
       if (config.autoHarvest && policy.autoHarvest) {
         const harvested = await this.executeAutoHarvest(config.mode, policy);
         actionsExecuted += harvested;
@@ -500,7 +505,9 @@ class BotOrchestrationService {
    * Execute auto-deploy idle funds
    */
   private async executeAutoDeployIdle(mode: string, opportunities: any[], policy: any): Promise<number> {
-    console.log(`[BotOrchestration] Checking auto-deploy conditions in ${mode} mode`);
+    console.log(`[BotOrchestration] ========== AUTO-DEPLOY CHECK ==========`);
+    console.log(`[BotOrchestration] Mode: ${mode}`);
+    console.log(`[BotOrchestration] Opportunities available: ${opportunities.length}`);
     
     try {
       const { useAppStore } = await import("@/store");
@@ -510,7 +517,7 @@ class BotOrchestrationService {
       const walletState = useAppStore.getState().wallet;
       const assets = walletState?.assets || [];
       
-      console.log(`[BotOrchestration] Found ${assets.length} assets in wallet`);
+      console.log(`[BotOrchestration] Wallet assets: ${assets.length}`);
       
       // Calculate total idle capital (non-LP assets)
       const idleCapital = assets
@@ -518,27 +525,36 @@ class BotOrchestrationService {
         .reduce((sum: number, a: any) => sum + (a.valueUsd || 0), 0);
 
       console.log(`[BotOrchestration] Total idle capital: $${idleCapital.toFixed(2)}`);
+      console.log(`[BotOrchestration] ✓ Checkpoint 1: Idle capital calculation complete`);
 
       if (idleCapital === 0) {
-        console.log("[BotOrchestration] No idle capital found for auto-deploy");
+        console.log("[BotOrchestration] ✗ FAIL: No idle capital found for auto-deploy");
         return 0;
       }
 
       // Check if idle capital meets minimum threshold (simplified default)
       const minIdleAmount = 100;
+      console.log(`[BotOrchestration] Checking threshold: $${idleCapital.toFixed(2)} >= $${minIdleAmount}`);
+      
       if (idleCapital < minIdleAmount) {
-        console.log(`[BotOrchestration] Idle capital ($${idleCapital.toFixed(2)}) below minimum ($${minIdleAmount})`);
+        console.log(`[BotOrchestration] ✗ FAIL: Idle capital ($${idleCapital.toFixed(2)}) below minimum ($${minIdleAmount})`);
         return 0;
       }
+      console.log(`[BotOrchestration] ✓ Checkpoint 2: Idle capital threshold met`);
 
       // Filter opportunities by minimum score
       const minScore = policy.minPoolScore || 70;
+      console.log(`[BotOrchestration] Filtering ${opportunities.length} opportunities by score >= ${minScore}`);
+      
       const qualifyingOpps = opportunities.filter((opp: any) => (opp.netScore || 0) >= minScore);
+      console.log(`[BotOrchestration] Found ${qualifyingOpps.length} qualifying opportunities`);
 
       if (qualifyingOpps.length === 0) {
-        console.log("[BotOrchestration] No opportunities meet minimum score requirement");
+        console.log("[BotOrchestration] ✗ FAIL: No opportunities meet minimum score requirement");
+        console.log("[BotOrchestration] Available opportunity scores:", opportunities.map((o: any) => o.netScore || 0));
         return 0;
       }
+      console.log(`[BotOrchestration] ✓ Checkpoint 3: Found qualifying opportunities`);
 
       // Sort by score (best first)
       qualifyingOpps.sort((a: any, b: any) => (b.netScore || 0) - (a.netScore || 0));
