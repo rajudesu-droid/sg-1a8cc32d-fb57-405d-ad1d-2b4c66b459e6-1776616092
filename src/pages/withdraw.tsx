@@ -14,7 +14,7 @@ export default function Withdraw() {
   const [withdrawAmount, setWithdrawAmount] = useState("");
 
   // Calculate totals from real positions
-  const totalPositionValue = positions.reduce((sum, p) => sum + p.currentValue, 0);
+  const totalPositionValue = positions.reduce((sum, p) => sum + p.valueUsd, 0);
   const totalPositions = positions.length;
 
   const handleOptimize = () => {
@@ -146,9 +146,9 @@ export default function Withdraw() {
                   {positions
                     .sort((a, b) => {
                       // Sort by priority: out of range first, then by value
-                      if (a.rangeStatus === "out_of_range" && b.rangeStatus !== "out_of_range") return -1;
-                      if (a.rangeStatus !== "out_of_range" && b.rangeStatus === "out_of_range") return 1;
-                      return b.currentValue - a.currentValue;
+                      if (a.status === "out-of-range" && b.status !== "out-of-range") return -1;
+                      if (a.status !== "out-of-range" && b.status === "out-of-range") return 1;
+                      return b.valueUsd - a.valueUsd;
                     })
                     .map((position) => (
                       <div
@@ -156,20 +156,20 @@ export default function Withdraw() {
                         className="flex items-center justify-between p-4 rounded-lg border border-border/50 bg-card/30"
                       >
                         <div>
-                          <div className="font-semibold">{position.poolPair}</div>
+                          <div className="font-semibold">{position.pair}</div>
                           <div className="text-sm text-muted-foreground">
-                            {position.protocol} • {position.chain}
+                            {position.dex} • {position.chain}
                           </div>
                         </div>
                         <div className="text-right">
                           <div className="font-semibold">
-                            ${position.currentValue.toLocaleString()}
+                            ${position.valueUsd.toLocaleString()}
                           </div>
                           <Badge
-                            variant={position.rangeStatus === "out_of_range" ? "destructive" : "default"}
+                            variant={position.status === "out-of-range" ? "destructive" : "default"}
                             className="text-xs"
                           >
-                            {position.rangeStatus === "in_range" ? "In Range" : "Out of Range"}
+                            {position.status === "active" ? "In Range" : "Out of Range"}
                           </Badge>
                         </div>
                       </div>

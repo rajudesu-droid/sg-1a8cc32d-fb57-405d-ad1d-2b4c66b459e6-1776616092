@@ -142,17 +142,17 @@ export default function Portfolio() {
                         className="flex items-center justify-between p-4 rounded-lg border border-border/50 bg-card/30"
                       >
                         <div>
-                          <div className="font-semibold">{position.poolPair}</div>
+                          <div className="font-semibold">{position.pair}</div>
                           <div className="text-sm text-muted-foreground">
-                            {position.protocol} • {position.chain}
+                            {position.dex} • {position.chain}
                           </div>
                         </div>
                         <div className="text-right">
                           <div className="font-semibold">
-                            ${position.currentValue.toLocaleString()}
+                            ${position.valueUsd?.toLocaleString()}
                           </div>
                           <div className="text-sm text-emerald-400">
-                            {position.apy.toFixed(2)}% APY
+                            {position.health}% Health
                           </div>
                         </div>
                       </div>

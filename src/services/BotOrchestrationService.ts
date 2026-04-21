@@ -196,12 +196,12 @@ class BotOrchestrationService {
       // Check each position for harvestable rewards
       for (const position of positions) {
         // Skip if position has no rewards or rewards below threshold
-        if (!position.unclaimedRewards || position.unclaimedRewards <= 0) {
+        if (!position.accruedRewards || position.accruedRewards <= 0) {
           continue;
         }
 
         // Calculate USD value of rewards (assume 1:1 for now, will be replaced with real price fetch)
-        const rewardValueUSD = position.unclaimedRewards;
+        const rewardValueUSD = position.accruedRewards;
 
         // Check if rewards exceed minimum harvest threshold
         if (rewardValueUSD >= policy.minHarvestValue) {
@@ -209,17 +209,23 @@ class BotOrchestrationService {
           
           // Publish harvest action via orchestrator
           const { orchestrator } = await import("@/core/orchestrator");
-          await orchestrator.publishAction({
-            type: "harvest_rewards",
-            payload: {
-              positionId: position.id,
-              expectedRewards: position.unclaimedRewards,
-            },
-            metadata: {
-              mode: mode as any,
-              source: "bot_automation",
-              timestamp: new Date(),
-            },
+          await orchestrator.publishEvent({
+            type: "action_triggered",
+            source: "bot_automation",
+            timestamp: new Date(),
+            affectedModules: [],
+            data: {
+              type: "harvest_rewards",
+              payload: {
+                positionId: position.id,
+                expectedRewards: position.accruedRewards,
+              },
+              metadata: {
+                mode: mode as any,
+                source: "bot_automation",
+                timestamp: new Date(),
+              },
+            }
           });
 
           harvested++;
@@ -229,7 +235,7 @@ class BotOrchestrationService {
             id: `harvest-${position.id}-${Date.now()}`,
             type: "success",
             title: "Auto-Harvest Executed",
-            message: `Harvested $${rewardValueUSD.toFixed(2)} from ${position.poolPair}`,
+            message: `Harvested $${rewardValueUSD.toFixed(2)} from ${position.pair}`,
             timestamp: new Date(),
           });
         } else {
@@ -272,11 +278,11 @@ class BotOrchestrationService {
       for (const position of positions) {
         // For compounding, we need harvested rewards (not unclaimed)
         // This would be tracked separately - for now, skip if no recent harvest
-        if (!position.unclaimedRewards || position.unclaimedRewards <= 0) {
+        if (!position.accruedRewards || position.accruedRewards <= 0) {
           continue;
         }
 
-        const rewardValueUSD = position.unclaimedRewards;
+        const rewardValueUSD = position.accruedRewards;
 
         // Check if harvested rewards exceed compound threshold
         if (rewardValueUSD >= policy.compoundThreshold) {
@@ -284,17 +290,23 @@ class BotOrchestrationService {
           
           // Publish compound action via orchestrator
           const { orchestrator } = await import("@/core/orchestrator");
-          await orchestrator.publishAction({
-            type: "compound_rewards",
-            payload: {
-              positionId: position.id,
-              rewardAmount: position.unclaimedRewards,
-            },
-            metadata: {
-              mode: mode as any,
-              source: "bot_automation",
-              timestamp: new Date(),
-            },
+          await orchestrator.publishEvent({
+            type: "action_triggered",
+            source: "bot_automation",
+            timestamp: new Date(),
+            affectedModules: [],
+            data: {
+              type: "compound_rewards",
+              payload: {
+                positionId: position.id,
+                rewardAmount: position.accruedRewards,
+              },
+              metadata: {
+                mode: mode as any,
+                source: "bot_automation",
+                timestamp: new Date(),
+              },
+            }
           });
 
           compounded++;
@@ -304,7 +316,7 @@ class BotOrchestrationService {
             id: `compound-${position.id}-${Date.now()}`,
             type: "success",
             title: "Auto-Compound Executed",
-            message: `Compounded $${rewardValueUSD.toFixed(2)} into ${position.poolPair}`,
+            message: `Compounded $${rewardValueUSD.toFixed(2)} into ${position.pair}`,
             timestamp: new Date(),
           });
         } else {
@@ -346,36 +358,42 @@ class BotOrchestrationService {
       // Check each position for rebalance opportunities
       for (const position of positions) {
         // Check if position is out of range or underperforming
-        const isOutOfRange = position.rangeStatus === "out_of_range";
-        const currentAPY = position.apy || 0;
+        const isOutOfRange = position.status === "out-of-range";
+        const currentAPY = 0; // APY tracking placeholder
 
         // Find better opportunities for the same token pair
         const betterOpportunities = opportunities.filter(opp => {
           // Same pair, different pool or protocol
-          return opp.pair === position.poolPair && 
+          return opp.pair === position.pair && 
                  opp.estimatedAPY > currentAPY * (1 + policy.rebalanceThreshold / 100);
         });
 
         if (betterOpportunities.length > 0 || isOutOfRange) {
           const bestOpp = betterOpportunities[0];
-          const apyImprovement = bestOpp ? ((bestOpp.estimatedAPY - currentAPY) / currentAPY * 100).toFixed(2) : "N/A";
+          const apyImprovement = bestOpp ? ((bestOpp.estimatedAPY - currentAPY) / (currentAPY || 1) * 100).toFixed(2) : "N/A";
           
           console.log(`[BotOrchestration] Rebalancing position ${position.id}: ${isOutOfRange ? 'Out of range' : `+${apyImprovement}% APY improvement`}`);
           
           // Publish rebalance action via orchestrator
           const { orchestrator } = await import("@/core/orchestrator");
-          await orchestrator.publishAction({
-            type: "rebalance_position",
-            payload: {
-              positionId: position.id,
-              reason: isOutOfRange ? "out_of_range" : "better_opportunity",
-              targetOpportunity: bestOpp?.id,
-            },
-            metadata: {
-              mode: mode as any,
-              source: "bot_automation",
-              timestamp: new Date(),
-            },
+          await orchestrator.publishEvent({
+            type: "action_triggered",
+            source: "bot_automation",
+            timestamp: new Date(),
+            affectedModules: [],
+            data: {
+              type: "rebalance_position",
+              payload: {
+                positionId: position.id,
+                reason: isOutOfRange ? "out-of-range" : "better_opportunity",
+                targetOpportunity: bestOpp?.id,
+              },
+              metadata: {
+                mode: mode as any,
+                source: "bot_automation",
+                timestamp: new Date(),
+              },
+            }
           });
 
           rebalanced++;
@@ -385,7 +403,7 @@ class BotOrchestrationService {
             id: `rebalance-${position.id}-${Date.now()}`,
             type: "info",
             title: "Auto-Rebalance Executed",
-            message: `Rebalanced ${position.poolPair}: ${isOutOfRange ? 'Out of range' : `+${apyImprovement}% APY improvement`}`,
+            message: `Rebalanced ${position.pair}: ${isOutOfRange ? 'Out of range' : `+${apyImprovement}% APY improvement`}`,
             timestamp: new Date(),
           });
         }

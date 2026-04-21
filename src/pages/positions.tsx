@@ -13,7 +13,7 @@ import { ModeBanner } from "@/components/ModeBanner";
 import { orchestrator } from "@/core/orchestrator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-type PositionStatus = "active" | "out_of_range" | "closed";
+type PositionStatus = "active" | "out-of-range" | "closed";
 
 interface Position {
   id: string;
@@ -25,11 +25,10 @@ interface Position {
   rangeMin: number;
   rangeMax: number;
   currentPrice: number;
-  liquidity: string;
-  accruedFees: string;
-  accruedRewards: string;
+  liquidity: number;
+  accruedFees: number;
+  accruedRewards: number;
   health: number;
-  apr: string;
   openedAt: string;
 }
 
@@ -186,7 +185,7 @@ export default function Positions() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${filteredPositions.reduce((sum, p) => sum + p.currentValue, 0).toLocaleString()}
+                ${filteredPositions.reduce((sum, p) => sum + p.valueUsd, 0).toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground">Deployed capital</p>
             </CardContent>
@@ -215,7 +214,7 @@ export default function Positions() {
                 +${filteredPositions
                   .reduce(
                     (sum, p) =>
-                      sum + (p.currentValue - p.initialValue + p.accruedFees + p.accruedRewards),
+                      sum + (p.accruedFees + p.accruedRewards),
                     0
                   )
                   .toLocaleString()}
@@ -254,7 +253,7 @@ export default function Positions() {
                   <SelectContent>
                     <SelectItem value="all">All Statuses</SelectItem>
                     <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="out_of_range">Out of Range</SelectItem>
+                    <SelectItem value="out-of-range">Out of Range</SelectItem>
                     <SelectItem value="closed">Closed</SelectItem>
                   </SelectContent>
                 </Select>
@@ -312,14 +311,14 @@ export default function Positions() {
                       variant={
                         position.status === "active"
                           ? "default"
-                          : position.status === "out_of_range"
+                          : position.status === "out-of-range"
                           ? "destructive"
                           : "secondary"
                       }
                     >
                       {position.status === "active"
                         ? "In Range"
-                        : position.status === "out_of_range"
+                        : position.status === "out-of-range"
                         ? "Out of Range"
                         : "Closed"}
                     </Badge>
