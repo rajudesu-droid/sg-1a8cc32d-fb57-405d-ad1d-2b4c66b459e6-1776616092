@@ -31,12 +31,23 @@ export default function Opportunities() {
   const opportunities = useAppStore((state) => state.opportunities);
   const [isScanning, setIsScanning] = useState(false);
 
-  const getActionContext = (): ActionContext => ({
-    mode: mode.current,
-    metadata: { source: "opportunities_page" },
-  });
+  // Listen for mode changes
+  useEffect(() => {
+    const unsubscribe = orchestrator.subscribe((event) => {
+      if (event.type === "mode_changed") {
+        handleRefreshPools();
+      }
+    });
+    
+    // Initial scan if empty
+    if (opportunities.length === 0) {
+      handleRefreshPools();
+    }
+    
+    return () => unsubscribe();
+  }, []);
 
-  const handleRefresh = async () => {
+  const handleRefreshPools = async () => {
     setIsScanning(true);
     toast({
       title: "Scanning Protocols",
@@ -47,58 +58,12 @@ export default function Opportunities() {
     setIsScanning(false);
   };
 
-  const handleOpenPosition = async (opportunity: any) => {
-    if (mode.current === "shadow") {
-      toast({
-        title: "Shadow Mode",
-        description: "Preview only - switch to Demo or Live mode to open positions",
-        variant: "default",
-      });
-      return;
-    }
-
-    toast({
-      title: mode.current === "demo" ? "Simulating Deployment" : "Deploying Position",
-      description: `${mode.current === "demo" ? "Simulating" : "Opening"} LP position on ${opportunity.protocolName}`,
-    });
-  };
-
-  const handleClearFilters = () => {
-    setSortBy("recommended");
-    setRiskFilter("all");
-    setChainFilter("all");
-    setProtocolFilter("all");
-    setSearchTerm("");
-    
-    toast({
-      title: "Filters Cleared",
-      description: "All filters reset to defaults",
-    });
-  };
-
-  // Listen for mode changes
-  useEffect(() => {
-    const unsubscribe = orchestrator.subscribe((event) => {
-      if (event.type === "mode_changed") {
-        handleRefresh();
-      }
-    });
-    
-    // Initial scan if empty
-    if (opportunities.length === 0) {
-      handleRefresh();
-    }
-    
-    return () => unsubscribe();
-  }, []);
-
   const getRiskLevel = (score: number) => {
     if (score < 30) return "low";
     if (score < 60) return "medium";
     return "high";
   };
 
-  // Filter and sort opportunities
   const filteredOpportunities = opportunities
     .filter(opp => {
       const riskLevel = getRiskLevel(opp.riskScore);
@@ -123,6 +88,22 @@ export default function Opportunities() {
     return "border-destructive/50 text-destructive bg-destructive/10";
   };
 
+  const handleQuickDeploy = (opp: any) => {
+    if (mode.current === "shadow") {
+      toast({
+        title: "Shadow Mode - Action Simulated",
+        description: `Would deploy to ${opp.token0Symbol}/${opp.token1Symbol} on ${opp.protocolName}.`,
+        variant: "default",
+      });
+      return;
+    }
+
+    toast({
+      title: mode.current === "demo" ? "Simulating Deployment" : "Deploying Position",
+      description: `${mode.current === "demo" ? "Simulating" : "Opening"} LP position on ${opp.protocolName}`,
+    });
+  };
+
   const uniqueChains = Array.from(new Set(opportunities.map(o => o.chain)));
   const uniqueProtocols = Array.from(new Set(opportunities.map(o => o.protocolName)));
 
@@ -143,7 +124,7 @@ export default function Opportunities() {
             </Badge>
             <Button 
               variant="outline" 
-              onClick={handleRefresh}
+              onClick={handleRefreshPools}
               disabled={isScanning}
             >
               {isScanning ? (

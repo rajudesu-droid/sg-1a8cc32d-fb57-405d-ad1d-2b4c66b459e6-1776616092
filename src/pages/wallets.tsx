@@ -1,185 +1,233 @@
-import { AppLayout } from "@/components/AppLayout";
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useRouter } from "next/router";
+import { AppLayout } from "@/components/AppLayout";
+import { useAppStore } from "@/store";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Wallet,
-  Plus,
-  RefreshCw,
-  ChevronDown,
-  ChevronUp,
-  Trash2,
-  AlertTriangle,
-  AlertCircle,
-  X,
-  Loader2,
-  DollarSign,
-  Coins,
   Network,
-  Activity
+  DollarSign,
+  Activity,
+  PlusCircle,
+  Trash2,
+  Edit2,
+  RefreshCw,
+  AlertTriangle,
+  Download,
+  Upload,
+  Eye,
+  EyeOff,
+  ExternalLink,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useWallet } from "@/contexts/WalletContext";
-import { useAppStore } from "@/store";
-import { ModeBanner } from "@/components/ModeBanner";
 import { WalletConnectionModal } from "@/components/WalletConnectionModal";
 import { AssetSearch } from "@/components/AssetSearch";
-import { orchestrator } from "@/core/orchestrator";
 import { actionHandler } from "@/services/ActionHandlerService";
 import type { ActionContext } from "@/services/ActionHandlerService";
-import { fetchTokenPrice, getFallbackPrice, fetchMultipleTokenPrices } from "@/lib/cryptoPriceService";
-
-// Supported chains with colors
-const SUPPORTED_CHAINS = [
-  { id: "ethereum", name: "Ethereum", symbol: "ETH", color: "bg-blue-500" },
-  { id: "bsc", name: "BSC", symbol: "BNB", color: "bg-yellow-500" },
-  { id: "polygon", name: "Polygon", symbol: "POL", color: "bg-purple-500" },
-  { id: "arbitrum", name: "Arbitrum", symbol: "ARB", color: "bg-cyan-500" },
-  { id: "optimism", name: "Optimism", symbol: "OP", color: "bg-red-500" },
-  { id: "avalanche", name: "Avalanche", symbol: "AVAX", color: "bg-red-600" },
-  { id: "base", name: "Base", symbol: "ETH", color: "bg-blue-600" },
-  { id: "fantom", name: "Fantom", symbol: "FTM", color: "bg-blue-400" },
-  { id: "cronos", name: "Cronos", symbol: "CRO", color: "bg-indigo-500" },
-  { id: "solana", name: "Solana", symbol: "SOL", color: "bg-gradient-to-r from-purple-500 to-cyan-500" },
-  { id: "xrp", name: "XRP Ledger", symbol: "XRP", color: "bg-gray-700" },
-  { id: "tron", name: "TRON", symbol: "TRX", color: "bg-red-700" },
-  { id: "bitcoin", name: "Bitcoin", symbol: "BTC", color: "bg-orange-500" },
-];
-
-// Network token mapping - token metadata without hardcoded prices
-const networkTokens: Record<string, Array<{ symbol: string; name: string }>> = {
-  ethereum: [
-    { symbol: "ETH", name: "Ethereum" },
-    { symbol: "USDT", name: "Tether USD" },
-    { symbol: "USDC", name: "USD Coin" },
-    { symbol: "WETH", name: "Wrapped Ether" },
-    { symbol: "DAI", name: "Dai Stablecoin" },
-    { symbol: "LINK", name: "Chainlink" },
-    { symbol: "UNI", name: "Uniswap" },
-  ],
-  bsc: [
-    { symbol: "BNB", name: "BNB" },
-    { symbol: "USDT", name: "Tether USD" },
-    { symbol: "USDC", name: "USD Coin" },
-    { symbol: "BUSD", name: "Binance USD" },
-    { symbol: "CAKE", name: "PancakeSwap" },
-    { symbol: "WBNB", name: "Wrapped BNB" },
-  ],
-  polygon: [
-    { symbol: "POL", name: "Polygon" },
-    { symbol: "USDT", name: "Tether USD" },
-    { symbol: "USDC", name: "USD Coin" },
-    { symbol: "WMATIC", name: "Wrapped MATIC" },
-    { symbol: "DAI", name: "Dai Stablecoin" },
-  ],
-  arbitrum: [
-    { symbol: "ETH", name: "Ethereum" },
-    { symbol: "ARB", name: "Arbitrum" },
-    { symbol: "USDT", name: "Tether USD" },
-    { symbol: "USDC", name: "USD Coin" },
-  ],
-  optimism: [
-    { symbol: "ETH", name: "Ethereum" },
-    { symbol: "OP", name: "Optimism" },
-    { symbol: "USDT", name: "Tether USD" },
-    { symbol: "USDC", name: "USD Coin" },
-  ],
-  avalanche: [
-    { symbol: "AVAX", name: "Avalanche" },
-    { symbol: "USDT", name: "Tether USD" },
-    { symbol: "USDC", name: "USD Coin" },
-    { symbol: "WAVAX", name: "Wrapped AVAX" },
-  ],
-  base: [
-    { symbol: "ETH", name: "Ethereum" },
-    { symbol: "USDC", name: "USD Coin" },
-    { symbol: "WETH", name: "Wrapped Ether" },
-  ],
-  fantom: [
-    { symbol: "FTM", name: "Fantom" },
-    { symbol: "USDT", name: "Tether USD" },
-    { symbol: "USDC", name: "USD Coin" },
-    { symbol: "WFTM", name: "Wrapped Fantom" },
-  ],
-  cronos: [
-    { symbol: "CRO", name: "Cronos" },
-    { symbol: "USDT", name: "Tether USD" },
-    { symbol: "USDC", name: "USD Coin" },
-  ],
-  solana: [
-    { symbol: "SOL", name: "Solana" },
-    { symbol: "USDT", name: "Tether USD" },
-    { symbol: "USDC", name: "USD Coin" },
-    { symbol: "RAY", name: "Raydium" },
-    { symbol: "SRM", name: "Serum" },
-  ],
-  xrp: [
-    { symbol: "XRP", name: "XRP" },
-    { symbol: "USD", name: "USD (Bitstamp)" },
-    { symbol: "EUR", name: "EUR (Bitstamp)" },
-    { symbol: "BTC", name: "BTC (Bitstamp)" },
-  ],
-  tron: [
-    { symbol: "TRX", name: "TRON" },
-    { symbol: "USDT", name: "Tether USD" },
-    { symbol: "USDC", name: "USD Coin" },
-    { symbol: "WTRX", name: "Wrapped TRX" },
-  ],
-  bitcoin: [
-    { symbol: "BTC", name: "Bitcoin" },
-  ],
-};
-
-interface TokenHolding {
-  id: string;
-  network: string;
-  symbol: string;
-  name: string;
-  balance: string;
-  price: string;
-  valueUsd: number;
-}
 
 export default function Wallets() {
-  const [showCreateWallet, setShowCreateWallet] = useState(false);
-  const [showAddToken, setShowAddToken] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [expandedWallets, setExpandedWallets] = useState<Set<string>>(new Set());
-  const [autoRefreshCountdown, setAutoRefreshCountdown] = useState(60);
-  const [isAutoRefreshEnabled, setIsAutoRefreshEnabled] = useState(true);
-  
-  // Paper wallet creation state
-  const [walletName, setWalletName] = useState("");
-  const [selectedChains, setSelectedChains] = useState<string[]>([]);
-  const [initialTokens, setInitialTokens] = useState<TokenHolding[]>([]);
-  const [currentWalletForToken, setCurrentWalletForToken] = useState<string | null>(null);
-  
-  // Add token state
-  const [tokenNetwork, setTokenNetwork] = useState("");
-  const [selectedToken, setSelectedToken] = useState("");
-  const [tokenBalance, setTokenBalance] = useState("");
-  
-  // Market data fetching state
-  const [isFetchingPrice, setIsFetchingPrice] = useState(false);
-  const [fetchedPrice, setFetchedPrice] = useState<number | null>(null);
-
-  const { isConnected, connectWallet, connectLoading, disconnectLoading, deleteLoading } = useWallet();
-  const { toast } = useToast();
   const mode = useAppStore((state) => state.mode);
-  const paperWallets = useAppStore((state) => state.paperWallets);
   const wallet = useAppStore((state) => state.wallet);
+  const paperWallets = useAppStore((state) => state.paperWallets);
   const addPaperWallet = useAppStore((state) => state.addPaperWallet);
-  const updatePaperWallet = useAppStore((state) => state.updatePaperWallet);
   const deletePaperWallet = useAppStore((state) => state.deletePaperWallet);
-  const refreshPaperWalletPrices = useAppStore((state) => state.refreshPaperWalletPrices);
+  const updatePaperWallet = useAppStore((state) => state.updatePaperWallet);
+
+  const [showConnectionModal, setShowConnectionModal] = useState(false);
+  const [showAddAssetModal, setShowAddAssetModal] = useState(false);
+  const [selectedWallet, setSelectedWallet] = useState<any>(null);
+  const [editingAsset, setEditingAsset] = useState<any>(null);
   
+  // Loading states
+  const [connectLoading, setConnectLoading] = useState(false);
+  const [disconnectLoading, setDisconnectLoading] = useState(false);
+  const [refreshLoading, setRefreshLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  
+  const { toast } = useToast();
+  const router = useRouter();
+
+  const getActionContext = (): ActionContext => ({
+    mode: mode.current,
+    metadata: { source: "wallets_page" },
+  });
+
+  const handleConnectWallet = async () => {
+    if (mode.current === "demo") {
+      toast({
+        title: "Demo Mode",
+        description: "Use paper wallets in Demo mode. Switch to Shadow or Live mode to connect real wallets.",
+      });
+      return;
+    }
+
+    setConnectLoading(true);
+    try {
+      const result = await actionHandler.connectWallet(getActionContext());
+      
+      toast({
+        title: result.success ? "Wallet Connected" : "Connection Failed",
+        description: result.message,
+        variant: result.success ? "default" : "destructive",
+      });
+
+      if (result.success) {
+        setShowConnectionModal(false);
+      }
+    } catch (error) {
+      toast({
+        title: "Connection Failed",
+        description: "Failed to connect wallet",
+        variant: "destructive",
+      });
+    } finally {
+      setConnectLoading(false);
+    }
+  };
+
+  const handleDisconnectWallet = async () => {
+    setDisconnectLoading(true);
+    try {
+      const result = await actionHandler.disconnectWallet(getActionContext());
+      
+      toast({
+        title: result.success ? "Wallet Disconnected" : "Disconnection Failed",
+        description: result.message,
+        variant: result.success ? "default" : "destructive",
+      });
+    } catch (error) {
+      toast({
+        title: "Disconnection Failed",
+        description: "Failed to disconnect wallet",
+        variant: "destructive",
+      });
+    } finally {
+      setDisconnectLoading(false);
+    }
+  };
+
+  const handleRefreshBalances = async () => {
+    setRefreshLoading(true);
+    try {
+      const result = await actionHandler.refreshBalances(getActionContext());
+      
+      toast({
+        title: result.success ? "Balances Refreshed" : "Refresh Failed",
+        description: result.message,
+        variant: result.success ? "default" : "destructive",
+      });
+    } catch (error) {
+      toast({
+        title: "Refresh Failed",
+        description: "Failed to refresh balances",
+        variant: "destructive",
+      });
+    } finally {
+      setRefreshLoading(false);
+    }
+  };
+
+  const handleCreatePaperWallet = () => {
+    const newWallet = {
+      id: `paper-${Date.now()}`,
+      name: `Paper Wallet ${paperWallets.length + 1}`,
+      assets: [],
+      totalValue: 0,
+      createdAt: new Date(),
+    };
+    addPaperWallet(newWallet);
+    
+    toast({
+      title: "Paper Wallet Created",
+      description: `Created ${newWallet.name}`,
+    });
+  };
+
+  const handleDeletePaperWallet = async (walletId: string) => {
+    setDeleteLoading(walletId);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500)); // Brief delay for UX
+      deletePaperWallet(walletId);
+      
+      toast({
+        title: "Wallet Deleted",
+        description: "Paper wallet removed successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete wallet",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
+  const handleAddAsset = (walletId: string) => {
+    setSelectedWallet(walletId);
+    setShowAddAssetModal(true);
+  };
+
+  const handleSaveAsset = (asset: any) => {
+    if (!selectedWallet) return;
+
+    const walletData = paperWallets.find(w => w.id === selectedWallet);
+    if (!walletData) return;
+
+    const updatedAssets = editingAsset
+      ? walletData.assets.map((a: any) => a.id === editingAsset.id ? asset : a)
+      : [...walletData.assets, { ...asset, id: `asset-${Date.now()}` }];
+
+    const totalValue = updatedAssets.reduce((sum: number, a: any) => {
+      return sum + (parseFloat(a.balance) || 0) * (a.priceUsd || 0);
+    }, 0);
+
+    updatePaperWallet(selectedWallet, {
+      assets: updatedAssets,
+      totalValue,
+    });
+
+    toast({
+      title: editingAsset ? "Asset Updated" : "Asset Added",
+      description: `${asset.symbol} ${editingAsset ? "updated" : "added"} successfully`,
+    });
+
+    setShowAddAssetModal(false);
+    setEditingAsset(null);
+    setSelectedWallet(null);
+  };
+
+  const handleEditAsset = (walletId: string, asset: any) => {
+    setSelectedWallet(walletId);
+    setEditingAsset(asset);
+    setShowAddAssetModal(true);
+  };
+
+  const handleDeleteAsset = (walletId: string, assetId: string) => {
+    const walletData = paperWallets.find(w => w.id === walletId);
+    if (!walletData) return;
+
+    const updatedAssets = walletData.assets.filter((a: any) => a.id !== assetId);
+    const totalValue = updatedAssets.reduce((sum: number, a: any) => {
+      return sum + (parseFloat(a.balance) || 0) * (a.priceUsd || 0);
+    }, 0);
+
+    updatePaperWallet(walletId, {
+      assets: updatedAssets,
+      totalValue,
+    });
+
+    toast({
+      title: "Asset Deleted",
+      description: "Asset removed successfully",
+    });
+  };
+
   // Custom update helper to bridge the string balance to number quantity in global store
   const updateWallet = (id: string, updatedTokens: TokenHolding[]) => {
     const storeTokens = updatedTokens.map(t => ({
@@ -256,64 +304,6 @@ export default function Wallets() {
       setFetchedPrice(null);
     }
   }, [tokenNetwork, selectedToken, toast]);
-
-  const getActionContext = (): ActionContext => ({
-    mode: mode.current,
-    metadata: { source: "wallets_page" },
-  });
-
-  const handleRefreshBalances = async () => {
-    setIsRefreshing(true);
-    
-    try {
-      if (mode.current === "demo") {
-        // Collect all unique token symbols
-        const allSymbols = new Set<string>();
-        paperWallets.forEach((wallet) => {
-          wallet.tokens.forEach((token) => {
-            allSymbols.add(token.symbol);
-          });
-        });
-
-        if (allSymbols.size === 0) {
-          toast({
-            title: "No Tokens to Refresh",
-            description: "Add tokens to your paper wallets first",
-          });
-          setIsRefreshing(false);
-          return;
-        }
-
-        // Batch fetch all prices
-        const priceMap = await fetchMultipleTokenPrices(Array.from(allSymbols));
-        
-        // Update all wallets with new prices
-        refreshPaperWalletPrices(priceMap);
-        
-        // Reset countdown
-        setAutoRefreshCountdown(60);
-        
-        toast({
-          title: "Prices Refreshed",
-          description: `Updated ${priceMap.size} token prices successfully`,
-        });
-      } else {
-        // For shadow/live mode - refresh wallet connection
-        toast({
-          title: "Refreshing Balances",
-          description: "Fetching latest data from blockchain...",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Refresh Failed",
-        description: "Could not update prices. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
 
   const toggleChain = (chainId: string) => {
     setSelectedChains((prev) =>
@@ -465,7 +455,7 @@ export default function Wallets() {
       case "shadow":
         return "View connected wallet balances in read-only mode";
       case "live":
-        return "Manage connected wallet balances and execute transactions";
+        return "Connect and manage your Web3 wallets";
     }
   };
 
@@ -784,34 +774,6 @@ export default function Wallets() {
                             No tokens in this wallet. Click the + button to add some.
                           </div>
                         )}
-                        <div className="flex items-center justify-between pt-4 border-t border-border">
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            onClick={() => handleAddAsset(wallet.id)}
-                          >
-                            <PlusCircle className="h-4 w-4 mr-2" />
-                            Add Asset
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="destructive" 
-                            onClick={() => handleDeletePaperWallet(wallet.id)}
-                            disabled={deleteLoading === wallet.id}
-                          >
-                            {deleteLoading === wallet.id ? (
-                              <>
-                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                Deleting...
-                              </>
-                            ) : (
-                              <>
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete Wallet
-                              </>
-                            )}
-                          </Button>
-                        </div>
                       </div>
                     </CardContent>
                   )}
@@ -936,7 +898,7 @@ export default function Wallets() {
                         <div className="flex items-center gap-3">
                           <div className="text-right">
                             <div className="text-sm font-semibold">
-                              ${token.valueUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              ${token.valueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
                             <div className="text-xs text-muted-foreground">
                               {token.balance} @ ${parseFloat(token.price).toLocaleString(undefined, { maximumFractionDigits: 4 })}

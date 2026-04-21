@@ -8,30 +8,176 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ModeBanner } from "@/components/ModeBanner";
-import { Save, Zap, Shield, DollarSign, Activity, AlertTriangle, Eye, RefreshCw, Square } from "lucide-react";
+import { Save, Zap, Shield, DollarSign, Activity, AlertTriangle, Eye, RefreshCw, Play } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store";
 import { userPreferencesService } from "@/services/UserPreferencesService";
 import type { UserPolicy } from "@/services/UserPreferencesService";
-import { orchestrator } from "@/core/orchestrator";
 import { actionHandler } from "@/services/ActionHandlerService";
 import type { ActionContext } from "@/services/ActionHandlerService";
 
 export default function Automation() {
   const mode = useAppStore((state) => state.mode);
-  const policy = useAppStore((state) => state.policy);
-  const updatePolicy = useAppStore((state) => state.updatePolicy);
+  
+  const [autoHarvest, setAutoHarvest] = useState(false);
+  const [autoCompound, setAutoCompound] = useState(false);
+  const [autoRebalance, setAutoRebalance] = useState(false);
+  const [emergencyPause, setEmergencyPause] = useState(false);
+  
+  const [minHarvestValue, setMinHarvestValue] = useState("50");
+  const [compoundThreshold, setCompoundThreshold] = useState("100");
+  const [rebalanceThreshold, setRebalanceThreshold] = useState("5.0");
+  
+  const [maxPerPool, setMaxPerPool] = useState("10000");
+  const [maxPerChain, setMaxPerChain] = useState("50000");
+  const [maxTotalDeployed, setMaxTotalDeployed] = useState("100000");
+  
+  const [dailyGasBudget, setDailyGasBudget] = useState("100");
+  const [maxGasPrice, setMaxGasPrice] = useState("100");
+  const [maxSlippage, setMaxSlippage] = useState("2.0");
+  const [maxImpermanentLoss, setMaxImpermanentLoss] = useState("10.0");
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
-  const [saveLoading, setSaveLoading] = useState(false);
-  const [resetLoading, setResetLoading] = useState(false);
-  const [pauseLoading, setPauseLoading] = useState(false);
 
-  const [localPolicy, setLocalPolicy] = useState(policy);
-
+  // Load policy on mount
   useEffect(() => {
-    setLocalPolicy(policy);
-  }, [policy]);
+    loadPolicy();
+  }, []);
+
+  const loadPolicy = async () => {
+    setLoading(true);
+    try {
+      const policy = await userPreferencesService.loadPolicy();
+      
+      if (policy) {
+        setAutoHarvest(policy.autoHarvest);
+        setAutoCompound(policy.autoCompound);
+        setAutoRebalance(policy.autoRebalance);
+        setEmergencyPause(policy.emergencyPause);
+        
+        setMinHarvestValue(policy.minHarvestValue.toString());
+        setCompoundThreshold(policy.compoundThreshold.toString());
+        setRebalanceThreshold(policy.rebalanceThreshold.toString());
+        
+        setMaxPerPool(policy.maxPerPool.toString());
+        setMaxPerChain(policy.maxPerChain.toString());
+        setMaxTotalDeployed(policy.maxTotalDeployed.toString());
+        
+        setDailyGasBudget(policy.dailyGasBudget.toString());
+        setMaxGasPrice(policy.maxGasPrice.toString());
+        setMaxSlippage(policy.maxSlippage.toString());
+        setMaxImpermanentLoss(policy.maxImpermanentLoss.toString());
+      }
+    } catch (error) {
+      console.error("[Automation] Failed to load policy:", error);
+      toast({
+        title: "Error Loading Policy",
+        description: "Failed to load your saved automation policy. Using defaults.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSavePolicy = async () => {
+    setSaving(true);
+    try {
+      const policy: UserPolicy = {
+        autoHarvest,
+        autoCompound,
+        autoRebalance,
+        emergencyPause,
+        minHarvestValue: parseFloat(minHarvestValue),
+        compoundThreshold: parseFloat(compoundThreshold),
+        rebalanceThreshold: parseFloat(rebalanceThreshold),
+        maxPerPool: parseFloat(maxPerPool),
+        maxPerChain: parseFloat(maxPerChain),
+        maxTotalDeployed: parseFloat(maxTotalDeployed),
+        dailyGasBudget: parseFloat(dailyGasBudget),
+        maxGasPrice: parseFloat(maxGasPrice),
+        maxSlippage: parseFloat(maxSlippage),
+        maxImpermanentLoss: parseFloat(maxImpermanentLoss),
+      };
+
+      const success = await userPreferencesService.savePolicy(policy);
+
+      if (success) {
+        toast({
+          title: "Policy Saved",
+          description: "All automation rules and guardrails have been saved successfully",
+        });
+      } else {
+        throw new Error("Failed to save policy");
+      }
+    } catch (error) {
+      console.error("[Automation] Failed to save policy:", error);
+      toast({
+        title: "Save Failed",
+        description: "Failed to save automation policy. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleResetDefaults = () => {
+    setAutoHarvest(false);
+    setAutoCompound(false);
+    setAutoRebalance(false);
+    setEmergencyPause(false);
+    
+    setMinHarvestValue("50");
+    setCompoundThreshold("100");
+    setRebalanceThreshold("5.0");
+    
+    setMaxPerPool("10000");
+    setMaxPerChain("50000");
+    setMaxTotalDeployed("100000");
+    
+    setDailyGasBudget("100");
+    setMaxGasPrice("100");
+    setMaxSlippage("2.0");
+    setMaxImpermanentLoss("10.0");
+
+    toast({
+      title: "Policy Reset",
+      description: "All automation rules have been reset to defaults (not saved yet)",
+    });
+  };
+
+  const handleEmergencyStop = () => {
+    setEmergencyPause(true);
+    setAutoHarvest(false);
+    setAutoCompound(false);
+    setAutoRebalance(false);
+    
+    toast({
+      title: "Emergency Stop Activated",
+      description: "All automation has been paused. Click Save Changes to persist.",
+      variant: "destructive",
+    });
+  };
+
+  const getPageTitle = () => {
+    switch (mode.current) {
+      case "demo": return "Simulated Automation Rules";
+      case "shadow": return "Automation Rules (Preview)";
+      case "live": return "Automation & Policy Configuration";
+    }
+  };
+
+  const getPageDescription = () => {
+    switch (mode.current) {
+      case "demo": return "Configure simulated automation behavior and policy guardrails";
+      case "shadow": return "Preview automation rules (no execution in Shadow mode)";
+      case "live": return "Configure automation behavior and policy guardrails for live execution";
+    }
+  };
 
   const getActionContext = (): ActionContext => ({
     mode: mode.current,
@@ -39,7 +185,15 @@ export default function Automation() {
   });
 
   const handleSaveRules = async () => {
-    setSaveLoading(true);
+    if (mode.current === "shadow") {
+      toast({
+        title: "Shadow Mode",
+        description: "Policy changes are preview-only in Shadow mode",
+      });
+      return;
+    }
+
+    setSaving(true);
     try {
       // Update store
       updatePolicy(localPolicy);
@@ -64,11 +218,19 @@ export default function Automation() {
         variant: "destructive",
       });
     } finally {
-      setSaveLoading(false);
+      setSaving(false);
     }
   };
 
   const handleResetRules = async () => {
+    if (mode.current === "shadow") {
+      toast({
+        title: "Shadow Mode",
+        description: "Policy changes are preview-only in Shadow mode",
+      });
+      return;
+    }
+
     setResetLoading(true);
     try {
       const defaultPolicy = {
@@ -93,6 +255,14 @@ export default function Automation() {
       setLocalPolicy(defaultPolicy);
       updatePolicy(defaultPolicy);
 
+      await orchestrator.publishEvent({
+        type: "policy_updated",
+        source: "automation_page",
+        timestamp: new Date(),
+        affectedModules: ["policy"],
+        data: { policy: defaultPolicy },
+      });
+
       toast({
         title: "Rules Reset",
         description: "Automation rules reset to defaults",
@@ -109,6 +279,14 @@ export default function Automation() {
   };
 
   const handleEmergencyPause = async () => {
+    if (mode.current === "shadow") {
+      toast({
+        title: "Shadow Mode",
+        description: "Emergency pause is preview-only in Shadow mode",
+      });
+      return;
+    }
+
     setPauseLoading(true);
     try {
       const result = await actionHandler.emergencyPause(getActionContext());
@@ -121,6 +299,7 @@ export default function Automation() {
 
       if (result.success) {
         setLocalPolicy({ ...localPolicy, emergencyPause: true });
+        updatePolicy({ ...localPolicy, emergencyPause: true });
       }
     } catch (error) {
       toast({
@@ -133,19 +312,41 @@ export default function Automation() {
     }
   };
 
-  const getPageTitle = () => {
-    switch (mode.current) {
-      case "demo": return "Simulated Automation Rules";
-      case "shadow": return "Automation Rules (Preview)";
-      case "live": return "Automation & Policy Configuration";
+  const handleResumeAutomation = async () => {
+    if (mode.current === "shadow") {
+      toast({
+        title: "Shadow Mode",
+        description: "Cannot resume automation in Shadow mode",
+      });
+      return;
     }
-  };
 
-  const getPageDescription = () => {
-    switch (mode.current) {
-      case "demo": return "Configure simulated automation behavior and policy guardrails";
-      case "shadow": return "Preview automation rules (no execution in Shadow mode)";
-      case "live": return "Configure automation behavior and policy guardrails for live execution";
+    setPauseLoading(true);
+    try {
+      const updatedPolicy = { ...localPolicy, emergencyPause: false };
+      setLocalPolicy(updatedPolicy);
+      updatePolicy(updatedPolicy);
+
+      await orchestrator.publishEvent({
+        type: "policy_updated",
+        source: "automation_page",
+        timestamp: new Date(),
+        affectedModules: ["policy"],
+        data: { policy: updatedPolicy },
+      });
+
+      toast({
+        title: "Automation Resumed",
+        description: "Emergency pause deactivated",
+      });
+    } catch (error) {
+      toast({
+        title: "Resume Failed",
+        description: "Failed to resume automation",
+        variant: "destructive",
+      });
+    } finally {
+      setPauseLoading(false);
     }
   };
 
@@ -590,37 +791,52 @@ export default function Automation() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button 
-              variant="destructive" 
-              className="w-full"
-              onClick={handleEmergencyPause}
-              disabled={pauseLoading || localPolicy.emergencyPause || mode.current === "shadow"}
-            >
-              {pauseLoading ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Activating...
-                </>
-              ) : localPolicy.emergencyPause ? (
-                <>
-                  <Square className="mr-2 h-4 w-4" />
-                  Emergency Pause Active
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="mr-2 h-4 w-4" />
-                  Emergency Pause All
-                </>
-              )}
-            </Button>
-            
-            {localPolicy.emergencyPause && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  All automation is paused. Disable emergency pause and save rules to resume.
-                </AlertDescription>
-              </Alert>
+            {!localPolicy.emergencyPause ? (
+              <Button 
+                variant="destructive" 
+                className="w-full"
+                onClick={handleEmergencyPause}
+                disabled={pauseLoading || mode.current === "shadow"}
+              >
+                {pauseLoading ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Activating...
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="mr-2 h-4 w-4" />
+                    Emergency Pause All
+                  </>
+                )}
+              </Button>
+            ) : (
+              <>
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    All automation is paused. Click below to resume.
+                  </AlertDescription>
+                </Alert>
+                <Button 
+                  variant="default" 
+                  className="w-full"
+                  onClick={handleResumeAutomation}
+                  disabled={pauseLoading || mode.current === "shadow"}
+                >
+                  {pauseLoading ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Resuming...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="mr-2 h-4 w-4" />
+                      Resume Automation
+                    </>
+                  )}
+                </Button>
+              </>
             )}
           </CardContent>
         </Card>
