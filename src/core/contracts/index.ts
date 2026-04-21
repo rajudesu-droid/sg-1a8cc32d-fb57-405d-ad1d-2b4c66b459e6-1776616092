@@ -289,25 +289,23 @@ export interface SimulationState {
 
 // ==================== EVENTS ====================
 export type EventType =
-  | "mode_changed"
-  | "wallet_updated"
-  | "assets_updated"
-  | "portfolio_updated"
-  | "opportunities_updated"
-  | "opportunities_scanned"
-  | "positions_updated"
+  | "wallet_connected"
+  | "wallet_disconnected"
+  | "balance_changed"
+  | "opportunity_scanned"
+  | "opportunity_discovered"
   | "position_opened"
   | "position_closed"
-  | "rewards_updated"
+  | "position_updated"
+  | "position_rebalanced"
+  | "rewards_harvested"
+  | "rewards_compounded"
+  | "withdrawal_executed"
   | "policy_updated"
-  | "withdrawal_planned"
-  | "audit_logged"
-  | "simulation_updated"
-  | "sync_required"
   | "settings_changed"
-  | "action_triggered"
-  | "validation_completed"
-  | "execution_completed";
+  | "bot_started"
+  | "bot_stopped"
+  | "action_failed";
 
 export interface AppEvent {
   type: EventType;

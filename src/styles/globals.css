@@ -61,7 +61,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold;
@@ -94,5 +94,15 @@
   
   .metric-warning {
     @apply text-accent;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }

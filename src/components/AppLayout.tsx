@@ -36,6 +36,7 @@ import {
   SidebarFooter,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { LiveActivityBar } from "@/components/LiveActivityBar";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -104,21 +105,16 @@ export function AppLayout({ children }: AppLayoutProps) {
           </SidebarContent>
         </Sidebar>
 
-        <main className="flex-1 overflow-auto">
-          <div className="border-b border-border bg-card/50 px-6 py-3 backdrop-blur-sm">
-            <div className="flex items-center justify-between">
-              <SidebarTrigger />
-              <div className="flex items-center gap-4">
-                <ModeSelector />
-                <WalletButton />
-              </div>
-            </div>
-          </div>
-          <div className="p-6">
+        {/* Main Content */}
+        <main className="flex-1 overflow-auto bg-gradient-to-br from-background via-background to-primary/5">
+          <div className="container mx-auto p-6 space-y-6 pb-24">
             {children}
           </div>
         </main>
       </div>
+
+      {/* Live Activity Bar */}
+      <LiveActivityBar />
     </SidebarProvider>
   );
 }
