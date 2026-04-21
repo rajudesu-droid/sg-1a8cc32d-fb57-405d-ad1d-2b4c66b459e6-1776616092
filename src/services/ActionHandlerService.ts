@@ -6,7 +6,7 @@
 
 import { orchestrator } from "@/core/orchestrator";
 import { syncEngine } from "@/core/sync";
-import type { Mode } from "@/core/contracts";
+import type { AppMode } from "@/core/contracts";
 
 export type ActionResult = {
   success: boolean;
@@ -16,7 +16,7 @@ export type ActionResult = {
 };
 
 export type ActionContext = {
-  mode: Mode;
+  mode: AppMode;
   userId?: string;
   walletAddress?: string;
   metadata?: Record<string, any>;
@@ -26,7 +26,7 @@ class ActionHandlerService {
   /**
    * Validate action is allowed in current mode
    */
-  private validateModePermission(action: string, mode: Mode): { allowed: boolean; reason?: string } {
+  private validateModePermission(action: string, mode: AppMode): { allowed: boolean; reason?: string } {
     // Demo mode: All simulation actions allowed
     if (mode === "demo") {
       return { allowed: true };
@@ -77,7 +77,7 @@ class ActionHandlerService {
 
       // Publish wallet connection event
       await orchestrator.publishEvent({
-        type: "wallet_connected",
+        type: "wallet_updated",
         source: "action_handler",
         timestamp: new Date(),
         affectedModules: ["wallet", "portfolio"],
@@ -110,7 +110,7 @@ class ActionHandlerService {
 
       // Publish wallet disconnection event
       await orchestrator.publishEvent({
-        type: "wallet_disconnected",
+        type: "wallet_updated",
         source: "action_handler",
         timestamp: new Date(),
         affectedModules: ["wallet", "portfolio"],
@@ -143,7 +143,7 @@ class ActionHandlerService {
 
       // Publish balance refresh event
       await orchestrator.publishEvent({
-        type: "balances_refreshed",
+        type: "assets_updated",
         source: "action_handler",
         timestamp: new Date(),
         affectedModules: ["wallet", "portfolio"],
@@ -176,15 +176,15 @@ class ActionHandlerService {
 
       // Publish opportunities refresh event
       await orchestrator.publishEvent({
-        type: "opportunities_refreshed",
+        type: "opportunities_updated",
         source: "action_handler",
         timestamp: new Date(),
-        affectedModules: ["opportunities"],
+        affectedModules: ["opportunity"],
         data: { mode: context.mode },
       });
 
       // Trigger sync
-      await syncEngine.syncModule("opportunities");
+      await syncEngine.syncAffectedModules(["opportunity"]);
 
       return { 
         success: true, 
@@ -227,7 +227,7 @@ class ActionHandlerService {
       });
 
       // Trigger sync
-      await syncEngine.syncModules(["positions", "rewards", "portfolio"]);
+      await syncEngine.syncAffectedModules(["position", "rewards", "portfolio"]);
 
       return { 
         success: true, 
@@ -319,7 +319,7 @@ class ActionHandlerService {
       });
 
       // Trigger sync
-      await syncEngine.syncModules(["positions", "portfolio"]);
+      await syncEngine.syncAffectedModules(["position", "portfolio"]);
 
       return { 
         success: true, 
@@ -365,7 +365,7 @@ class ActionHandlerService {
       });
 
       // Trigger sync
-      await syncEngine.syncModules(["positions", "portfolio", "wallet"]);
+      await syncEngine.syncAffectedModules(["position", "portfolio", "wallet"]);
 
       return { 
         success: true, 
@@ -411,7 +411,7 @@ class ActionHandlerService {
       });
 
       // Trigger sync
-      await syncEngine.syncModules(["positions", "portfolio", "wallet"]);
+      await syncEngine.syncAffectedModules(["position", "portfolio", "wallet"]);
 
       return { 
         success: true, 
@@ -439,10 +439,10 @@ class ActionHandlerService {
 
       // Publish emergency pause event
       await orchestrator.publishEvent({
-        type: "emergency_pause",
+        type: "policy_updated",
         source: "action_handler",
         timestamp: new Date(),
-        affectedModules: ["automation", "policy"],
+        affectedModules: ["policy"],
         data: { mode: context.mode },
       });
 
@@ -451,7 +451,7 @@ class ActionHandlerService {
       await botOrchestrationService.stopBot();
 
       // Trigger sync
-      await syncEngine.syncModules(["automation", "policy"]);
+      await syncEngine.syncAffectedModules(["policy"]);
 
       return { 
         success: true, 
@@ -476,7 +476,7 @@ class ActionHandlerService {
 
       // Publish withdrawal plan event
       await orchestrator.publishEvent({
-        type: "withdrawal_plan_generated",
+        type: "withdrawal_planned",
         source: "action_handler",
         timestamp: new Date(),
         affectedModules: ["withdrawal"],
