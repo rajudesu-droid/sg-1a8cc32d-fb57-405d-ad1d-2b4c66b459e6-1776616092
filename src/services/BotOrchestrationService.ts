@@ -256,6 +256,37 @@ class BotOrchestrationService {
         if (rewardValueUSD >= minHarvestAmount) {
           console.log(`[BotOrchestration] Harvesting position ${position.id}: $${rewardValueUSD.toFixed(2)} in rewards`);
           
+          // In Demo Mode, add rewards to Paper Wallet and reset position rewards
+          if (mode === "demo") {
+            // Reset accrued rewards on position
+            const updatedPositions = useAppStore.getState().positions.map(p => 
+              p.id === position.id 
+                ? { ...p, accruedRewards: 0, lastUpdated: new Date() }
+                : p
+            );
+            useAppStore.getState().setPositions(updatedPositions);
+
+            // Add harvested amount to Paper Wallet
+            const paperWallets = useAppStore.getState().paperWallets;
+            if (paperWallets.length > 0) {
+              const wallet = paperWallets[0];
+              // Find matching token or add to first token
+              const updatedTokens = [...wallet.tokens];
+              if (updatedTokens.length > 0) {
+                updatedTokens[0].quantity += rewardValueUSD / (updatedTokens[0].currentPrice || 1);
+                updatedTokens[0].totalValue += rewardValueUSD;
+              }
+
+              useAppStore.getState().updatePaperWallet(wallet.id, {
+                ...wallet,
+                tokens: updatedTokens,
+                totalValue: updatedTokens.reduce((sum, t) => sum + t.totalValue, 0),
+              });
+            }
+
+            console.log(`[BotOrchestration] Harvested rewards added to Paper Wallet`);
+          }
+          
           // Publish harvest event via orchestrator
           const { orchestrator } = await import("@/core/orchestrator");
           await orchestrator.publishEvent({
@@ -330,6 +361,24 @@ class BotOrchestrationService {
         const compoundThreshold = policy.minHarvestAmount || 50;
         if (rewardValueUSD >= compoundThreshold) {
           console.log(`[BotOrchestration] Compounding position ${position.id}: $${rewardValueUSD.toFixed(2)} in rewards`);
+          
+          // In Demo Mode, add rewards to position value and reset rewards
+          if (mode === "demo") {
+            const updatedPositions = useAppStore.getState().positions.map(p => 
+              p.id === position.id 
+                ? { 
+                    ...p, 
+                    deployed: p.deployed + rewardValueUSD,
+                    currentValue: p.currentValue + rewardValueUSD,
+                    accruedRewards: 0,
+                    lastUpdated: new Date()
+                  }
+                : p
+            );
+            useAppStore.getState().setPositions(updatedPositions);
+
+            console.log(`[BotOrchestration] Compounded $${rewardValueUSD.toFixed(2)} into position ${position.id}`);
+          }
           
           // Publish compound event via orchestrator
           const { orchestrator } = await import("@/core/orchestrator");
@@ -507,6 +556,63 @@ class BotOrchestrationService {
       const deployAmount = Math.min(idleCapital, maxDeploy);
 
       console.log(`[BotOrchestration] Deploying $${deployAmount.toFixed(2)} to ${bestOpp.token0Symbol}/${bestOpp.token1Symbol || "?"} on ${bestOpp.chain}`);
+
+      // In Demo Mode, create simulated position
+      if (mode === "demo") {
+        // Create new position
+        const newPosition = {
+          id: `pos-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          opportunityId: bestOpp.id,
+          protocol: bestOpp.protocolName,
+          chain: bestOpp.chain,
+          pair: `${bestOpp.token0Symbol}/${bestOpp.token1Symbol || "?"}`,
+          token0: bestOpp.token0Symbol,
+          token1: bestOpp.token1Symbol || "?",
+          feeTier: bestOpp.feeTier || "0.30%",
+          deployed: deployAmount,
+          currentValue: deployAmount,
+          status: "in-range" as const,
+          rangeMin: 0.95,
+          rangeMax: 1.05,
+          currentPrice: 1.0,
+          entryPrice: 1.0,
+          accruedFees: 0,
+          accruedRewards: 0,
+          estimatedAPY: bestOpp.totalYield,
+          openedAt: new Date(),
+          lastUpdated: new Date(),
+        };
+
+        // Add position to store
+        useAppStore.getState().addPosition(newPosition);
+
+        // Deduct deployed amount from Paper Wallet
+        const paperWallets = useAppStore.getState().paperWallets;
+        if (paperWallets.length > 0) {
+          const wallet = paperWallets[0];
+          const updatedTokens = wallet.tokens.map(token => {
+            // Deduct proportionally from assets with value
+            if (token.totalValue > 0) {
+              const deductionRatio = deployAmount / idleCapital;
+              const deductAmount = token.quantity * deductionRatio;
+              return {
+                ...token,
+                quantity: Math.max(0, token.quantity - deductAmount),
+                totalValue: Math.max(0, token.totalValue - (token.totalValue * deductionRatio)),
+              };
+            }
+            return token;
+          });
+
+          useAppStore.getState().updatePaperWallet(wallet.id, {
+            ...wallet,
+            tokens: updatedTokens,
+            totalValue: updatedTokens.reduce((sum, t) => sum + t.totalValue, 0),
+          });
+        }
+
+        console.log(`[BotOrchestration] Created position ${newPosition.id} and deducted $${deployAmount.toFixed(2)} from Paper Wallet`);
+      }
 
       // Emit deployment event
       await orchestrator.publishEvent({

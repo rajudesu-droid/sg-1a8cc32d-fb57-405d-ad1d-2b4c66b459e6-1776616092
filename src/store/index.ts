@@ -241,85 +241,17 @@ export const useAppStore = create<AppState>()(
         setShadowPositions: (positions) => set({ shadowPositions: positions }),
         setLivePositions: (positions) => set({ livePositions: positions }),
         
-        addPosition: (position) => {
-          const mode = useAppStore.getState().mode.current;
-          set((state) => {
-            const newPositions = [...state.positions, position];
-            
-            // Update mode-specific positions
-            if (mode === "demo") {
-              return { 
-                positions: newPositions,
-                demoPositions: newPositions
-              };
-            } else if (mode === "shadow") {
-              return { 
-                positions: newPositions,
-                shadowPositions: newPositions
-              };
-            } else if (mode === "live") {
-              return { 
-                positions: newPositions,
-                livePositions: newPositions
-              };
-            }
-            return { positions: newPositions };
-          });
-        },
+        addPosition: (position) => set((state) => ({
+          positions: [...state.positions, position],
+        })),
         
-        updatePosition: (id, updates) => {
-          const mode = useAppStore.getState().mode.current;
-          set((state) => {
-            const updatedPositions = state.positions.map((p) => 
-              p.id === id ? { ...p, ...updates } : p
-            );
-            
-            // Update mode-specific positions
-            if (mode === "demo") {
-              return { 
-                positions: updatedPositions,
-                demoPositions: updatedPositions
-              };
-            } else if (mode === "shadow") {
-              return { 
-                positions: updatedPositions,
-                shadowPositions: updatedPositions
-              };
-            } else if (mode === "live") {
-              return { 
-                positions: updatedPositions,
-                livePositions: updatedPositions
-              };
-            }
-            return { positions: updatedPositions };
-          });
-        },
+        updatePosition: (id, updates) => set((state) => ({
+          positions: state.positions.map(p => p.id === id ? { ...p, ...updates } : p),
+        })),
         
-        removePosition: (id) => {
-          const mode = useAppStore.getState().mode.current;
-          set((state) => {
-            const filteredPositions = state.positions.filter((p) => p.id !== id);
-            
-            // Update mode-specific positions
-            if (mode === "demo") {
-              return { 
-                positions: filteredPositions,
-                demoPositions: filteredPositions
-              };
-            } else if (mode === "shadow") {
-              return { 
-                positions: filteredPositions,
-                shadowPositions: filteredPositions
-              };
-            } else if (mode === "live") {
-              return { 
-                positions: filteredPositions,
-                livePositions: filteredPositions
-              };
-            }
-            return { positions: filteredPositions };
-          });
-        },
+        removePosition: (id) => set((state) => ({
+          positions: state.positions.filter(p => p.id !== id),
+        })),
 
         // ==================== REWARDS ====================
         rewards: {
