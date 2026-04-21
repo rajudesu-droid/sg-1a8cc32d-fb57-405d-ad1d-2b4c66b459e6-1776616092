@@ -133,6 +133,12 @@ class BotOrchestrationService {
       // Execute automation actions based on policy
       let actionsExecuted = 0;
 
+      // Auto-deploy idle funds
+      if (policy.autoDeployIdle) {
+        const deployed = await this.executeAutoDeployIdle(config.mode, opportunities, policy);
+        actionsExecuted += deployed;
+      }
+
       // Auto-harvest
       if (config.autoHarvest && policy.autoHarvest) {
         const harvested = await this.executeAutoHarvest(config.mode, policy);
@@ -170,9 +176,47 @@ class BotOrchestrationService {
   private async checkOpportunities(mode: string): Promise<any[]> {
     console.log(`[BotOrchestration] Checking opportunities in ${mode} mode`);
     
-    // TODO: Integrate with OpportunityEngine when ready
-    // For now, return empty array - will be implemented when opportunity scanning is ready
-    return [];
+    try {
+      const { useAppStore } = await import("@/store");
+      const { orchestrator } = await import("@/core/orchestrator");
+      
+      // Emit scanning event
+      await orchestrator.publishEvent({
+        type: "opportunity_scanned",
+        source: "bot_automation",
+        timestamp: new Date(),
+        affectedModules: ["opportunities"],
+        data: {
+          mode: mode,
+          protocol: "Multi-Protocol",
+          chain: "All Networks",
+        },
+      });
+
+      // Get opportunities from store
+      const opportunities = useAppStore.getState().opportunities;
+      
+      console.log(`[BotOrchestration] Found ${opportunities.length} opportunities in store`);
+      
+      if (opportunities.length > 0) {
+        // Emit discovery event
+        await orchestrator.publishEvent({
+          type: "opportunity_discovered",
+          source: "bot_automation",
+          timestamp: new Date(),
+          affectedModules: ["opportunities"],
+          data: {
+            count: opportunities.length,
+            topScore: Math.max(...opportunities.map(o => o.netScore || 0)),
+          },
+        });
+      }
+
+      return opportunities;
+    } catch (error) {
+      console.error("[BotOrchestration] Error checking opportunities:", error);
+      return [];
+    }
   }
 
   /**
@@ -405,15 +449,127 @@ class BotOrchestrationService {
   }
 
   /**
-   * Load user policy from database
+   * Execute auto-deploy idle funds
+   */
+  private async executeAutoDeployIdle(mode: string, opportunities: any[], policy: any): Promise<number> {
+    console.log(`[BotOrchestration] Checking auto-deploy conditions in ${mode} mode`);
+    
+    try {
+      const { useAppStore } = await import("@/store");
+      const { orchestrator } = await import("@/core/orchestrator");
+      
+      // Get wallet assets to check for idle funds
+      const assets = useAppStore.getState().assets;
+      
+      if (!assets || assets.length === 0) {
+        console.log("[BotOrchestration] No assets found for auto-deploy");
+        return 0;
+      }
+
+      // Calculate total idle capital (non-LP assets)
+      const idleCapital = assets
+        .filter(a => a.assetKind !== "lp" && a.assetKind !== "position")
+        .reduce((sum, a) => sum + (a.valueUsd || 0), 0);
+
+      console.log(`[BotOrchestration] Total idle capital: $${idleCapital.toFixed(2)}`);
+
+      // Check if idle capital meets minimum threshold
+      const minIdleAmount = policy.minIdleAmount || 100;
+      if (idleCapital < minIdleAmount) {
+        console.log(`[BotOrchestration] Idle capital ($${idleCapital.toFixed(2)}) below minimum ($${minIdleAmount})`);
+        return 0;
+      }
+
+      // Filter opportunities by minimum score
+      const minScore = policy.minAutoDeployScore || policy.minPoolScore || 70;
+      const qualifyingOpps = opportunities.filter(opp => (opp.netScore || 0) >= minScore);
+
+      if (qualifyingOpps.length === 0) {
+        console.log("[BotOrchestration] No opportunities meet minimum score requirement");
+        return 0;
+      }
+
+      // Sort by score (best first)
+      qualifyingOpps.sort((a, b) => (b.netScore || 0) - (a.netScore || 0));
+
+      // Get best opportunity
+      const bestOpp = qualifyingOpps[0];
+      
+      // Calculate deployment amount (max of available idle or maxAutoDeployAmount)
+      const maxDeploy = policy.maxAutoDeployAmount || 1000;
+      const deployAmount = Math.min(idleCapital, maxDeploy);
+
+      console.log(`[BotOrchestration] Deploying $${deployAmount.toFixed(2)} to ${bestOpp.token0Symbol}/${bestOpp.token1Symbol || "?"} on ${bestOpp.chain}`);
+
+      // Emit deployment event
+      await orchestrator.publishEvent({
+        type: "position_opened",
+        source: "bot_automation",
+        timestamp: new Date(),
+        affectedModules: ["positions", "portfolio"],
+        data: {
+          opportunityId: bestOpp.id,
+          pair: `${bestOpp.token0Symbol}/${bestOpp.token1Symbol || "?"}`,
+          dex: bestOpp.protocolName,
+          chain: bestOpp.chain,
+          amount: deployAmount,
+          reason: "auto_deploy_idle",
+        },
+      });
+
+      // Add alert to store
+      useAppStore.getState().addAlert({
+        id: `deploy-${bestOpp.id}-${Date.now()}`,
+        type: "success",
+        title: "Auto-Deploy Executed",
+        message: `Deployed $${deployAmount.toFixed(2)} to ${bestOpp.token0Symbol}/${bestOpp.token1Symbol || "?"} on ${bestOpp.chain}`,
+        timestamp: new Date(),
+      });
+
+      return 1;
+    } catch (error) {
+      console.error("[BotOrchestration] Error in executeAutoDeployIdle:", error);
+      return 0;
+    }
+  }
+
+  /**
+   * Load user policy from database or store
    */
   private async loadPolicy(): Promise<any> {
     try {
+      // Try to load from store first (works in demo mode)
+      const { useAppStore } = await import("@/store");
+      const storePolicy = useAppStore.getState().policy;
+      
+      if (storePolicy) {
+        console.log("[BotOrchestration] Using policy from store");
+        return {
+          autoHarvest: storePolicy.autoHarvest ?? false,
+          autoCompound: storePolicy.autoCompound ?? false,
+          autoRebalance: storePolicy.autoRebalance ?? false,
+          autoDeployIdle: storePolicy.autoDeployIdle ?? false,
+          autoReinvest: storePolicy.autoReinvest ?? false,
+          emergencyPause: storePolicy.emergencyPause ?? false,
+          minHarvestAmount: storePolicy.minHarvestAmount || 50,
+          minRebalanceEdge: storePolicy.minRebalanceEdge || 5.0,
+          minIdleAmount: storePolicy.minIdleAmount || 100,
+          maxAutoDeployAmount: storePolicy.maxAutoDeployAmount || 1000,
+          minAutoDeployScore: storePolicy.minAutoDeployScore || 75,
+          minPoolScore: storePolicy.minPoolScore || 70,
+          maxPerPool: storePolicy.maxPerPool || 10000,
+          maxPerChain: storePolicy.maxPerChain || 50000,
+          maxTotalDeployed: storePolicy.maxTotalDeployed || 100000,
+          dailyGasBudget: storePolicy.dailyGasBudget || 100,
+        };
+      }
+
+      // Fallback to database in live mode
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        console.warn("[BotOrchestration] No authenticated user");
-        return null;
+        console.warn("[BotOrchestration] No authenticated user, using default policy");
+        return storePolicy;
       }
 
       const { data, error } = await supabase
@@ -423,30 +579,32 @@ class BotOrchestrationService {
         .maybeSingle();
 
       if (error) {
-        console.error("[BotOrchestration] Failed to load policy:", error);
-        return null;
+        console.error("[BotOrchestration] Failed to load policy from DB:", error);
+        return storePolicy;
       }
 
       if (!data) {
-        console.warn("[BotOrchestration] No policy found for user");
-        return null;
+        console.warn("[BotOrchestration] No policy found in DB, using store policy");
+        return storePolicy;
       }
 
       return {
         autoHarvest: data.auto_harvest ?? false,
         autoCompound: data.auto_compound ?? false,
         autoRebalance: data.auto_rebalance ?? false,
+        autoDeployIdle: data.auto_deploy_idle ?? false,
+        autoReinvest: data.auto_reinvest ?? false,
         emergencyPause: data.emergency_pause ?? false,
-        minHarvestValue: Number(data.min_harvest_value) || 50,
-        compoundThreshold: Number(data.compound_threshold) || 100,
-        rebalanceThreshold: Number(data.rebalance_threshold) || 5.0,
+        minHarvestAmount: Number(data.min_harvest_value) || 50,
+        minRebalanceEdge: Number(data.rebalance_threshold) || 5.0,
+        minIdleAmount: Number(data.min_idle_amount) || 100,
+        maxAutoDeployAmount: Number(data.max_auto_deploy_amount) || 1000,
+        minAutoDeployScore: Number(data.min_auto_deploy_score) || 75,
+        minPoolScore: Number(data.min_pool_score) || 70,
         maxPerPool: Number(data.max_per_pool) || 10000,
         maxPerChain: Number(data.max_per_chain) || 50000,
         maxTotalDeployed: Number(data.max_total_deployed) || 100000,
         dailyGasBudget: Number(data.daily_gas_budget) || 100,
-        maxGasPrice: Number(data.max_gas_price) || 100,
-        maxSlippage: Number(data.max_slippage) || 2.0,
-        maxImpermanentLoss: Number(data.max_impermanent_loss) || 10.0,
       };
     } catch (error) {
       console.error("[BotOrchestration] Error loading policy:", error);
