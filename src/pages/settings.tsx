@@ -187,10 +187,10 @@ export default function Settings() {
       if (success) {
         // Publish settings update event
         await orchestrator.publishEvent({
-          type: "settings_updated",
+          type: "preferences_updated",
           source: "settings_page",
           timestamp: new Date(),
-          affectedModules: ["settings", "preferences"],
+          affectedModules: ["preferences"],
           data: { preferences },
         });
 
