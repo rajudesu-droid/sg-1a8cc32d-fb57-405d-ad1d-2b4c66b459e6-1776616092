@@ -384,7 +384,7 @@ export default function Dashboard() {
               </TooltipProvider>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${portfolioData.totalValue.toLocaleString()}</div>
+              <div className="text-2xl font-bold">${portfolioData.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 {mode.current === "demo" ? "Simulated total" : mode.current === "shadow" ? "Estimated total" : "Current total"}
               </p>
@@ -400,7 +400,7 @@ export default function Dashboard() {
               <Target className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${portfolioData.deployedCapital.toLocaleString()}</div>
+              <div className="text-2xl font-bold">${portfolioData.deployedCapital.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 {mode.current === "demo" ? "Simulated positions" : mode.current === "shadow" ? "Estimated positions" : "Active positions"}
               </p>
@@ -411,14 +411,30 @@ export default function Dashboard() {
           <Card className="card-gradient border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Idle Capital ({getModeLabel()}) <Badge variant="outline" className="ml-1 text-[10px]">■</Badge>
+                Idle Capital ({getModeLabel()})
               </CardTitle>
               <PiggyBank className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${portfolioData.idleCapital.toLocaleString()}</div>
+              <div className="text-2xl font-bold">${portfolioData.idleCapital.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 {mode.current === "demo" ? "Simulated undeployed" : mode.current === "shadow" ? "Estimated undeployed" : "Available capital"}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Net APY */}
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Net APY ({getModeLabel()})
+              </CardTitle>
+              <Percent className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{portfolioData.netApy.toFixed(2)}%</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {mode.current === "demo" ? "Simulated portfolio APY" : mode.current === "shadow" ? "Estimated APY" : "Annualized yield"}
               </p>
             </CardContent>
           </Card>
@@ -449,8 +465,8 @@ export default function Dashboard() {
             <CardContent>
               <div className="text-2xl font-bold text-emerald-400">
                 +${typeof portfolioData.dailyEarnings === 'number' 
-                  ? portfolioData.dailyEarnings.toLocaleString() 
-                  : (portfolioData.dailyEarnings.realized + portfolioData.dailyEarnings.projected).toLocaleString()}
+                  ? portfolioData.dailyEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                  : (portfolioData.dailyEarnings.realized + portfolioData.dailyEarnings.projected).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {mode.current === "demo" ? "Simulated today" : mode.current === "shadow" ? "Estimated today" : "Today's earnings"}
@@ -469,27 +485,11 @@ export default function Dashboard() {
             <CardContent>
               <div className="text-2xl font-bold text-emerald-400">
                 +${typeof portfolioData.monthlyEarnings === 'number'
-                  ? portfolioData.monthlyEarnings.toLocaleString()
-                  : (portfolioData.monthlyEarnings.realized + portfolioData.monthlyEarnings.projected).toLocaleString()}
+                  ? portfolioData.monthlyEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                  : (portfolioData.monthlyEarnings.realized + portfolioData.monthlyEarnings.projected).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {mode.current === "demo" ? "Simulated MTD" : mode.current === "shadow" ? "Estimated MTD" : "Current month"}
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Net APY */}
-          <Card className="card-gradient border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Net APY ({getModeLabel()})
-              </CardTitle>
-              <Percent className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{portfolioData.netApy.toFixed(2)}%</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {mode.current === "demo" ? "Simulated portfolio APY" : mode.current === "shadow" ? "Estimated APY" : "Annualized yield"}
               </p>
             </CardContent>
           </Card>
@@ -519,7 +519,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-emerald-400">
-                +${portfolioData.realizedEarnings.toLocaleString()}
+                +${portfolioData.realizedEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {mode.current === "demo" ? "Simulated all-time" : mode.current === "shadow" ? "Estimated potential" : "Lifetime claimed"}
@@ -537,7 +537,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-cyan-400">
-                +${portfolioData.projected30Day.toLocaleString()}
+                +${portfolioData.projected30Day.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {mode.current === "demo" ? "Simulated projection" : mode.current === "shadow" ? "Estimated projection" : "30-day forecast"}
