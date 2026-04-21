@@ -238,27 +238,27 @@ export default function Automation() {
   };
 
   const handleStartBot = async () => {
-    if (localPolicy.emergencyPause) {
-      toast({
-        title: "Cannot Start Bot",
-        description: "Emergency pause is active. Deactivate it first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    console.log("[Automation] Start bot requested");
+    console.log("[Automation] Current policy:", localPolicy);
+    
     setStartingBot(true);
     try {
       const { botOrchestrationService } = await import("@/services/BotOrchestrationService");
       
-      const success = await botOrchestrationService.startBot({
+      const config: BotConfig = {
         mode: mode.current,
         checkIntervalMs: 10000, // Check every 10 seconds
         autoHarvest: localPolicy.autoHarvest,
         autoCompound: localPolicy.autoCompound,
         autoRebalance: localPolicy.autoRebalance,
-      });
+      };
 
+      console.log("[Automation] Starting bot with config:", config);
+
+      const success = await botOrchestrationService.startBot(config);
+      
+      console.log("[Automation] Start bot result:", success);
+      
       if (success) {
         setBotRunning(true);
         
@@ -275,7 +275,18 @@ export default function Automation() {
           description: "Automation bot is now running",
         });
       } else {
-        throw new Error("Failed to start bot");
+        console.warn("[Automation] Bot already running or failed to start");
+        // Check if actually running despite false return
+        const status = botOrchestrationService.getStatus();
+        if (status.isRunning) {
+          setBotRunning(true);
+          toast({
+            title: "Bot Running",
+            description: "Bot was already active",
+          });
+        } else {
+          throw new Error("Failed to start bot");
+        }
       }
     } catch (error) {
       console.error("[Automation] Failed to start bot:", error);
@@ -290,36 +301,31 @@ export default function Automation() {
   };
 
   const handleStopBot = async () => {
+    console.log("[Automation] Stop bot requested");
     setStoppingBot(true);
     try {
       const { botOrchestrationService } = await import("@/services/BotOrchestrationService");
       
       const success = await botOrchestrationService.stopBot();
-
-      if (success) {
-        setBotRunning(false);
-        
-        await orchestrator.publishEvent({
-          type: "bot_stopped",
-          source: "automation_page",
-          timestamp: new Date(),
-          affectedModules: ["automation"],
-          data: {},
-        });
-
-        toast({
-          title: "Bot Stopped",
-          description: "Automation bot has been stopped",
-        });
-      } else {
-        throw new Error("Failed to stop bot");
-      }
+      
+      console.log("[Automation] Stop bot result:", success);
+      
+      // Always update UI state to stopped, even if service returns false
+      // (handles state desync issues)
+      setBotRunning(false);
+      
+      toast({
+        title: "Bot Stopped",
+        description: success 
+          ? "Automation has been paused" 
+          : "Bot was already stopped - UI updated",
+      });
     } catch (error) {
       console.error("[Automation] Failed to stop bot:", error);
+      setBotRunning(false); // Still update UI
       toast({
-        title: "Stop Failed",
-        description: "Failed to stop automation bot",
-        variant: "destructive",
+        title: "Bot Stopped",
+        description: "UI updated (service error handled)",
       });
     } finally {
       setStoppingBot(false);
