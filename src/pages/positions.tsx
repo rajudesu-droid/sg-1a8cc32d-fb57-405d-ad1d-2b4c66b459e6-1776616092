@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { TrendingUp, TrendingDown, Coins, Target, Activity, AlertTriangle, RefreshCw, Search, DollarSign, Filter, ExternalLink } from "lucide-react";
+import { TrendingUp, TrendingDown, Coins, Target, Activity, AlertTriangle, RefreshCw, Search, DollarSign, Filter, ExternalLink, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store";
 import { ModeBanner } from "@/components/ModeBanner";
 import { orchestrator } from "@/core/orchestrator";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type PositionStatus = "active" | "out_of_range" | "closed";
 
@@ -32,60 +33,6 @@ interface Position {
   openedAt: string;
 }
 
-const mockPositions: Position[] = [
-  {
-    id: "1",
-    pair: "ETH/USDC",
-    chain: "Ethereum",
-    dex: "Uniswap V3",
-    status: "active",
-    valueUsd: 5234.67,
-    rangeMin: 1800,
-    rangeMax: 2200,
-    currentPrice: 1952,
-    liquidity: "$5,234.67",
-    accruedFees: "$124.30",
-    accruedRewards: "$18.40",
-    health: 85,
-    apr: "18.5%",
-    openedAt: "2026-03-15",
-  },
-  {
-    id: "2",
-    pair: "BNB/BUSD",
-    chain: "BSC",
-    dex: "PancakeSwap V3",
-    status: "active",
-    valueUsd: 3210.45,
-    rangeMin: 280,
-    rangeMax: 310,
-    currentPrice: 295,
-    liquidity: "$3,210.45",
-    accruedFees: "$87.20",
-    accruedRewards: "$12.60",
-    health: 92,
-    apr: "22.3%",
-    openedAt: "2026-03-20",
-  },
-  {
-    id: "3",
-    pair: "MATIC/USDC",
-    chain: "Polygon",
-    dex: "Uniswap V3",
-    status: "out_of_range",
-    valueUsd: 1845.23,
-    rangeMin: 0.85,
-    rangeMax: 1.15,
-    currentPrice: 0.78,
-    liquidity: "$1,845.23",
-    accruedFees: "$52.10",
-    accruedRewards: "$8.30",
-    health: 45,
-    apr: "14.2%",
-    openedAt: "2026-04-01",
-  },
-];
-
 export default function Positions() {
   const [filterStatus, setFilterStatus] = useState<PositionStatus | "all">("all");
   const [filterChain, setFilterChain] = useState<string>("all");
@@ -105,7 +52,7 @@ export default function Positions() {
   }, []);
 
   // Use store positions if available, otherwise use mock data
-  const displayPositions = storePositions.length > 0 ? storePositions : mockPositions as any;
+  const displayPositions = storePositions.length > 0 ? storePositions : [];
 
   const filteredPositions = displayPositions.filter((position: any) => {
     const matchesStatus = filterStatus === "all" || position.status === filterStatus;
