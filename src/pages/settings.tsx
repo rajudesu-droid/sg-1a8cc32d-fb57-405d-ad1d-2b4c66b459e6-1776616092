@@ -70,9 +70,9 @@ export default function Settings() {
   const loadAllSettings = async () => {
     setLoading(true);
     try {
-      // Load chain and protocol settings
-      loadChainSettings();
-      loadProtocolSettings();
+      // Load base settings
+      let chains = loadChainSettings();
+      let protocols = loadProtocolSettings();
       
       // Load user preferences from database
       const preferences = await userPreferencesService.loadPreferences();
@@ -93,25 +93,29 @@ export default function Settings() {
           testnetMode: preferences.testnetMode,
         });
         
-        // Apply saved chain preferences
+        // Apply saved chain preferences BEFORE setting state
         if (preferences.enabledChains.length > 0) {
-          setChainSettings(prev => prev.map(chain => ({
+          chains = chains.map(chain => ({
             ...chain,
             enabled: preferences.enabledChains.includes(chain.id),
-          })));
+          }));
         }
         
-        // Apply saved protocol preferences
+        // Apply saved protocol preferences BEFORE setting state
         if (preferences.enabledProtocols.length > 0) {
-          setProtocolSettings(prev => prev.map(protocol => {
+          protocols = protocols.map(protocol => {
             const saved = preferences.enabledProtocols.find((p: any) => p.id === protocol.id);
             return {
               ...protocol,
               enabled: saved ? saved.enabled : protocol.enabled,
             };
-          }));
+          });
         }
       }
+      
+      // Set state once with final values
+      setChainSettings(chains);
+      setProtocolSettings(protocols);
     } catch (error) {
       console.error("[Settings] Failed to load settings:", error);
       toast({
@@ -131,7 +135,7 @@ export default function Settings() {
       name: chain.charAt(0).toUpperCase() + chain.slice(1),
       enabled: true,
     }));
-    setChainSettings(chainData);
+    return chainData;
   };
 
   const loadProtocolSettings = () => {
@@ -160,7 +164,7 @@ export default function Settings() {
       });
     });
 
-    setProtocolSettings(protocols);
+    return protocols;
   };
 
   const handleSaveChanges = async () => {
@@ -219,8 +223,10 @@ export default function Settings() {
     setResetting(true);
     try {
       // Load default values
-      loadChainSettings();
-      loadProtocolSettings();
+      const chains = loadChainSettings();
+      const protocols = loadProtocolSettings();
+      setChainSettings(chains);
+      setProtocolSettings(protocols);
       setSlippageTolerance("2.0");
       setNotificationSettings({
         notifyOutOfRange: true,
