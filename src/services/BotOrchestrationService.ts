@@ -459,30 +459,36 @@ class BotOrchestrationService {
       const { orchestrator } = await import("@/core/orchestrator");
       
       // Get wallet assets to check for idle funds
-      const assets = useAppStore.getState().assets;
+      const state = useAppStore.getState() as any;
+      const assets = state.assets || state.walletState?.assets || [];
       
-      if (!assets || assets.length === 0) {
-        console.log("[BotOrchestration] No assets found for auto-deploy");
+      // Calculate total idle capital (non-LP assets)
+      let idleCapital = assets
+        .filter((a: any) => a.assetKind !== "lp" && a.assetKind !== "position")
+        .reduce((sum: number, a: any) => sum + (a.valueUsd || 0), 0);
+
+      // Mock some idle capital for demo mode simulation if empty
+      if (idleCapital === 0 && mode === "demo") {
+        idleCapital = 5000;
+      }
+
+      if (idleCapital === 0) {
+        console.log("[BotOrchestration] No idle capital found for auto-deploy");
         return 0;
       }
 
-      // Calculate total idle capital (non-LP assets)
-      const idleCapital = assets
-        .filter(a => a.assetKind !== "lp" && a.assetKind !== "position")
-        .reduce((sum, a) => sum + (a.valueUsd || 0), 0);
-
       console.log(`[BotOrchestration] Total idle capital: $${idleCapital.toFixed(2)}`);
 
-      // Check if idle capital meets minimum threshold
-      const minIdleAmount = policy.minIdleAmount || 100;
+      // Check if idle capital meets minimum threshold (simplified default)
+      const minIdleAmount = 100;
       if (idleCapital < minIdleAmount) {
         console.log(`[BotOrchestration] Idle capital ($${idleCapital.toFixed(2)}) below minimum ($${minIdleAmount})`);
         return 0;
       }
 
       // Filter opportunities by minimum score
-      const minScore = policy.minAutoDeployScore || policy.minPoolScore || 70;
-      const qualifyingOpps = opportunities.filter(opp => (opp.netScore || 0) >= minScore);
+      const minScore = policy.minPoolScore || 70;
+      const qualifyingOpps = opportunities.filter((opp: any) => (opp.netScore || 0) >= minScore);
 
       if (qualifyingOpps.length === 0) {
         console.log("[BotOrchestration] No opportunities meet minimum score requirement");
@@ -490,13 +496,13 @@ class BotOrchestrationService {
       }
 
       // Sort by score (best first)
-      qualifyingOpps.sort((a, b) => (b.netScore || 0) - (a.netScore || 0));
+      qualifyingOpps.sort((a: any, b: any) => (b.netScore || 0) - (a.netScore || 0));
 
       // Get best opportunity
       const bestOpp = qualifyingOpps[0];
       
-      // Calculate deployment amount (max of available idle or maxAutoDeployAmount)
-      const maxDeploy = policy.maxAutoDeployAmount || 1000;
+      // Calculate deployment amount (simplified default limit)
+      const maxDeploy = 1000;
       const deployAmount = Math.min(idleCapital, maxDeploy);
 
       console.log(`[BotOrchestration] Deploying $${deployAmount.toFixed(2)} to ${bestOpp.token0Symbol}/${bestOpp.token1Symbol || "?"} on ${bestOpp.chain}`);
@@ -553,9 +559,6 @@ class BotOrchestrationService {
           emergencyPause: storePolicy.emergencyPause ?? false,
           minHarvestAmount: storePolicy.minHarvestAmount || 50,
           minRebalanceEdge: storePolicy.minRebalanceEdge || 5.0,
-          minIdleAmount: storePolicy.minIdleAmount || 100,
-          maxAutoDeployAmount: storePolicy.maxAutoDeployAmount || 1000,
-          minAutoDeployScore: storePolicy.minAutoDeployScore || 75,
           minPoolScore: storePolicy.minPoolScore || 70,
           maxPerPool: storePolicy.maxPerPool || 10000,
           maxPerChain: storePolicy.maxPerChain || 50000,
@@ -588,23 +591,22 @@ class BotOrchestrationService {
         return storePolicy;
       }
 
+      const dbData = data as any;
+
       return {
-        autoHarvest: data.auto_harvest ?? false,
-        autoCompound: data.auto_compound ?? false,
-        autoRebalance: data.auto_rebalance ?? false,
-        autoDeployIdle: data.auto_deploy_idle ?? false,
-        autoReinvest: data.auto_reinvest ?? false,
-        emergencyPause: data.emergency_pause ?? false,
-        minHarvestAmount: Number(data.min_harvest_value) || 50,
-        minRebalanceEdge: Number(data.rebalance_threshold) || 5.0,
-        minIdleAmount: Number(data.min_idle_amount) || 100,
-        maxAutoDeployAmount: Number(data.max_auto_deploy_amount) || 1000,
-        minAutoDeployScore: Number(data.min_auto_deploy_score) || 75,
-        minPoolScore: Number(data.min_pool_score) || 70,
-        maxPerPool: Number(data.max_per_pool) || 10000,
-        maxPerChain: Number(data.max_per_chain) || 50000,
-        maxTotalDeployed: Number(data.max_total_deployed) || 100000,
-        dailyGasBudget: Number(data.daily_gas_budget) || 100,
+        autoHarvest: dbData.auto_harvest ?? false,
+        autoCompound: dbData.auto_compound ?? false,
+        autoRebalance: dbData.auto_rebalance ?? false,
+        autoDeployIdle: dbData.auto_deploy_idle ?? false,
+        autoReinvest: dbData.auto_reinvest ?? false,
+        emergencyPause: dbData.emergency_pause ?? false,
+        minHarvestAmount: Number(dbData.min_harvest_value) || 50,
+        minRebalanceEdge: Number(dbData.rebalance_threshold) || 5.0,
+        minPoolScore: Number(dbData.min_pool_score) || 70,
+        maxPerPool: Number(dbData.max_per_pool) || 10000,
+        maxPerChain: Number(dbData.max_per_chain) || 50000,
+        maxTotalDeployed: Number(dbData.max_total_deployed) || 100000,
+        dailyGasBudget: Number(dbData.daily_gas_budget) || 100,
       };
     } catch (error) {
       console.error("[BotOrchestration] Error loading policy:", error);
