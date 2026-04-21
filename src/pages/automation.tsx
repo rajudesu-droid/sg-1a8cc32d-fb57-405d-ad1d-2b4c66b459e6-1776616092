@@ -89,6 +89,7 @@ export default function Automation() {
         autoRebalance: false,
         rebalanceFrequency: "weekly" as const,
         autoDeployIdle: false,
+        autoReinvest: false,
         minIdleAmount: 100,
         maxAutoDeployAmount: 1000,
         deployStrategy: "best_score" as const,
@@ -257,7 +258,7 @@ export default function Automation() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {[localPolicy.autoHarvest, localPolicy.autoCompound, localPolicy.autoRebalance, localPolicy.autoDeployIdle].filter(Boolean).length}/4
+                {[localPolicy.autoHarvest, localPolicy.autoCompound, localPolicy.autoRebalance, localPolicy.autoDeployIdle, localPolicy.autoReinvest].filter(Boolean).length}/5
               </div>
               <p className="text-xs text-muted-foreground">Automation enabled</p>
             </CardContent>
@@ -424,6 +425,32 @@ export default function Automation() {
                   id="auto-rebalance" 
                   checked={localPolicy.autoRebalance}
                   onCheckedChange={(checked) => updateField('autoRebalance', checked)}
+                  disabled={localPolicy.emergencyPause}
+                />
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="auto-deploy-idle">Auto-Deploy Idle Funds</Label>
+                  <p className="text-xs text-muted-foreground">Automatically deploy idle wallet funds to opportunities</p>
+                </div>
+                <Switch 
+                  id="auto-deploy-idle" 
+                  checked={localPolicy.autoDeployIdle}
+                  onCheckedChange={(checked) => updateField('autoDeployIdle', checked)}
+                  disabled={localPolicy.emergencyPause}
+                />
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="auto-reinvest">Auto-Reinvest Funds</Label>
+                  <p className="text-xs text-muted-foreground">Automatically reinvest profits into new positions</p>
+                </div>
+                <Switch 
+                  id="auto-reinvest" 
+                  checked={localPolicy.autoReinvest}
+                  onCheckedChange={(checked) => updateField('autoReinvest', checked)}
                   disabled={localPolicy.emergencyPause}
                 />
               </div>

@@ -207,13 +207,7 @@ export interface PolicyRules {
   autoRebalance: boolean;
   rebalanceFrequency: "daily" | "weekly" | "monthly";
   autoDeployIdle: boolean;
-  minIdleAmount?: number;
-  maxAutoDeployAmount?: number;
-  deployStrategy?: "best_score" | "highest_apy" | "lowest_risk" | "balanced";
-  minAutoDeployScore?: number;
-  deployFrequency?: "continuous" | "hourly" | "daily" | "weekly";
-  diversifyDeployments?: boolean;
-  maxConcurrentPositions?: number;
+  autoReinvest: boolean;
   minHarvestAmount: number;
   minRebalanceEdge: number;
   dailyGasBudget: number;
