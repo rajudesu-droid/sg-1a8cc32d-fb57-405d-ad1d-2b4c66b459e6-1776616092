@@ -63,20 +63,35 @@ class AssetExtractionService {
    * Demo Mode: Get assets from Paper Wallet / simulated portfolio
    */
   private getDemoAssets(): TradeableAsset[] {
-    const wallet = useAppStore.getState().wallet;
-    const assets = wallet?.assets || [];
+    const paperWallets = useAppStore.getState().paperWallets;
     
-    console.log(`[AssetExtraction] Demo Mode: Found ${assets.length} assets in Paper Wallet`);
+    console.log(`[AssetExtraction] Demo Mode: Found ${paperWallets.length} Paper Wallets`);
     
-    // Filter to tradeable assets only (exclude LP positions)
-    const tradeable = assets
-      .filter(asset => 
-        asset.assetKind === "native" || 
-        asset.assetKind === "token"
-      )
-      .map(asset => this.normalizeAsset(asset, "simulated"));
+    // Extract all tokens from all paper wallets
+    const tokens = paperWallets.flatMap(wallet => wallet.tokens || []);
     
-    console.log(`[AssetExtraction] Demo Mode: ${tradeable.length} tradeable assets (excluding LPs)`);
+    console.log(`[AssetExtraction] Demo Mode: Found ${tokens.length} tokens in Paper Wallets`);
+    
+    // Convert paper wallet tokens to TradeableAsset format
+    const tradeable = tokens.map(token => ({
+      chainFamily: this.getChainFamily(token.network),
+      network: token.network.toLowerCase(),
+      assetKind: "token" as const,
+      tokenStandard: this.getTokenStandard(token.network),
+      symbol: token.symbol,
+      name: token.name,
+      decimals: 18, // Default for most tokens
+      contractAddress: undefined, // Paper wallet tokens don't have addresses yet
+      mintAddress: undefined,
+      issuer: undefined,
+      currencyCode: undefined,
+      quantity: token.quantity,
+      valueUsd: token.totalValue,
+      source: "simulated" as const,
+      addedAt: new Date(),
+    }));
+    
+    console.log(`[AssetExtraction] Demo Mode: ${tradeable.length} tradeable assets (Paper Wallet tokens)`);
     
     return tradeable;
   }
@@ -174,6 +189,33 @@ class AssetExtractionService {
       byNetwork,
       bySource,
     };
+  }
+
+  /**
+   * Get chain family from network name
+   */
+  private getChainFamily(network: string): "evm" | "solana" | "tron" | "bitcoin" | "xrpl" {
+    const net = network.toLowerCase();
+    if (net.includes("solana")) return "solana";
+    if (net.includes("tron")) return "tron";
+    if (net.includes("bitcoin") || net.includes("btc")) return "bitcoin";
+    if (net.includes("xrp")) return "xrpl";
+    return "evm"; // Default to EVM
+  }
+
+  /**
+   * Get token standard from network
+   */
+  private getTokenStandard(network: string): string | undefined {
+    const net = network.toLowerCase();
+    if (net.includes("ethereum") || net.includes("polygon") || net.includes("bsc") || 
+        net.includes("arbitrum") || net.includes("optimism") || net.includes("base") ||
+        net.includes("avalanche")) {
+      return "ERC20";
+    }
+    if (net.includes("solana")) return "SPL";
+    if (net.includes("tron")) return "TRC20";
+    return undefined;
   }
 }
 
