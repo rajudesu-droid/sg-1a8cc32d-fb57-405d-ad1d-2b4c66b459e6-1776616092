@@ -303,7 +303,7 @@ export default function Positions() {
                         </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Opened {position.openedAt}
+                        Opened {new Date(position.openedAt).toLocaleDateString()}
                       </p>
                     </div>
 
