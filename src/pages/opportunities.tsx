@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, Search, Activity, DollarSign, Percent, RefreshCw, Eye, Separator, AlertTriangle } from "lucide-react";
+import { TrendingUp, Search, Activity, DollarSign, Percent, RefreshCw, Eye, AlertTriangle } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store";
 import { ModeBanner } from "@/components/ModeBanner";
@@ -346,7 +347,7 @@ export default function Opportunities() {
                                 <span className="text-xs text-muted-foreground">{asset.name}</span>
                               </div>
                               <div className="text-sm text-muted-foreground">
-                                {asset.quantity.toLocaleString()} {asset.symbol}
+                                {Number((asset as any).balance || 0).toLocaleString()} {asset.symbol}
                                 {asset.valueUsd && (
                                   <span className="ml-2">${asset.valueUsd.toLocaleString()}</span>
                                 )}
