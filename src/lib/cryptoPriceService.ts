@@ -237,3 +237,92 @@ export function getFallbackPrice(symbol: string): number {
   
   return fallbackPrices[symbol.toUpperCase()] || 0;
 }
+
+/**
+ * Map token symbols to CoinGecko IDs
+ */
+function mapSymbolToCoinGeckoId(symbol: string, network?: string): string | null {
+  const symbolMap: Record<string, string> = {
+    // Native tokens
+    ETH: "ethereum",
+    BNB: "binancecoin",
+    MATIC: "matic-network",
+    AVAX: "avalanche-2",
+    FTM: "fantom",
+    CRO: "crypto-com-chain",
+    xDAI: "xdai",
+    SOL: "solana",
+    TRX: "tron",
+    BTC: "bitcoin",
+    XRP: "ripple",
+    
+    // Stablecoins
+    USDT: "tether",
+    USDC: "usd-coin",
+    DAI: "dai",
+    BUSD: "binance-usd",
+    USDD: "usdd",
+    
+    // Popular tokens
+    WETH: "weth",
+    WBNB: "wbnb",
+    WMATIC: "wmatic",
+    LINK: "chainlink",
+    UNI: "uniswap",
+    AAVE: "aave",
+    SUSHI: "sushi",
+    CAKE: "pancakeswap-token",
+    RAY: "raydium",
+    SRM: "serum",
+  };
+
+  return symbolMap[symbol.toUpperCase()] || null;
+}
+
+/**
+ * Fetch USD prices for multiple tokens
+ */
+export async function fetchTokenPrices(
+  tokens: Array<{ symbol: string; network?: string }>
+): Promise<Record<string, number>> {
+  try {
+    // Map symbols to CoinGecko IDs
+    const coinIds = tokens
+      .map(t => mapSymbolToCoinGeckoId(t.symbol, t.network))
+      .filter((id): id is string => id !== null);
+
+    if (coinIds.length === 0) {
+      return {};
+    }
+
+    // Remove duplicates
+    const uniqueIds = [...new Set(coinIds)];
+
+    // Fetch prices from CoinGecko
+    const response = await fetch(
+      `https://api.coingecko.com/api/v3/simple/price?ids=${uniqueIds.join(',')}&vs_currencies=usd`
+    );
+
+    if (!response.ok) {
+      console.error("[CryptoPriceService] CoinGecko API error:", response.status);
+      return {};
+    }
+
+    const data = await response.json();
+
+    // Map back to symbols
+    const priceMap: Record<string, number> = {};
+    
+    tokens.forEach(token => {
+      const coinId = mapSymbolToCoinGeckoId(token.symbol, token.network);
+      if (coinId && data[coinId]?.usd) {
+        priceMap[token.symbol.toUpperCase()] = data[coinId].usd;
+      }
+    });
+
+    return priceMap;
+  } catch (error) {
+    console.error("[CryptoPriceService] Failed to fetch token prices:", error);
+    return {};
+  }
+}

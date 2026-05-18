@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { useAppStore } from "@/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,21 +6,24 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ModeBanner } from "@/components/ModeBanner";
-import { Wallet, Network, RefreshCw, Coins, Info } from "lucide-react";
+import { Wallet, Network, RefreshCw, Coins, Info, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/contexts/WalletContext";
 import { useMultiWallet } from "@/contexts/MultiWalletContext";
 import { UnifiedWalletModal } from "@/components/UnifiedWalletModal";
 import { supportedNetworks } from "@/lib/walletConfig";
+import { fetchTokenPrices } from "@/lib/cryptoPriceService";
 
 export default function Wallets() {
   const mode = useAppStore((state) => state.mode);
   const { isConnected: evmConnected, address: evmAddress, chainId, detectedAssets, refreshBalances } = useWallet();
-  const { connectedWallets } = useMultiWallet();
+  const { connectedWallets, disconnectWallet: disconnectMultiWallet } = useMultiWallet();
   const { toast } = useToast();
 
   const [refreshLoading, setRefreshLoading] = useState(false);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const [tokenPrices, setTokenPrices] = useState<Record<string, number>>({});
+  const [loadingPrices, setLoadingPrices] = useState(false);
 
   const anyWalletConnected = evmConnected || connectedWallets.length > 0;
   const totalConnected = (evmConnected ? 1 : 0) + connectedWallets.length;
@@ -72,6 +75,44 @@ export default function Wallets() {
       }))
     ),
   ];
+
+  // Fetch token prices when tokens change
+  useEffect(() => {
+    if (allTokens.length > 0) {
+      loadTokenPrices();
+    }
+  }, [detectedAssets.length, connectedWallets.length]);
+
+  const loadTokenPrices = async () => {
+    setLoadingPrices(true);
+    try {
+      const uniqueTokens = [...new Set(allTokens.map(t => t.symbol))].map(symbol => ({
+        symbol,
+        network: allTokens.find(t => t.symbol === symbol)?.chain,
+      }));
+
+      const prices = await fetchTokenPrices(uniqueTokens);
+      setTokenPrices(prices);
+      console.log("[Wallets] Fetched prices for", Object.keys(prices).length, "tokens");
+    } catch (error) {
+      console.error("[Wallets] Failed to fetch token prices:", error);
+    } finally {
+      setLoadingPrices(false);
+    }
+  };
+
+  // Calculate USD value for a token
+  const getUSDValue = (symbol: string, balance: string): number | null => {
+    const price = tokenPrices[symbol.toUpperCase()];
+    if (!price) return null;
+    return parseFloat(balance) * price;
+  };
+
+  // Calculate total portfolio value
+  const totalPortfolioValue = allTokens.reduce((sum, token) => {
+    const usdValue = getUSDValue(token.symbol, token.balance);
+    return sum + (usdValue || 0);
+  }, 0);
 
   return (
     <AppLayout>
@@ -155,7 +196,28 @@ export default function Wallets() {
               <div className="text-2xl font-bold">
                 {new Set(allTokens.map(t => t.type)).size}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">EVM, Solana, TRON</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                EVM, Solana, TRON
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Portfolio Value</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {totalPortfolioValue > 0 ? (
+                  <>${totalPortfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
+                ) : (
+                  "—"
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {loadingPrices ? "Loading prices..." : "Total USD value"}
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -200,35 +262,47 @@ export default function Wallets() {
             <Card className="card-gradient border-border/50">
               <CardContent className="pt-6">
                 <div className="space-y-2">
-                  {allTokens.map((token, index) => (
-                    <div key={`${token.chain}-${token.symbol}-${index}`} className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-card/30 hover:bg-card/50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="min-w-[80px] justify-center">
-                          {token.chain}
-                        </Badge>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-semibold">{token.symbol}</p>
-                            {allTokens.filter(t => t.symbol === token.symbol).length > 1 && (
-                              <Badge variant="secondary" className="text-[10px] px-1 py-0">
-                                Multi-chain
+                  {allTokens.map((token, index) => {
+                    const usdValue = getUSDValue(token.symbol, token.balance);
+                    return (
+                      <div key={`${token.chain}-${token.symbol}-${index}`} className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-card/30 hover:bg-card/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline" className="min-w-[80px] justify-center">
+                            {token.chain}
+                          </Badge>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold">{token.symbol}</p>
+                              {allTokens.filter(t => t.symbol === token.symbol).length > 1 && (
+                                <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                                  Multi-chain
+                                </Badge>
+                              )}
+                              <Badge variant="outline" className="text-[9px] px-1 py-0">
+                                {token.type}
                               </Badge>
-                            )}
-                            <Badge variant="outline" className="text-[9px] px-1 py-0">
-                              {token.type}
-                            </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{token.name}</p>
                           </div>
-                          <p className="text-xs text-muted-foreground">{token.name}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">{parseFloat(token.balance).toFixed(4)} {token.symbol}</p>
+                          {usdValue !== null ? (
+                            <p className="text-sm text-success font-medium">
+                              ${usdValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                          ) : loadingPrices ? (
+                            <p className="text-xs text-muted-foreground">Loading...</p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">Price unavailable</p>
+                          )}
+                          <Badge variant={token.isNative ? "default" : "secondary"} className="text-xs mt-1">
+                            {token.isNative ? "Native" : "Token"}
+                          </Badge>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-medium">{parseFloat(token.balance).toFixed(4)} {token.symbol}</p>
-                        <Badge variant={token.isNative ? "default" : "secondary"} className="text-xs mt-1">
-                          {token.isNative ? "Native" : "Token"}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Wallet } from "lucide-react";
@@ -10,6 +10,12 @@ export function WalletButton() {
   const { isConnected: evmConnected, address: evmAddress, chainId, isConnecting, disconnectWallet: disconnectEVM } = useWallet();
   const { connectedWallets, disconnectWallet: disconnectMulti } = useMultiWallet();
   const [modalOpen, setModalOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch by only showing dynamic content after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const totalConnected = (evmConnected ? 1 : 0) + connectedWallets.length;
   const anyConnected = totalConnected > 0;
@@ -41,6 +47,10 @@ export function WalletButton() {
 
   // Display logic for button text
   const getDisplayText = () => {
+    if (!mounted) {
+      return "Connect Wallet";
+    }
+    
     if (isConnecting) return "Connecting...";
     
     if (evmConnected && evmAddress) {
@@ -80,10 +90,11 @@ export function WalletButton() {
         variant={anyConnected ? "outline" : "default"}
         disabled={isConnecting}
         className="gap-2 relative"
+        suppressHydrationWarning
       >
         <Wallet className="h-4 w-4" />
-        {getDisplayText()}
-        {totalConnected > 1 && (
+        <span suppressHydrationWarning>{getDisplayText()}</span>
+        {mounted && totalConnected > 1 && (
           <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
             {totalConnected}
           </Badge>
