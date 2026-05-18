@@ -4,7 +4,7 @@
  */
 
 // ==================== MODE ====================
-export type AppMode = "demo" | "shadow" | "live";
+export type AppMode = "shadow" | "live";
 
 export interface ModeState {
   current: AppMode;

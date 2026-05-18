@@ -104,13 +104,13 @@ export class PortfolioEngine {
         total: realizedEarnings / 30,
         realized: realizedEarnings / 30,
         projected: 0,
-        label: mode === "demo" ? "Simulated" : mode === "shadow" ? "Estimated" : "Realized",
+        label: mode === "shadow" ? "Estimated" : "Realized",
       },
       monthlyEarnings: {
         total: realizedEarnings,
         realized: realizedEarnings,
         projected: 0,
-        label: mode === "demo" ? "Simulated" : mode === "shadow" ? "Estimated" : "Realized",
+        label: mode === "shadow" ? "Estimated" : "Realized",
       },
       realizedEarnings,
       projected30Day: 0,
@@ -126,9 +126,7 @@ export class PortfolioEngine {
     };
 
     // Save to mode-specific state
-    if (mode === "demo") {
-      useAppStore.getState().setDemoPortfolio(metrics);
-    } else if (mode === "shadow") {
+    if (mode === "shadow") {
       useAppStore.getState().setShadowPortfolio(metrics);
     } else if (mode === "live") {
       useAppStore.getState().setLivePortfolio(metrics);

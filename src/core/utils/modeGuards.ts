@@ -10,13 +10,9 @@ import { useAppStore } from "@/store";
  */
 export function isValidDataSourceForMode(
   source: "detected" | "manual" | "simulated",
-  mode: "demo" | "shadow" | "live"
+  mode: "shadow" | "live"
 ): boolean {
   switch (mode) {
-    case "demo":
-      // Demo: All sources allowed (simulated, manual, detected)
-      return true;
-      
     case "shadow":
       // Shadow: Only detected real data
       return source === "detected";
@@ -35,7 +31,7 @@ export function isValidDataSourceForMode(
  */
 export function filterAssetsByMode(
   assets: Array<{ source: "detected" | "manual" | "simulated"; [key: string]: any }>,
-  mode: "demo" | "shadow" | "live"
+  mode: "shadow" | "live"
 ): typeof assets {
   return assets.filter((asset) => isValidDataSourceForMode(asset.source, mode));
 }
@@ -64,13 +60,8 @@ export function isRealTransactionHash(txHash: string | undefined): boolean {
  */
 export function isValidExecutionForMode(
   result: { status: string; transactions?: Array<{ txHash: string }> },
-  mode: "demo" | "shadow" | "live"
+  mode: "shadow" | "live"
 ): { valid: boolean; reason?: string } {
-  if (mode === "demo") {
-    // Demo: Simulated execution is valid
-    return { valid: true };
-  }
-  
   if (mode === "shadow") {
     // Shadow: Preview only, no execution
     return result.status === "completed" && (!result.transactions || result.transactions.length === 0)
@@ -115,19 +106,17 @@ export function getDataSourceLabel(source: "detected" | "manual" | "simulated"):
 /**
  * Check if current mode allows execution
  */
-export function canExecuteInMode(mode: "demo" | "shadow" | "live"): boolean {
-  return mode === "demo" || mode === "live";
+export function canExecuteInMode(mode: "shadow" | "live"): boolean {
+  return mode === "live";
 }
 
 /**
  * Get portfolio data for current mode
  */
-export function getPortfolioForMode(mode: "demo" | "shadow" | "live") {
+export function getPortfolioForMode(mode: "shadow" | "live") {
   const store = useAppStore.getState();
   
   switch (mode) {
-    case "demo":
-      return store.demoPortfolio || store.portfolio;
     case "shadow":
       return store.shadowPortfolio || store.portfolio;
     case "live":
@@ -140,12 +129,10 @@ export function getPortfolioForMode(mode: "demo" | "shadow" | "live") {
 /**
  * Get positions for current mode
  */
-export function getPositionsForMode(mode: "demo" | "shadow" | "live") {
+export function getPositionsForMode(mode: "shadow" | "live") {
   const store = useAppStore.getState();
   
   switch (mode) {
-    case "demo":
-      return store.demoPositions;
     case "shadow":
       return store.shadowPositions;
     case "live":

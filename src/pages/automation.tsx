@@ -354,8 +354,8 @@ export default function Automation() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Badge variant={mode.current === "demo" ? "secondary" : mode.current === "shadow" ? "outline" : "default"}>
-              {mode.current === "demo" ? "Demo Mode" : mode.current === "shadow" ? "Shadow Mode" : "Live Mode"}
+            <Badge variant={mode.current === "shadow" ? "outline" : "default"}>
+              {mode.current === "shadow" ? "Shadow Mode" : "Live Mode"}
             </Badge>
             
             {/* Bot Control */}

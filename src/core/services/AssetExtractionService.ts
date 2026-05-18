@@ -48,8 +48,6 @@ class AssetExtractionService {
     console.log(`[AssetExtraction] Getting tradeable assets for ${mode} mode`);
     
     switch (mode) {
-      case "demo":
-        return this.getDemoAssets();
       case "shadow":
         return this.getShadowAssets();
       case "live":
@@ -57,43 +55,6 @@ class AssetExtractionService {
       default:
         return [];
     }
-  }
-
-  /**
-   * Demo Mode: Get assets from Paper Wallet / simulated portfolio
-   */
-  private getDemoAssets(): TradeableAsset[] {
-    const paperWallets = useAppStore.getState().paperWallets;
-    
-    console.log(`[AssetExtraction] Demo Mode: Found ${paperWallets.length} Paper Wallets`);
-    
-    // Extract all tokens from all paper wallets
-    const tokens = paperWallets.flatMap(wallet => wallet.tokens || []);
-    
-    console.log(`[AssetExtraction] Demo Mode: Found ${tokens.length} tokens in Paper Wallets`);
-    
-    // Convert paper wallet tokens to TradeableAsset format
-    const tradeable = tokens.map(token => ({
-      chainFamily: this.getChainFamily(token.network),
-      network: token.network.toLowerCase(),
-      assetKind: "token" as const,
-      tokenStandard: this.getTokenStandard(token.network),
-      symbol: token.symbol,
-      name: token.name,
-      decimals: 18, // Default for most tokens
-      contractAddress: undefined, // Paper wallet tokens don't have addresses yet
-      mintAddress: undefined,
-      issuer: undefined,
-      currencyCode: undefined,
-      quantity: token.quantity,
-      valueUsd: token.totalValue,
-      source: "simulated" as const,
-      addedAt: new Date(),
-    }));
-    
-    console.log(`[AssetExtraction] Demo Mode: ${tradeable.length} tradeable assets (Paper Wallet tokens)`);
-    
-    return tradeable;
   }
 
   /**

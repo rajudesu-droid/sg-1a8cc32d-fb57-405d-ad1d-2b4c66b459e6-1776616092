@@ -40,7 +40,6 @@ import type { BotConfig } from "@/services/BotOrchestrationService";
 export default function Dashboard() {
   const mode = useAppStore((state) => state.mode);
   const wallet = useAppStore((state) => state.wallet);
-  const paperWallets = useAppStore((state) => state.paperWallets);
   const portfolio = useAppStore((state) => state.portfolio);
   const positions = useAppStore((state) => state.positions);
   const router = useRouter();
@@ -169,34 +168,7 @@ export default function Dashboard() {
 
   // Update portfolio data based on mode
   useEffect(() => {
-    if (mode.current === "demo") {
-      // Demo mode - aggregate data from paper wallets
-      if (paperWallets.length === 0) {
-        setPortfolioData({
-          totalValue: 0,
-          deployedCapital: 0,
-          idleCapital: 0,
-          netApy: 0,
-          dailyEarnings: 0,
-          monthlyEarnings: 0,
-          realizedEarnings: 0,
-          projected30Day: 0,
-        });
-      } else {
-        const totalValue = paperWallets.reduce((sum, w) => sum + w.totalValue, 0);
-        
-        setPortfolioData({
-          totalValue,
-          deployedCapital: 0,
-          idleCapital: totalValue,
-          netApy: 0,
-          dailyEarnings: 0,
-          monthlyEarnings: 0,
-          realizedEarnings: 0,
-          projected30Day: 0,
-        });
-      }
-    } else if (mode.current === "shadow") {
+    if (mode.current === "shadow") {
       // Shadow mode - real wallet data (read-only)
       if (wallet.wallet) {
         // CRITICAL: Only use real detected assets
@@ -258,25 +230,19 @@ export default function Dashboard() {
         });
       }
     }
-  }, [mode.current, wallet.wallet, wallet.assets, portfolio, paperWallets]);
+  }, [mode.current, wallet.wallet, wallet.assets, portfolio]);
 
   const getPageTitle = () => {
     switch (mode.current) {
-      case "demo":
-        return "Dashboard";
       case "shadow":
         return "Dashboard";
       case "live":
-        return "Dashboard";
-      default:
         return "Dashboard";
     }
   };
 
   const getModeLabel = () => {
     switch (mode.current) {
-      case "demo":
-        return "Simulated";
       case "shadow":
         return "Estimated";
       case "live":
@@ -296,8 +262,8 @@ export default function Dashboard() {
             <p className="text-muted-foreground">Portfolio overview and automation status</p>
           </div>
           <div className="flex items-center gap-3">
-            <Badge variant={mode.current === "demo" ? "secondary" : mode.current === "shadow" ? "outline" : "default"}>
-              {mode.current === "demo" ? "Demo Mode" : mode.current === "shadow" ? "Shadow Mode" : "Live Mode"}
+            <Badge variant={mode.current === "shadow" ? "outline" : "default"}>
+              {mode.current === "shadow" ? "Shadow Mode" : "Live Mode"}
             </Badge>
             {!botRunning && (
               <Button 
@@ -331,10 +297,8 @@ export default function Dashboard() {
         <Alert className="border-amber-500/50 bg-amber-500/10">
           <AlertTriangle className="h-4 w-4 text-amber-500" />
           <AlertDescription className="text-sm">
-            <strong>{mode.current === "demo" ? "Demo Mode" : mode.current === "shadow" ? "Shadow Mode" : "Live Mode"}:</strong>{" "}
-            {mode.current === "demo"
-              ? "All data is simulated. No real funds or blockchain transactions. Perfect for testing strategies safely."
-              : mode.current === "shadow"
+            <strong>{mode.current === "shadow" ? "Shadow Mode" : "Live Mode"}:</strong>{" "}
+            {mode.current === "shadow"
               ? "Read-only wallet connection. Recommendations shown but nothing is executed. Review mode only."
               : "Real blockchain execution. Policy rules are enforced. Emergency pause available."}
           </AlertDescription>
