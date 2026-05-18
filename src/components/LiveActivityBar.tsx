@@ -16,13 +16,13 @@ interface ActivityMessage {
 const generateMockActivity = (): ActivityMessage => {
   const activities = [
     {
-      type: "scan" as any,
+      type: "search" as any,
       status: "info" as any,
       message: "Scanning Uniswap V3 ETH/USDC pool",
       details: "APY: 18.5% | Score: 72/100",
     },
     {
-      type: "scan" as any,
+      type: "search" as any,
       status: "info" as any,
       message: "Scanning Curve 3pool",
       details: "APY: 8.2% | Score: 88/100",
@@ -93,8 +93,7 @@ export function LiveActivityBar({ isRunning = false }: LiveActivityBarProps) {
   const [activities, setActivities] = useState<ActivityMessage[]>([
     {
       id: "1",
-      type: "scan",
-      status: "info",
+      type: "info",
       message: "Waiting for automation activity...",
       timestamp: new Date(),
     },

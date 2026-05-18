@@ -216,7 +216,7 @@ export default function Automation() {
       });
       
       // In a real implementation, this would trigger the actual bot orchestrator
-      console.log("[Automation] Bot started with policies:", policies);
+      console.log("[Automation] Bot started with policies:", localPolicy);
     } catch (error) {
       console.error("[Automation] Failed to start bot:", error);
       toast({
@@ -268,7 +268,7 @@ export default function Automation() {
             <Button 
               variant="outline" 
               onClick={handleResetRules}
-              disabled={resetLoading}
+              disabled={resetLoading || botRunning}
             >
               {resetLoading ? (
                 <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Resetting...</>
@@ -278,7 +278,7 @@ export default function Automation() {
             </Button>
             <Button 
               onClick={handleSaveRules}
-              disabled={saveLoading}
+              disabled={saveLoading || botRunning}
             >
               {saveLoading ? (
                 <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
@@ -288,6 +288,45 @@ export default function Automation() {
             </Button>
           </div>
         </div>
+
+        {/* Bot Controls */}
+        <Card className={`border-border/50 ${botRunning ? 'bg-primary/5 border-primary/50' : 'bg-card'}`}>
+          <CardContent className="p-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className={`h-12 w-12 rounded-full flex items-center justify-center ${botRunning ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                <Zap className={`h-6 w-6 ${botRunning ? 'animate-pulse' : ''}`} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold">Automation Bot</h3>
+                <p className="text-sm text-muted-foreground">
+                  {botRunning 
+                    ? "Bot is actively running and managing your portfolio based on configured rules." 
+                    : "Bot is stopped. Click Start to begin automated management."}
+                </p>
+              </div>
+            </div>
+            <div>
+              {!botRunning ? (
+                <Button 
+                  size="lg" 
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  onClick={handleStartBot}
+                  disabled={localPolicy.emergencyPause}
+                >
+                  <Play className="mr-2 h-5 w-5" /> Start Automation Bot
+                </Button>
+              ) : (
+                <Button 
+                  size="lg" 
+                  variant="destructive"
+                  onClick={handleStopBot}
+                >
+                  <Square className="mr-2 h-5 w-5" /> Stop Bot
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Summary Report */}
         <div className="grid gap-4 md:grid-cols-4">
