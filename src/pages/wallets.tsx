@@ -190,12 +190,20 @@ export default function Wallets() {
               <p className="text-xs text-muted-foreground">
                 Full ERC20/BEP20 token detection is active. Connect your wallet to see all your tokens across Ethereum, BSC, Polygon, and Avalanche networks.
               </p>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-2">
                 <span>Supported chains:</span>
                 <Badge variant="outline" className="text-xs">Ethereum</Badge>
                 <Badge variant="outline" className="text-xs">BSC</Badge>
                 <Badge variant="outline" className="text-xs">Polygon</Badge>
                 <Badge variant="outline" className="text-xs">Avalanche</Badge>
+                <Badge variant="outline" className="text-xs">Arbitrum</Badge>
+                <Badge variant="outline" className="text-xs">Optimism</Badge>
+                <Badge variant="outline" className="text-xs">Base</Badge>
+                <Badge variant="outline" className="text-xs">Fantom</Badge>
+                <Badge variant="outline" className="text-xs">Cronos</Badge>
+                <Badge variant="outline" className="text-xs">Gnosis</Badge>
+                <Badge variant="outline" className="text-xs">zkSync</Badge>
+                <Badge variant="outline" className="text-xs">Linea</Badge>
               </div>
             </div>
           </AlertDescription>

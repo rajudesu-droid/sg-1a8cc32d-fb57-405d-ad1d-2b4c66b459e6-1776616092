@@ -103,10 +103,18 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         try {
           // Map chainId to Moralis chain format
           const chainMap: Record<number, string> = {
-            1: "0x1",      // Ethereum
-            56: "0x38",    // BSC
-            137: "0x89",   // Polygon
+            1: "0x1",        // Ethereum
+            56: "0x38",      // BSC
+            137: "0x89",     // Polygon
             43114: "0xa86a", // Avalanche
+            42161: "0xa4b1", // Arbitrum
+            10: "0xa",       // Optimism
+            8453: "0x2105",  // Base
+            250: "0xfa",     // Fantom
+            25: "0x19",      // Cronos
+            100: "0x64",     // Gnosis
+            324: "0x144",    // zkSync Era
+            59144: "0xe708", // Linea
           };
           
           const moralisChain = chainMap[chainId];

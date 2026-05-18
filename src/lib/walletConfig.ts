@@ -1,5 +1,5 @@
 import { createConfig, http } from "wagmi";
-import { mainnet, bsc, polygon, avalanche } from "wagmi/chains";
+import { mainnet, bsc, polygon, avalanche, arbitrum, optimism, base, fantom } from "wagmi/chains";
 import { walletConnect, injected } from "wagmi/connectors";
 
 // WalletConnect project ID - Read from environment variable
@@ -9,7 +9,7 @@ console.log("[WalletConfig] WalletConnect Project ID:", projectId ? "✓ Configu
 
 // Public RPC endpoints - no API keys in frontend
 export const walletConfig = createConfig({
-  chains: [mainnet, bsc, polygon, avalanche],
+  chains: [mainnet, bsc, polygon, avalanche, arbitrum, optimism, base, fantom],
   connectors: [
     walletConnect({
       projectId: projectId,
@@ -34,6 +34,10 @@ export const walletConfig = createConfig({
     [bsc.id]: http(),
     [polygon.id]: http(),
     [avalanche.id]: http(),
+    [arbitrum.id]: http(),
+    [optimism.id]: http(),
+    [base.id]: http(),
+    [fantom.id]: http(),
   },
 });
 
@@ -46,4 +50,12 @@ export const supportedNetworks = [
   { id: 56, name: "BSC", symbol: "BNB", explorer: "https://bscscan.com" },
   { id: 137, name: "Polygon", symbol: "MATIC", explorer: "https://polygonscan.com" },
   { id: 43114, name: "Avalanche", symbol: "AVAX", explorer: "https://snowtrace.io" },
+  { id: 42161, name: "Arbitrum", symbol: "ETH", explorer: "https://arbiscan.io" },
+  { id: 10, name: "Optimism", symbol: "ETH", explorer: "https://optimistic.etherscan.io" },
+  { id: 8453, name: "Base", symbol: "ETH", explorer: "https://basescan.org" },
+  { id: 250, name: "Fantom", symbol: "FTM", explorer: "https://ftmscan.com" },
+  { id: 25, name: "Cronos", symbol: "CRO", explorer: "https://cronoscan.com" },
+  { id: 100, name: "Gnosis", symbol: "xDAI", explorer: "https://gnosisscan.io" },
+  { id: 324, name: "zkSync", symbol: "ETH", explorer: "https://explorer.zksync.io" },
+  { id: 59144, name: "Linea", symbol: "ETH", explorer: "https://lineascan.build" },
 ] as const;
