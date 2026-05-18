@@ -595,11 +595,6 @@ export default function Opportunities() {
                   <p className="text-muted-foreground">
                     {"Connect a wallet to discover opportunities"}
                   </p>
-                  {mode.current === "demo" && (
-                    <Button onClick={() => window.location.href = "/wallets"}>
-                      Go to Paper Wallet
-                    </Button>
-                  )}
                 </div>
               ) : opportunities.length === 0 ? (
                 <div className="space-y-3">

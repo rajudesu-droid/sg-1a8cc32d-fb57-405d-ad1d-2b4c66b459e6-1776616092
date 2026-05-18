@@ -182,7 +182,6 @@ export default function Positions() {
 
   const getPageTitle = () => {
     switch (mode.current) {
-      case "demo": return "Simulated Positions";
       case "shadow": return "Recommended Positions";
       case "live": return "Active Positions";
     }
