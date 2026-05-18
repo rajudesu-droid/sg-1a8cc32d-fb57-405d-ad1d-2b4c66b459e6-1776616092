@@ -18,6 +18,7 @@ import {
   Menu,
   Bell,
   X,
+  FileText,
 } from "lucide-react";
 import { ModeSelector } from "./ModeSelector";
 import { WalletButton } from "./WalletButton";
@@ -86,6 +87,22 @@ export function AppLayout({ children }: AppLayoutProps) {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={router.pathname === "/withdraw"}>
+                      <Link href="/withdraw">
+                        <ArrowRightLeft className="mr-2 h-4 w-4" />
+                        Withdraw
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={router.pathname === "/logs"}>
+                      <Link href="/logs">
+                        <FileText className="mr-2 h-4 w-4" />
+                        Transaction History
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
