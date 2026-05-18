@@ -12,6 +12,55 @@ interface ActivityMessage {
   timestamp: Date;
 }
 
+// Mock activity generator for demonstration
+const generateMockActivity = (): ActivityMessage => {
+  const activities = [
+    {
+      type: "scan" as any,
+      status: "info" as any,
+      message: "Scanning Uniswap V3 ETH/USDC pool",
+      details: "APY: 18.5% | Score: 72/100",
+    },
+    {
+      type: "scan" as any,
+      status: "info" as any,
+      message: "Scanning Curve 3pool",
+      details: "APY: 8.2% | Score: 88/100",
+    },
+    {
+      type: "harvest" as any,
+      status: "success" as any,
+      message: "Harvested rewards from ETH/USDC position",
+      details: "+$12.45 USDC earned",
+    },
+    {
+      type: "compound" as any,
+      status: "success" as any,
+      message: "Compounded rewards into ETH/USDC",
+      details: "Added $24.80 liquidity",
+    },
+    {
+      type: "rebalance" as any,
+      status: "warning" as any,
+      message: "Position out of range detected",
+      details: "WBTC/ETH requires rebalancing",
+    },
+    {
+      type: "position" as any,
+      status: "success" as any,
+      message: "Opened new LP position",
+      details: "Balancer wstETH/WETH | $500 deployed",
+    },
+  ];
+
+  const selected = activities[Math.floor(Math.random() * activities.length)];
+  return {
+    id: `activity-${Date.now()}-${Math.random()}`,
+    ...selected,
+    timestamp: new Date(),
+  };
+};
+
 const activityColors = {
   search: "bg-blue-500/10 text-blue-500 border-blue-500/50",
   discover: "bg-cyan-500/10 text-cyan-500 border-cyan-500/50",
@@ -36,13 +85,45 @@ const activityLabels = {
   info: "INFO",
 };
 
-export function LiveActivityBar() {
-  const [activities, setActivities] = useState<ActivityMessage[]>([]);
+interface LiveActivityBarProps {
+  isRunning?: boolean;
+}
+
+export function LiveActivityBar({ isRunning = false }: LiveActivityBarProps) {
+  const [activities, setActivities] = useState<ActivityMessage[]>([
+    {
+      id: "1",
+      type: "scan",
+      status: "info",
+      message: "Waiting for automation activity...",
+      timestamp: new Date(),
+    },
+  ]);
   const [isPaused, setIsPaused] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const mode = useAppStore((state) => state.mode);
   const botRunning = useAppStore((state) => state.botRunning);
+
+  // Generate mock activities when bot is running
+  useEffect(() => {
+    if (!isRunning) return;
+
+    // Clear initial "waiting" message
+    setActivities([]);
+
+    // Add initial scanning activity
+    const initialActivity = generateMockActivity();
+    setActivities([initialActivity]);
+
+    // Generate new activities every 3-8 seconds
+    const interval = setInterval(() => {
+      const newActivity = generateMockActivity();
+      setActivities(prev => [newActivity, ...prev].slice(0, 20)); // Keep last 20
+    }, Math.random() * 5000 + 3000); // Random interval 3-8s
+
+    return () => clearInterval(interval);
+  }, [isRunning]);
 
   // Auto-scroll to latest message
   useEffect(() => {

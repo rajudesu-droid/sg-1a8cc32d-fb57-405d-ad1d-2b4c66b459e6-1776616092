@@ -205,6 +205,40 @@ export default function Automation() {
     }
   };
 
+  const handleStartBot = async () => {
+    try {
+      setBotRunning(true);
+      
+      toast({
+        title: "🤖 Automation Started",
+        description: "Bot is now actively scanning for opportunities and executing strategies.",
+      });
+      
+      // In a real implementation, this would trigger the actual bot orchestrator
+      console.log("[Automation] Bot started with policies:", policies);
+    } catch (error) {
+      console.error("[Automation] Failed to start bot:", error);
+      toast({
+        title: "Failed to Start Bot",
+        description: "An error occurred while starting automation.",
+        variant: "destructive",
+      });
+      setBotRunning(false);
+    }
+  };
+
+  const handleStopBot = () => {
+    setBotRunning(false);
+    
+    toast({
+      title: "⏸️ Automation Stopped",
+      description: "Bot has been paused. No new actions will be executed.",
+      variant: "destructive",
+    });
+    
+    console.log("[Automation] Bot stopped");
+  };
+
   const updateField = (key: keyof typeof localPolicy, value: any) => {
     console.log(`[Automation] Updating policy field: ${key} = ${value}`);
     setLocalPolicy(prev => {
@@ -535,6 +569,9 @@ export default function Automation() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Live Activity Bar */}
+        <LiveActivityBar isRunning={botRunning} />
       </div>
     </AppLayout>
   );

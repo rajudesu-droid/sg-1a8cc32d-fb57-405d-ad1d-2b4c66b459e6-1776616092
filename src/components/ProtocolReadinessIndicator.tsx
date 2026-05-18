@@ -57,6 +57,18 @@ export function ProtocolReadinessIndicator({
   };
 
   const config = getReadinessConfig();
+  
+  // Safety check: if config is undefined, return null or a fallback
+  if (!config) {
+    return (
+      <div className="flex items-center gap-2">
+        <Badge variant="secondary" className="text-xs">
+          Unknown Protocol
+        </Badge>
+      </div>
+    );
+  }
+  
   const Icon = config.icon;
   
   const iconSize = size === "sm" ? "w-3 h-3" : size === "md" ? "w-4 h-4" : "w-5 h-5";
