@@ -1,20 +1,24 @@
 import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/AppLayout";
-import { useAppStore } from "@/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ModeBanner } from "@/components/ModeBanner";
-import { Wallet, Network, RefreshCw, Coins, Info, DollarSign } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWallet } from "@/contexts/WalletContext";
 import { useMultiWallet } from "@/contexts/MultiWalletContext";
-import { UnifiedWalletModal } from "@/components/UnifiedWalletModal";
-import { supportedNetworks } from "@/lib/walletConfig";
+import { Wallet, Copy, ExternalLink, TrendingUp, Info, DollarSign, Network, Coins, RefreshCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { fetchTokenPrices } from "@/lib/cryptoPriceService";
 
 export default function Wallets() {
+  // Prevent hydration mismatch - only render wallet content after mount
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const mode = useAppStore((state) => state.mode);
   const { isConnected: evmConnected, address: evmAddress, chainId, detectedAssets, refreshBalances } = useWallet();
   const { connectedWallets, disconnectWallet: disconnectMultiWallet } = useMultiWallet();
@@ -116,141 +120,16 @@ export default function Wallets() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Wallets</h1>
-            <p className="text-muted-foreground">
-              Connect once, see all your assets across all blockchains
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Badge variant={mode.current === "shadow" ? "outline" : "default"}>
-              {mode.current === "shadow" ? "Shadow Mode" : "Live Mode"}
-            </Badge>
-
-            {anyWalletConnected && (
-              <Button variant="outline" onClick={handleRefreshBalances} disabled={refreshLoading}>
-                {refreshLoading ? (
-                  <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Refreshing...</>
-                ) : (
-                  <><RefreshCw className="mr-2 h-4 w-4" /> Refresh All</>
-                )}
-              </Button>
-            )}
-
-            <Button
-              onClick={() => setWalletModalOpen(true)}
-              variant={anyWalletConnected ? "outline" : "default"}
-            >
-              <Wallet className="mr-2 h-4 w-4" />
-              {anyWalletConnected ? "Connect Another" : "Connect Wallet"}
-            </Button>
-          </div>
+      <div className="space-y-6" suppressHydrationWarning>
+        <div>
+          <h1 className="text-3xl font-bold">Wallets</h1>
+          <p className="text-muted-foreground">
+            Manage your connected wallets and view balances
+          </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card className="card-gradient border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Connected Wallets</CardTitle>
-              <Wallet className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalConnected}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {anyWalletConnected ? "Active" : "Not connected"}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="card-gradient border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Blockchains</CardTitle>
-              <Network className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {new Set(allTokens.map(t => t.chain)).size}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Networks detected</p>
-            </CardContent>
-          </Card>
-
-          <Card className="card-gradient border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Assets</CardTitle>
-              <Coins className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{allTokens.length}</div>
-              <p className="text-xs text-muted-foreground mt-1">Across all wallets</p>
-            </CardContent>
-          </Card>
-
-          <Card className="card-gradient border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Chain Types</CardTitle>
-              <Info className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {new Set(allTokens.map(t => t.type)).size}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                EVM, Solana, TRON
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="card-gradient border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Portfolio Value</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {totalPortfolioValue > 0 ? (
-                  <>${totalPortfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
-                ) : (
-                  "—"
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {loadingPrices ? "Loading prices..." : "Total USD value"}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <ModeBanner />
-
-        <Alert className="border-primary/50 bg-primary/10">
-          <Info className="h-4 w-4 text-primary" />
-          <AlertDescription>
-            <div className="space-y-3">
-              <div>
-                <p className="font-semibold text-sm">✅ Unified Token Detection</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Automatic detection of tokens across EVM and Non-EVM chains. Click connect once, see balances everywhere!
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground mb-1">Supported Chains:</p>
-                <div className="flex flex-wrap gap-1.5">
-                  <Badge variant="outline" className="text-xs">Ethereum</Badge>
-                  <Badge variant="outline" className="text-xs">BSC</Badge>
-                  <Badge variant="outline" className="text-xs">Polygon</Badge>
-                  <Badge variant="outline" className="text-xs">Solana</Badge>
-                  <Badge variant="outline" className="text-xs">TRON</Badge>
-                  <Badge variant="outline" className="text-xs">Arbitrum</Badge>
-                  <Badge variant="outline" className="text-xs">Optimism</Badge>
-                  <Badge variant="outline" className="text-xs">Base</Badge>
-                </div>
-              </div>
-            </div>
-          </AlertDescription>
-        </Alert>
-
+        {mounted && (
+          <>
         <Alert className="border-amber-500/50 bg-amber-500/10">
           <Info className="h-4 w-4 text-amber-500" />
           <AlertDescription>
@@ -288,6 +167,33 @@ export default function Wallets() {
                 <p className="text-xs text-muted-foreground mt-1">
                   <strong>Solution:</strong> For non-EVM chains, use browser extensions (Phantom for Solana, TronLink for TRON) or manually input balances.
                 </p>
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
+
+        <Alert className="border-primary/50 bg-primary/10">
+          <Info className="h-4 w-4 text-primary" />
+          <AlertDescription>
+            <div className="space-y-3">
+              <div>
+                <p className="font-semibold text-sm">✅ Unified Token Detection</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Automatic detection of tokens across EVM and Non-EVM chains. Click connect once, see balances everywhere!
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-1">Supported Chains:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <Badge variant="outline" className="text-xs">Ethereum</Badge>
+                  <Badge variant="outline" className="text-xs">BSC</Badge>
+                  <Badge variant="outline" className="text-xs">Polygon</Badge>
+                  <Badge variant="outline" className="text-xs">Solana</Badge>
+                  <Badge variant="outline" className="text-xs">TRON</Badge>
+                  <Badge variant="outline" className="text-xs">Arbitrum</Badge>
+                  <Badge variant="outline" className="text-xs">Optimism</Badge>
+                  <Badge variant="outline" className="text-xs">Base</Badge>
+                </div>
               </div>
             </div>
           </AlertDescription>
@@ -394,91 +300,6 @@ export default function Wallets() {
             </div>
           </div>
         )}
-
-        {anyWalletConnected && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Connected Wallets</h2>
-              <Badge variant="secondary" className="text-xs">
-                {totalConnected} wallet(s)
-              </Badge>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              {evmConnected && evmAddress && (
-                <Card className="card-gradient border-border/50">
-                  <CardContent className="pt-6">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Badge variant="outline">EVM</Badge>
-                        <p className="text-xs text-muted-foreground">
-                          {currentNetwork?.name || "Ethereum"}
-                        </p>
-                      </div>
-                      <p className="font-mono text-sm">
-                        {evmAddress.slice(0, 10)}...{evmAddress.slice(-8)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {detectedAssets.length} asset(s) detected
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-              {connectedWallets.map((wallet) => (
-                <Card key={wallet.id} className="card-gradient border-border/50">
-                  <CardContent className="pt-6">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Badge variant="outline">{wallet.type.toUpperCase()}</Badge>
-                        <p className="text-xs text-muted-foreground">
-                          {wallet.chainName}
-                        </p>
-                      </div>
-                      <p className="font-mono text-sm">
-                        {wallet.address.slice(0, 10)}...{wallet.address.slice(-8)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {wallet.tokens?.length || 0} asset(s) detected
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!anyWalletConnected && (
-          <Card className="card-gradient border-border/50">
-            <CardContent className="py-12 text-center space-y-4">
-              <div className="flex justify-center">
-                <div className="h-16 w-16 rounded-full bg-muted/20 flex items-center justify-center">
-                  <Wallet className="h-8 w-8 text-muted-foreground" />
-                </div>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold">No Wallet Connected</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Click "Connect Wallet" to scan QR code or connect your browser wallet
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Supports: EVM (MetaMask, Trust, etc.) • Solana (Phantom) • TRON (TronLink)
-                </p>
-              </div>
-              <div className="flex justify-center mt-4">
-                <Button onClick={() => setWalletModalOpen(true)}>
-                  <Wallet className="mr-2 h-4 w-4" />
-                  Connect Wallet
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <UnifiedWalletModal 
-          open={walletModalOpen} 
-          onClose={() => setWalletModalOpen(false)} 
-        />
       </div>
     </AppLayout>
   );
