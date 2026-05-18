@@ -19,7 +19,13 @@ export const walletConfig = createConfig({
         url: typeof window !== "undefined" ? window.location.origin : "https://lp-autopilot.com",
         icons: [typeof window !== "undefined" ? `${window.location.origin}/favicon.ico` : ""],
       },
-      showQrModal: true,
+      showQrModal: true, // Use WalletConnect's built-in QR modal
+      qrModalOptions: {
+        themeMode: "dark",
+        themeVariables: {
+          "--wcm-z-index": "9999",
+        },
+      },
     }),
     injected(),
   ],
