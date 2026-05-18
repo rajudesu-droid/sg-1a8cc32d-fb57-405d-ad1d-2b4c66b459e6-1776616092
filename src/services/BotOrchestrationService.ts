@@ -11,11 +11,11 @@ export interface BotStatus {
   startedAt: Date | null;
   lastActionAt: Date | null;
   totalActions: number;
-  mode: "demo" | "shadow" | "live";
+  mode: "shadow" | "live";
 }
 
 export interface BotConfig {
-  mode: "demo" | "shadow" | "live";
+  mode: "shadow" | "live";
   checkIntervalMs: number; // How often to check for opportunities
   autoHarvest: boolean;
   autoCompound: boolean;
@@ -29,7 +29,7 @@ class BotOrchestrationService {
     startedAt: null,
     lastActionAt: null,
     totalActions: 0,
-    mode: "demo",
+    mode: "shadow",
   };
 
   /**
@@ -286,32 +286,15 @@ class BotOrchestrationService {
         if (rewardValueUSD >= minHarvestAmount) {
           console.log(`[BotOrchestration] Harvesting position ${position.id}: $${rewardValueUSD.toFixed(2)} in rewards`);
           
-          // In Demo Mode, add rewards to Paper Wallet and reset position rewards
-          if (mode === "demo") {
-            // Reset accrued rewards on position
-            const updatedPositions = useAppStore.getState().positions.map(p => 
-              p.id === position.id 
-                ? { ...p, accruedRewards: 0, lastUpdated: new Date() }
-                : p
-            );
-            useAppStore.getState().setPositions(updatedPositions);
+          // Reset accrued rewards on position (Shadow = track, Live = execute)
+          const updatedPositions = useAppStore.getState().positions.map(p => 
+            p.id === position.id 
+              ? { ...p, accruedRewards: 0, lastUpdated: new Date() }
+              : p
+          );
+          useAppStore.getState().setPositions(updatedPositions);
 
-            // Add harvested amount to Paper Wallet
-            const paperWallets = useAppStore.getState().paperWallets;
-            if (paperWallets.length > 0) {
-              const wallet = paperWallets[0];
-              // Find matching token or add to first token
-              const updatedTokens = [...wallet.tokens];
-              if (updatedTokens.length > 0) {
-                updatedTokens[0].quantity += rewardValueUSD / (updatedTokens[0].priceUsd || 1);
-                updatedTokens[0].totalValue += rewardValueUSD;
-              }
-
-              useAppStore.getState().updatePaperWallet(wallet.id, updatedTokens);
-            }
-
-            console.log(`[BotOrchestration] Harvested rewards added to Paper Wallet`);
-          }
+          console.log(`[BotOrchestration] Harvested rewards in ${mode} mode`);
           
           // Publish harvest event via orchestrator
           const { orchestrator } = await import("@/core/orchestrator");
@@ -388,22 +371,20 @@ class BotOrchestrationService {
         if (rewardValueUSD >= compoundThreshold) {
           console.log(`[BotOrchestration] Compounding position ${position.id}: $${rewardValueUSD.toFixed(2)} in rewards`);
           
-          // In Demo Mode, add rewards to position value and reset rewards
-          if (mode === "demo") {
-            const updatedPositions = useAppStore.getState().positions.map(p => 
-              p.id === position.id 
-                ? { 
-                    ...p, 
-                    valueUsd: (p as any).valueUsd + rewardValueUSD,
-                    accruedRewards: 0,
-                    lastUpdated: new Date()
-                  }
-                : p
-            );
-            useAppStore.getState().setPositions(updatedPositions);
+          // Add rewards to position value (Shadow = track, Live = execute)
+          const updatedPositions = useAppStore.getState().positions.map(p => 
+            p.id === position.id 
+              ? { 
+                  ...p, 
+                  valueUsd: (p as any).valueUsd + rewardValueUSD,
+                  accruedRewards: 0,
+                  lastUpdated: new Date()
+                }
+              : p
+          );
+          useAppStore.getState().setPositions(updatedPositions);
 
-            console.log(`[BotOrchestration] Compounded $${rewardValueUSD.toFixed(2)} into position ${position.id}`);
-          }
+          console.log(`[BotOrchestration] Compounded $${rewardValueUSD.toFixed(2)} into ${mode} position ${position.id}`);
           
           // Publish compound event via orchestrator
           const { orchestrator } = await import("@/core/orchestrator");
@@ -591,45 +572,47 @@ class BotOrchestrationService {
 
       console.log(`[BotOrchestration] Deploying $${deployAmount.toFixed(2)} to ${bestOpp.token0Symbol}/${bestOpp.token1Symbol || "?"} on ${bestOpp.chain}`);
 
-      // In Demo Mode, create simulated position
-      if (mode === "demo") {
-        const newPosition = {
-          id: `pos-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          opportunityId: bestOpp.id,
-          dex: bestOpp.protocolName,
-          protocol: bestOpp.protocolName,
-          chain: bestOpp.chain,
-          pair: `${bestOpp.token0Symbol}/${bestOpp.token1Symbol || "?"}`,
-          token0: bestOpp.token0Symbol,
-          token1: bestOpp.token1Symbol || "?",
-          feeTier: bestOpp.feeTier || "0.30%",
-          liquidity: deployAmount,
-          valueUsd: deployAmount,
-          estimatedIL: 0,
-          health: 100,
-          status: "in-range" as const,
-          rangeMin: 0.95,
-          rangeMax: 1.05,
-          currentPrice: 1.0,
-          entryPrice: 1.0,
-          accruedFees: 0,
-          accruedRewards: 0,
-          estimatedAPY: bestOpp.totalYield,
-          openedAt: new Date(),
-          lastUpdated: new Date(),
-        } as any;
+      // Create position (Shadow mode = recommendation, Live mode = execution)
+      const newPosition = {
+        id: `pos-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        opportunityId: bestOpp.id,
+        dex: bestOpp.protocolName,
+        protocol: bestOpp.protocolName,
+        chain: bestOpp.chain,
+        pair: `${bestOpp.token0Symbol}/${bestOpp.token1Symbol || "?"}`,
+        token0: bestOpp.token0Symbol,
+        token1: bestOpp.token1Symbol || "?",
+        feeTier: bestOpp.feeTier || "0.30%",
+        liquidity: deployAmount,
+        valueUsd: deployAmount,
+        estimatedIL: 0,
+        health: 100,
+        status: "in-range" as const,
+        rangeMin: 0.95,
+        rangeMax: 1.05,
+        currentPrice: 1.0,
+        entryPrice: 1.0,
+        accruedFees: 0,
+        accruedRewards: 0,
+        estimatedAPY: bestOpp.totalYield,
+        openedAt: new Date(),
+        lastUpdated: new Date(),
+      } as any;
 
-        console.log(`[BotOrchestration] Creating position:`, newPosition);
+      console.log(`[BotOrchestration] Creating ${mode} position:`, newPosition);
 
-        // Add position to store (this adds to generic positions array)
-        useAppStore.getState().addPosition(newPosition);
-        
-        // Also add to demo-specific positions array
-        const currentDemoPositions = useAppStore.getState().demoPositions;
-        useAppStore.getState().setDemoPositions([...currentDemoPositions, newPosition]);
-
-        console.log(`[BotOrchestration] Position added to store`);
+      // Add position to mode-specific array
+      useAppStore.getState().addPosition(newPosition);
+      
+      if (mode === "shadow") {
+        const currentShadowPositions = useAppStore.getState().shadowPositions;
+        useAppStore.getState().setShadowPositions([...currentShadowPositions, newPosition]);
+      } else if (mode === "live") {
+        const currentLivePositions = useAppStore.getState().livePositions;
+        useAppStore.getState().setLivePositions([...currentLivePositions, newPosition]);
       }
+
+      console.log(`[BotOrchestration] Position added to ${mode} positions`);
 
       // Deduct deployed amount from Paper Wallet
       const paperWallets = useAppStore.getState().paperWallets;
@@ -821,7 +804,7 @@ class BotOrchestrationService {
         startedAt: parsed.startedAt ? new Date(parsed.startedAt) : null,
         lastActionAt: parsed.lastActionAt ? new Date(parsed.lastActionAt) : null,
         totalActions: parsed.totalActions || 0,
-        mode: parsed.mode || "demo",
+        mode: parsed.mode || "shadow",
       };
 
       console.log("[BotOrchestration] Bot status loaded (not auto-started)");

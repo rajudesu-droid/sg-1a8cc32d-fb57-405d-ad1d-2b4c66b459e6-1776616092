@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, Beaker, Eye, Zap, AlertTriangle, Info } from "lucide-react";
+import { ChevronDown, Eye, Zap, AlertTriangle, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { orchestrator } from "@/core/orchestrator";
 
@@ -18,7 +18,7 @@ export function ModeSelector() {
   const setMode = useAppStore((state) => state.setMode);
   const { toast } = useToast();
 
-  const handleModeChange = async (newMode: "demo" | "shadow" | "live") => {
+  const handleModeChange = async (newMode: "shadow" | "live") => {
     if (newMode === mode.current) return;
 
     // Show warning for Live Mode
@@ -44,7 +44,6 @@ export function ModeSelector() {
 
     // Show confirmation toast
     const modeLabels = {
-      demo: "Demo Mode - Simulated Data",
       shadow: "Shadow Mode - Read-Only View",
       live: "Live Mode - Real Execution",
     };
@@ -57,34 +56,34 @@ export function ModeSelector() {
 
   const getModeIcon = () => {
     switch (mode.current) {
-      case "demo":
-        return <Beaker className="h-4 w-4" />;
       case "shadow":
         return <Eye className="h-4 w-4" />;
       case "live":
         return <Zap className="h-4 w-4" />;
+      default:
+        return <Eye className="h-4 w-4" />;
     }
   };
 
   const getModeColor = () => {
     switch (mode.current) {
-      case "demo":
-        return "bg-secondary text-secondary-foreground";
       case "shadow":
         return "bg-accent/20 text-accent border-accent/50";
       case "live":
         return "bg-primary text-primary-foreground";
+      default:
+        return "bg-accent/20 text-accent border-accent/50";
     }
   };
 
   const getModeDescription = () => {
     switch (mode.current) {
-      case "demo":
-        return "All data is simulated. No real funds.";
       case "shadow":
         return "Read-only mode. Real data, no execution.";
       case "live":
         return "Live execution enabled. Real funds at risk.";
+      default:
+        return "Read-only mode. Real data, no execution.";
     }
   };
 
@@ -109,28 +108,6 @@ export function ModeSelector() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-
-        <DropdownMenuItem
-          onClick={() => handleModeChange("demo")}
-          className={mode.current === "demo" ? "bg-secondary" : ""}
-        >
-          <div className="flex items-center gap-3 w-full">
-            <Beaker className="h-4 w-4 text-secondary-foreground" />
-            <div className="flex-1">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold">Demo Mode</span>
-                {mode.current === "demo" && (
-                  <Badge variant="secondary" className="text-xs">
-                    Active
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Simulated data • Safe testing
-              </p>
-            </div>
-          </div>
-        </DropdownMenuItem>
 
         <DropdownMenuItem
           onClick={() => handleModeChange("shadow")}

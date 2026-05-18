@@ -31,12 +31,10 @@ interface AppState {
   // ==================== PORTFOLIO ====================
   // Mode-specific portfolio states
   portfolio: PortfolioMetrics | null;  // Current active mode portfolio
-  demoPortfolio: PortfolioMetrics | null;  // Demo mode only
   shadowPortfolio: PortfolioMetrics | null;  // Shadow mode only
   livePortfolio: PortfolioMetrics | null;  // Live mode only
   
   setPortfolio: (portfolio: PortfolioMetrics) => void;
-  setDemoPortfolio: (portfolio: PortfolioMetrics | null) => void;
   setShadowPortfolio: (portfolio: PortfolioMetrics | null) => void;
   setLivePortfolio: (portfolio: PortfolioMetrics | null) => void;
 
@@ -49,12 +47,10 @@ interface AppState {
   // ==================== POSITIONS ====================
   // Mode-specific positions
   positions: Position[];  // Current active mode positions
-  demoPositions: Position[];  // Demo mode only
   shadowPositions: Position[];  // Shadow mode only (read-only)
   livePositions: Position[];  // Live mode only
   
   setPositions: (positions: Position[]) => void;
-  setDemoPositions: (positions: Position[]) => void;
   setShadowPositions: (positions: Position[]) => void;
   setLivePositions: (positions: Position[]) => void;
   addPosition: (position: Position) => void;
@@ -112,50 +108,6 @@ interface AppState {
   // ==================== BOT STATUS ====================
   botRunning: boolean;
   setBotRunning: (running: boolean) => void;
-
-  // ==================== PAPER WALLET ====================
-  paperWallets: Array<{
-    id: string;
-    name: string;
-    address: string;
-    chains: string[];
-    tokens: Array<{
-      symbol: string;
-      name: string;
-      network: string;
-      quantity: number;
-      priceUsd: number;
-      totalValue: number;
-    }>;
-    totalValue: number;
-    createdAt: Date | string;
-  }>;
-  addPaperWallet: (wallet: {
-    id: string;
-    name: string;
-    address: string;
-    chains: string[];
-    tokens: Array<{
-      symbol: string;
-      name: string;
-      network: string;
-      quantity: number;
-      priceUsd: number;
-      totalValue: number;
-    }>;
-    totalValue: number;
-    createdAt: Date | string;
-  }) => void;
-  updatePaperWallet: (id: string, tokens: Array<{
-    symbol: string;
-    name: string;
-    network: string;
-    quantity: number;
-    priceUsd: number;
-    totalValue: number;
-  }>) => void;
-  deletePaperWallet: (id: string) => void;
-  refreshPaperWalletPrices: (priceMap: Map<string, number>) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -164,9 +116,9 @@ export const useAppStore = create<AppState>()(
       (set) => ({
         // ==================== MODE ====================
         mode: {
-          current: "demo",
+          current: "shadow",
           canExecute: false,
-          label: "Demo Mode",
+          label: "Shadow Mode",
         },
         setMode: (mode) =>
           set((state) => {
@@ -174,10 +126,7 @@ export const useAppStore = create<AppState>()(
             let portfolio = null;
             let positions: Position[] = [];
             
-            if (mode === "demo") {
-              portfolio = state.demoPortfolio;
-              positions = state.demoPositions;
-            } else if (mode === "shadow") {
+            if (mode === "shadow") {
               portfolio = state.shadowPortfolio;
               positions = state.shadowPositions;
             } else if (mode === "live") {
@@ -189,7 +138,7 @@ export const useAppStore = create<AppState>()(
               mode: {
                 current: mode,
                 canExecute: mode === "live",
-                label: mode === "demo" ? "Demo Mode" : mode === "shadow" ? "Shadow Mode" : "Live Mode",
+                label: mode === "shadow" ? "Shadow Mode" : "Live Mode",
               },
               portfolio,
               positions,
@@ -211,12 +160,10 @@ export const useAppStore = create<AppState>()(
 
         // ==================== PORTFOLIO ====================
         portfolio: null,
-        demoPortfolio: null,
         shadowPortfolio: null,
         livePortfolio: null,
         
         setPortfolio: (portfolio) => set({ portfolio }),
-        setDemoPortfolio: (portfolio) => set({ demoPortfolio: portfolio }),
         setShadowPortfolio: (portfolio) => set({ shadowPortfolio: portfolio }),
         setLivePortfolio: (portfolio) => set({ livePortfolio: portfolio }),
 
@@ -232,12 +179,10 @@ export const useAppStore = create<AppState>()(
 
         // ==================== POSITIONS ====================
         positions: [],
-        demoPositions: [],
         shadowPositions: [],
         livePositions: [],
         
         setPositions: (positions) => set({ positions }),
-        setDemoPositions: (positions) => set({ demoPositions: positions }),
         setShadowPositions: (positions) => set({ shadowPositions: positions }),
         setLivePositions: (positions) => set({ livePositions: positions }),
         
@@ -342,54 +287,6 @@ export const useAppStore = create<AppState>()(
         // ==================== BOT STATUS ====================
         botRunning: false,
         setBotRunning: (running) => set({ botRunning: running }),
-
-        // ==================== PAPER WALLET ====================
-        paperWallets: [],
-        addPaperWallet: (wallet) => set((state) => ({ 
-          paperWallets: [...state.paperWallets, {
-            ...wallet,
-            createdAt: wallet.createdAt instanceof Date ? wallet.createdAt.toISOString() : wallet.createdAt
-          }] 
-        })),
-        updatePaperWallet: (id, tokens) => set((state) => ({
-          paperWallets: state.paperWallets.map((wallet) =>
-            wallet.id === id
-              ? {
-                  ...wallet,
-                  tokens,
-                  totalValue: tokens.reduce((sum, t) => sum + t.totalValue, 0),
-                }
-              : wallet
-          ),
-        })),
-        deletePaperWallet: (id) => set((state) => ({
-          paperWallets: state.paperWallets.filter((w) => w.id !== id),
-        })),
-        refreshPaperWalletPrices: (priceMap) => set((state) => {
-          const updatedWallets = state.paperWallets.map((wallet) => {
-            const updatedTokens = wallet.tokens.map((token) => {
-              const newPrice = priceMap.get(token.symbol);
-              if (newPrice !== undefined && newPrice > 0) {
-                return {
-                  ...token,
-                  priceUsd: newPrice,
-                  totalValue: token.quantity * newPrice,
-                };
-              }
-              return token;
-            });
-            
-            const newTotalValue = updatedTokens.reduce((sum, t) => sum + t.totalValue, 0);
-            
-            return {
-              ...wallet,
-              tokens: updatedTokens,
-              totalValue: newTotalValue,
-            };
-          });
-          
-          return { paperWallets: updatedWallets };
-        }),
       }),
       {
         name: "lp-yield-autopilot-storage",
@@ -397,15 +294,12 @@ export const useAppStore = create<AppState>()(
           mode: state.mode,
           wallet: state.wallet,
           portfolio: state.portfolio,
-          demoPortfolio: state.demoPortfolio,
           shadowPortfolio: state.shadowPortfolio,
           livePortfolio: state.livePortfolio,
           policy: state.policy,
           simulation: state.simulation,
           botRunning: state.botRunning,
-          paperWallets: state.paperWallets,
           // CRITICAL: Persist positions so they survive page refresh
-          demoPositions: state.demoPositions,
           shadowPositions: state.shadowPositions,
           livePositions: state.livePositions,
           // Don't persist alerts - they should be fresh on each session
