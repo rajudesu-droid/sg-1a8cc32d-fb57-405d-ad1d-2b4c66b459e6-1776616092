@@ -302,86 +302,95 @@ export default function Wallets() {
               </Badge>
             </div>
             
-            {/* Token Cards Grid */}
+            {/* Token Cards Grid - Sorted by USD value descending */}
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {allTokens.map((token, index) => {
-                const usdValue = getUSDValue(token.symbol, token.balance);
-                const quantity = parseFloat(token.balance);
-                
-                return (
-                  <Card key={`${token.chain}-${token.symbol}-${index}`} className="card-gradient border-border/50 hover:border-primary/30 transition-all">
-                    <CardContent className="pt-6">
-                      <div className="space-y-3">
-                        {/* Token Header */}
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                <span className="text-lg font-bold text-primary">
-                                  {token.symbol.charAt(0)}
-                                </span>
-                              </div>
-                              <div>
-                                <p className="font-bold text-base">{token.symbol}</p>
-                                <p className="text-xs text-muted-foreground">{token.name}</p>
+              {allTokens
+                .sort((a, b) => {
+                  // Calculate USD values
+                  const aValue = getUSDValue(a.symbol, a.balance) || 0;
+                  const bValue = getUSDValue(b.symbol, b.balance) || 0;
+                  
+                  // Sort descending (highest value first)
+                  return bValue - aValue;
+                })
+                .map((token, index) => {
+                  const usdValue = getUSDValue(token.symbol, token.balance);
+                  const quantity = parseFloat(token.balance);
+                  
+                  return (
+                    <Card key={`${token.chain}-${token.symbol}-${index}`} className="card-gradient border-border/50 hover:border-primary/30 transition-all">
+                      <CardContent className="pt-6">
+                        <div className="space-y-3">
+                          {/* Token Header */}
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                  <span className="text-lg font-bold text-primary">
+                                    {token.symbol.charAt(0)}
+                                  </span>
+                                </div>
+                                <div>
+                                  <p className="font-bold text-base">{token.symbol}</p>
+                                  <p className="text-xs text-muted-foreground">{token.name}</p>
+                                </div>
                               </div>
                             </div>
+                            <Badge variant={token.isNative ? "default" : "secondary"} className="text-xs">
+                              {token.isNative ? "Native" : "Token"}
+                            </Badge>
                           </div>
-                          <Badge variant={token.isNative ? "default" : "secondary"} className="text-xs">
-                            {token.isNative ? "Native" : "Token"}
-                          </Badge>
-                        </div>
 
-                        {/* Balance Section */}
-                        <div className="space-y-2 pt-2 border-t border-border/50">
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Quantity</p>
-                            <p className="text-xl font-bold">
-                              {quantity < 0.0001 && quantity > 0 
-                                ? quantity.toExponential(4) 
-                                : quantity.toLocaleString('en-US', { 
-                                    minimumFractionDigits: quantity < 1 ? 6 : 2, 
-                                    maximumFractionDigits: quantity < 1 ? 6 : 2 
-                                  })}
-                            </p>
-                          </div>
-                          
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">USD Value</p>
-                            {usdValue !== null ? (
-                              <p className="text-lg font-bold text-success">
-                                ${usdValue.toLocaleString('en-US', { 
-                                  minimumFractionDigits: 2, 
-                                  maximumFractionDigits: 2 
-                                })}
+                          {/* Balance Section */}
+                          <div className="space-y-2 pt-2 border-t border-border/50">
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Quantity</p>
+                              <p className="text-xl font-bold">
+                                {quantity < 0.0001 && quantity > 0 
+                                  ? quantity.toExponential(4) 
+                                  : quantity.toLocaleString('en-US', { 
+                                      minimumFractionDigits: quantity < 1 ? 6 : 2, 
+                                      maximumFractionDigits: quantity < 1 ? 6 : 2 
+                                    })}
                               </p>
-                            ) : loadingPrices ? (
-                              <p className="text-sm text-muted-foreground">Loading price...</p>
-                            ) : (
-                              <p className="text-sm text-muted-foreground">Price unavailable</p>
+                            </div>
+                            
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">USD Value</p>
+                              {usdValue !== null ? (
+                                <p className="text-lg font-bold text-success">
+                                  ${usdValue.toLocaleString('en-US', { 
+                                    minimumFractionDigits: 2, 
+                                    maximumFractionDigits: 2 
+                                  })}
+                                </p>
+                              ) : loadingPrices ? (
+                                <p className="text-sm text-muted-foreground">Loading price...</p>
+                              ) : (
+                                <p className="text-sm text-muted-foreground">Price unavailable</p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Chain & Type Badges */}
+                          <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                            <Badge variant="outline" className="text-xs">
+                              {token.chain}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {token.type}
+                            </Badge>
+                            {allTokens.filter(t => t.symbol === token.symbol).length > 1 && (
+                              <Badge variant="secondary" className="text-xs">
+                                Multi-chain
+                              </Badge>
                             )}
                           </div>
                         </div>
-
-                        {/* Chain & Type Badges */}
-                        <div className="flex items-center gap-2 pt-2 border-t border-border/50">
-                          <Badge variant="outline" className="text-xs">
-                            {token.chain}
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            {token.type}
-                          </Badge>
-                          {allTokens.filter(t => t.symbol === token.symbol).length > 1 && (
-                            <Badge variant="secondary" className="text-xs">
-                              Multi-chain
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
             </div>
           </div>
         )}
