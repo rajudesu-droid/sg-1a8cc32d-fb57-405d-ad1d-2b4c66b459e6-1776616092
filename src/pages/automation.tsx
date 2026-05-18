@@ -15,6 +15,7 @@ import { orchestrator } from "@/core/orchestrator";
 import { actionHandler } from "@/services/ActionHandlerService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Save, Zap, Shield, DollarSign, Activity, AlertTriangle, Eye, RefreshCw, Play, Square } from "lucide-react";
+import { LiveActivityBar } from "@/components/LiveActivityBar";
 
 export default function Automation() {
   const mode = useAppStore((state) => state.mode);
