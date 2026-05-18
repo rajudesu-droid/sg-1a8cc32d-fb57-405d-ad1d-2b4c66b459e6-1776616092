@@ -13,7 +13,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store";
 import { orchestrator } from "@/core/orchestrator";
 import { actionHandler } from "@/services/ActionHandlerService";
-import type { BotConfig } from "@/services/BotOrchestrationService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Save, Zap, Shield, DollarSign, Activity, AlertTriangle, Eye, RefreshCw, Play, Square } from "lucide-react";
 
@@ -238,101 +237,6 @@ export default function Automation() {
     }
   };
 
-  const handleStartBot = async () => {
-    console.log("[Automation] Start bot requested");
-    console.log("[Automation] Current policy:", localPolicy);
-    
-    setStartingBot(true);
-    try {
-      const { botOrchestrationService } = await import("@/services/BotOrchestrationService");
-      
-      const config: BotConfig = {
-        mode: mode.current,
-        checkIntervalMs: 10000, // Check every 10 seconds
-        autoHarvest: localPolicy.autoHarvest,
-        autoCompound: localPolicy.autoCompound,
-        autoRebalance: localPolicy.autoRebalance,
-      };
-
-      console.log("[Automation] Starting bot with config:", config);
-
-      const success = await botOrchestrationService.startBot(config);
-      
-      console.log("[Automation] Start bot result:", success);
-      
-      if (success) {
-        setBotRunning(true);
-        
-        await orchestrator.publishEvent({
-          type: "bot_started",
-          source: "automation_page",
-          timestamp: new Date(),
-          affectedModules: ["automation"],
-          data: { mode: mode.current },
-        });
-
-        toast({
-          title: "Bot Started",
-          description: "Automation bot is now running",
-        });
-      } else {
-        console.warn("[Automation] Bot already running or failed to start");
-        // Check if actually running despite false return
-        const status = botOrchestrationService.getStatus();
-        if (status.isRunning) {
-          setBotRunning(true);
-          toast({
-            title: "Bot Running",
-            description: "Bot was already active",
-          });
-        } else {
-          throw new Error("Failed to start bot");
-        }
-      }
-    } catch (error) {
-      console.error("[Automation] Failed to start bot:", error);
-      toast({
-        title: "Start Failed",
-        description: "Failed to start automation bot",
-        variant: "destructive",
-      });
-    } finally {
-      setStartingBot(false);
-    }
-  };
-
-  const handleStopBot = async () => {
-    console.log("[Automation] Stop bot requested");
-    setStoppingBot(true);
-    try {
-      const { botOrchestrationService } = await import("@/services/BotOrchestrationService");
-      
-      const success = await botOrchestrationService.stopBot();
-      
-      console.log("[Automation] Stop bot result:", success);
-      
-      // Always update UI state to stopped, even if service returns false
-      // (handles state desync issues)
-      setBotRunning(false);
-      
-      toast({
-        title: "Bot Stopped",
-        description: success 
-          ? "Automation has been paused" 
-          : "Bot was already stopped - UI updated",
-      });
-    } catch (error) {
-      console.error("[Automation] Failed to stop bot:", error);
-      setBotRunning(false); // Still update UI
-      toast({
-        title: "Bot Stopped",
-        description: "UI updated (service error handled)",
-      });
-    } finally {
-      setStoppingBot(false);
-    }
-  };
-
   const updateField = (key: keyof typeof localPolicy, value: any) => {
     console.log(`[Automation] Updating policy field: ${key} = ${value}`);
     setLocalPolicy(prev => {
@@ -357,33 +261,6 @@ export default function Automation() {
             <Badge variant={mode.current === "shadow" ? "outline" : "default"}>
               {mode.current === "shadow" ? "Shadow Mode" : "Live Mode"}
             </Badge>
-            
-            {/* Bot Control */}
-            {!botRunning ? (
-              <Button 
-                onClick={handleStartBot}
-                disabled={startingBot || localPolicy.emergencyPause || mode.current === "shadow"}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {startingBot ? (
-                  <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Starting...</>
-                ) : (
-                  <><Play className="mr-2 h-4 w-4" /> Start Bot</>
-                )}
-              </Button>
-            ) : (
-              <Button 
-                onClick={handleStopBot}
-                disabled={stoppingBot}
-                variant="destructive"
-              >
-                {stoppingBot ? (
-                  <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Stopping...</>
-                ) : (
-                  <><Square className="mr-2 h-4 w-4" /> Stop Bot</>
-                )}
-              </Button>
-            )}
             
             <Button 
               variant="outline" 
