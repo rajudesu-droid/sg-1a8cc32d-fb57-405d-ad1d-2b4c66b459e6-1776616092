@@ -6,18 +6,22 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ModeBanner } from "@/components/ModeBanner";
-import { Wallet, Network, DollarSign, RefreshCw, Coins, Info, ExternalLink } from "lucide-react";
+import { Wallet, Network, DollarSign, RefreshCw, Coins, Info, ExternalLink, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/contexts/WalletContext";
+import { useMultiWallet } from "@/contexts/MultiWalletContext";
+import { MultiWalletConnectionModal } from "@/components/MultiWalletConnectionModal";
 import { supportedNetworks } from "@/lib/walletConfig";
 import { actionHandler } from "@/services/ActionHandlerService";
 
 export default function Wallets() {
   const mode = useAppStore((state) => state.mode);
   const { isConnected, isConnecting, address, chainId, detectedAssets, refreshBalances, disconnectWallet, connectWallet } = useWallet();
+  const { connectedWallets, disconnectWallet: disconnectMultiWallet } = useMultiWallet();
   const { toast } = useToast();
 
   const [refreshLoading, setRefreshLoading] = useState(false);
+  const [multiWalletModalOpen, setMultiWalletModalOpen] = useState(false);
 
   const getActionContext = () => ({
     mode: mode.current,
@@ -97,6 +101,11 @@ export default function Wallets() {
               </Button>
             )}
             
+            <Button variant="outline" onClick={() => setMultiWalletModalOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Connect Non-EVM
+            </Button>
+
             {isConnected && (
               <>
                 <Button variant="outline" onClick={handleRefreshBalances} disabled={refreshLoading}>
@@ -113,7 +122,7 @@ export default function Wallets() {
                   )}
                 </Button>
                 <Button variant="destructive" onClick={handleDisconnectWallet}>
-                  Disconnect
+                  Disconnect EVM
                 </Button>
               </>
             )}
@@ -299,8 +308,48 @@ export default function Wallets() {
           </div>
         )}
 
+        {/* Connected Non-EVM Wallets */}
+        {connectedWallets.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Connected Non-EVM Wallets</h2>
+              <Badge variant="secondary" className="text-xs">
+                {connectedWallets.length} wallet(s)
+              </Badge>
+            </div>
+            <Card className="card-gradient border-border/50">
+              <CardContent className="pt-6">
+                <div className="space-y-3">
+                  {connectedWallets.map((wallet) => (
+                    <div key={wallet.id} className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-card/30">
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline" className="min-w-[80px] justify-center">
+                          {wallet.chainName}
+                        </Badge>
+                        <div>
+                          <p className="font-semibold">{wallet.type.toUpperCase()}</p>
+                          <p className="text-xs font-mono text-muted-foreground">
+                            {wallet.address.slice(0, 8)}...{wallet.address.slice(-8)}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => disconnectMultiWallet(wallet.id)}
+                      >
+                        Disconnect
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Empty State */}
-        {!isConnected && (
+        {!isConnected && connectedWallets.length === 0 && (
           <Card className="card-gradient border-border/50">
             <CardContent className="py-12 text-center space-y-4">
               <div className="flex justify-center">
@@ -311,12 +360,18 @@ export default function Wallets() {
               <div>
                 <h3 className="text-lg font-semibold">No Wallet Connected</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Connect your wallet using the button in the top-right corner to view your assets
+                  Connect your wallet using the buttons above to view your assets
                 </p>
               </div>
             </CardContent>
           </Card>
         )}
+
+        {/* Multi-Wallet Connection Modal */}
+        <MultiWalletConnectionModal 
+          open={multiWalletModalOpen} 
+          onClose={() => setMultiWalletModalOpen(false)} 
+        />
       </div>
     </AppLayout>
   );
