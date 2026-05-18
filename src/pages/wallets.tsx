@@ -317,34 +317,75 @@ export default function Wallets() {
                 {connectedWallets.length} wallet(s)
               </Badge>
             </div>
-            <Card className="card-gradient border-border/50">
-              <CardContent className="pt-6">
-                <div className="space-y-3">
-                  {connectedWallets.map((wallet) => (
-                    <div key={wallet.id} className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-card/30">
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="min-w-[80px] justify-center">
-                          {wallet.chainName}
-                        </Badge>
-                        <div>
-                          <p className="font-semibold">{wallet.type.toUpperCase()}</p>
-                          <p className="text-xs font-mono text-muted-foreground">
-                            {wallet.address.slice(0, 8)}...{wallet.address.slice(-8)}
-                          </p>
-                        </div>
+            
+            {/* Wallet Cards */}
+            {connectedWallets.map((wallet) => (
+              <Card key={wallet.id} className="card-gradient border-border/50">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="text-sm">
+                        {wallet.chainName}
+                      </Badge>
+                      <div>
+                        <CardTitle className="text-base">{wallet.type.toUpperCase()} Wallet</CardTitle>
+                        <p className="text-xs font-mono text-muted-foreground mt-1">
+                          {wallet.address.slice(0, 8)}...{wallet.address.slice(-8)}
+                        </p>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => disconnectMultiWallet(wallet.id)}
-                      >
-                        Disconnect
-                      </Button>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => disconnectMultiWallet(wallet.id)}
+                    >
+                      Disconnect
+                    </Button>
+                  </div>
+                </CardHeader>
+                
+                {/* Tokens for this wallet */}
+                {wallet.tokens && wallet.tokens.length > 0 && (
+                  <CardContent>
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold mb-3">
+                        Assets ({wallet.tokens.length})
+                      </p>
+                      <div className="space-y-2">
+                        {wallet.tokens.map((token, tokenIndex) => (
+                          <div 
+                            key={`${wallet.id}-${token.address || token.symbol}-${tokenIndex}`}
+                            className="flex items-center justify-between p-2 rounded-lg bg-muted/20"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Badge variant={token.isNative ? "default" : "secondary"} className="text-xs">
+                                {token.isNative ? "Native" : "Token"}
+                              </Badge>
+                              <div>
+                                <p className="font-semibold text-sm">{token.symbol}</p>
+                                <p className="text-xs text-muted-foreground">{token.name}</p>
+                              </div>
+                            </div>
+                            <p className="font-medium text-sm">
+                              {parseFloat(token.balance).toFixed(4)} {token.symbol}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                )}
+                
+                {/* No tokens found */}
+                {(!wallet.tokens || wallet.tokens.length === 0) && (
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No tokens detected in this wallet
+                    </p>
+                  </CardContent>
+                )}
+              </Card>
+            ))}
           </div>
         )}
 

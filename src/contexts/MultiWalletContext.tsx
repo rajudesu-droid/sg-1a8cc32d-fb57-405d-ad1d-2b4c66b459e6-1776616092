@@ -4,6 +4,15 @@ import { useToast } from "@/hooks/use-toast";
 // Wallet types for different blockchain families
 export type WalletType = "evm" | "solana" | "tron" | "bitcoin" | "xrp";
 
+export interface DetectedToken {
+  symbol: string;
+  name: string;
+  balance: string;
+  decimals: number;
+  address?: string;
+  isNative: boolean;
+}
+
 export interface ConnectedWallet {
   id: string;
   type: WalletType;
@@ -11,6 +20,7 @@ export interface ConnectedWallet {
   chainName: string;
   balance?: string;
   isConnected: boolean;
+  tokens?: DetectedToken[];
 }
 
 interface MultiWalletContextType {
@@ -84,24 +94,102 @@ export function MultiWalletProvider({ children }: MultiWalletProviderProps) {
       const response = await provider.connect();
       const address = response.publicKey.toString();
 
-      // Add to connected wallets
+      console.log("[Solana] Fetching token balances...");
+
+      // Fetch SOL balance and SPL tokens
+      const tokens: DetectedToken[] = [];
+
+      try {
+        // Fetch SOL balance via Solana RPC
+        const solBalanceResponse = await fetch("https://api.mainnet-beta.solana.com", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "getBalance",
+            params: [address],
+          }),
+        });
+
+        const solBalanceData = await solBalanceResponse.json();
+        const solBalance = (solBalanceData.result?.value || 0) / 1e9; // Convert lamports to SOL
+
+        if (solBalance > 0.0001) {
+          tokens.push({
+            symbol: "SOL",
+            name: "Solana",
+            balance: solBalance.toFixed(6),
+            decimals: 9,
+            isNative: true,
+          });
+        }
+
+        // Fetch SPL token accounts
+        const tokenAccountsResponse = await fetch("https://api.mainnet-beta.solana.com", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "getTokenAccountsByOwner",
+            params: [
+              address,
+              { programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" },
+              { encoding: "jsonParsed" },
+            ],
+          }),
+        });
+
+        const tokenAccountsData = await tokenAccountsResponse.json();
+        const tokenAccounts = tokenAccountsData.result?.value || [];
+
+        console.log(`[Solana] Found ${tokenAccounts.length} SPL token accounts`);
+
+        for (const account of tokenAccounts) {
+          const tokenInfo = account.account.data.parsed.info;
+          const tokenAmount = tokenInfo.tokenAmount;
+          
+          if (tokenAmount.uiAmount && tokenAmount.uiAmount > 0.0001) {
+            // Fetch token metadata (symbol, name)
+            try {
+              const mintAddress = tokenInfo.mint;
+              
+              // Try to get token metadata from token-list or Helius
+              tokens.push({
+                symbol: "SPL", // Would need metadata API for actual symbol
+                name: mintAddress.slice(0, 8) + "...",
+                balance: tokenAmount.uiAmount.toFixed(6),
+                decimals: tokenAmount.decimals,
+                address: mintAddress,
+                isNative: false,
+              });
+            } catch (metaError) {
+              console.warn("[Solana] Could not fetch token metadata:", metaError);
+            }
+          }
+        }
+
+      } catch (tokenError) {
+        console.error("[Solana] Token detection error:", tokenError);
+      }
+
+      // Add to connected wallets with tokens
       const newWallet: ConnectedWallet = {
         id: `solana-${address}`,
         type: "solana",
         address,
         chainName: "Solana",
         isConnected: true,
+        tokens,
       };
 
       setConnectedWallets((prev) => [...prev, newWallet]);
 
       toast({
         title: "Solana Wallet Connected",
-        description: `Connected: ${address.slice(0, 8)}...${address.slice(-8)}`,
+        description: `Found ${tokens.length} asset(s) - ${address.slice(0, 8)}...${address.slice(-8)}`,
       });
-
-      // TODO: Fetch Solana balance and SPL tokens via RPC
-      // const balance = await connection.getBalance(publicKey);
 
     } catch (error: any) {
       console.error("[Solana] Connection error:", error);
@@ -152,24 +240,97 @@ export function MultiWalletProvider({ children }: MultiWalletProviderProps) {
       const accounts = await tronWeb.request({ method: "tron_requestAccounts" });
       const address = accounts[0];
 
-      // Add to connected wallets
+      console.log("[TRON] Fetching token balances...");
+
+      // Fetch TRX balance and TRC20 tokens
+      const tokens: DetectedToken[] = [];
+
+      try {
+        // Fetch TRX balance
+        const trxBalance = await tronWeb.trx.getBalance(address);
+        const trxBalanceInTRX = trxBalance / 1e6; // Convert sun to TRX
+
+        if (trxBalanceInTRX > 0.0001) {
+          tokens.push({
+            symbol: "TRX",
+            name: "TRON",
+            balance: trxBalanceInTRX.toFixed(6),
+            decimals: 6,
+            isNative: true,
+          });
+        }
+
+        // Fetch TRC20 tokens using TronGrid API
+        try {
+          const trc20Response = await fetch(
+            `https://api.trongrid.io/v1/accounts/${address}/transactions/trc20?limit=200`
+          );
+          
+          if (trc20Response.ok) {
+            const trc20Data = await trc20Response.json();
+            
+            // Get unique token addresses
+            const tokenAddresses = new Set<string>();
+            if (trc20Data.data) {
+              trc20Data.data.forEach((tx: any) => {
+                if (tx.token_info?.address) {
+                  tokenAddresses.add(tx.token_info.address);
+                }
+              });
+            }
+
+            console.log(`[TRON] Found ${tokenAddresses.size} unique TRC20 tokens`);
+
+            // Fetch balance for each token
+            for (const tokenAddr of Array.from(tokenAddresses).slice(0, 20)) { // Limit to 20 tokens
+              try {
+                const contract = await tronWeb.contract().at(tokenAddr);
+                const balance = await contract.balanceOf(address).call();
+                const decimals = await contract.decimals().call();
+                const symbol = await contract.symbol().call();
+                const name = await contract.name().call();
+
+                const balanceFloat = Number(balance) / Math.pow(10, Number(decimals));
+
+                if (balanceFloat > 0.0001) {
+                  tokens.push({
+                    symbol: symbol || "TRC20",
+                    name: name || `Token ${tokenAddr.slice(0, 8)}`,
+                    balance: balanceFloat.toFixed(6),
+                    decimals: Number(decimals),
+                    address: tokenAddr,
+                    isNative: false,
+                  });
+                }
+              } catch (tokenError) {
+                console.warn(`[TRON] Could not fetch token ${tokenAddr}:`, tokenError);
+              }
+            }
+          }
+        } catch (apiError) {
+          console.warn("[TRON] TronGrid API error:", apiError);
+        }
+
+      } catch (tokenError) {
+        console.error("[TRON] Token detection error:", tokenError);
+      }
+
+      // Add to connected wallets with tokens
       const newWallet: ConnectedWallet = {
         id: `tron-${address}`,
         type: "tron",
         address,
         chainName: "TRON",
         isConnected: true,
+        tokens,
       };
 
       setConnectedWallets((prev) => [...prev, newWallet]);
 
       toast({
         title: "TRON Wallet Connected",
-        description: `Connected: ${address.slice(0, 8)}...${address.slice(-8)}`,
+        description: `Found ${tokens.length} asset(s) - ${address.slice(0, 8)}...${address.slice(-8)}`,
       });
-
-      // TODO: Fetch TRON balance and TRC20 tokens
-      // const balance = await tronWeb.trx.getBalance(address);
 
     } catch (error: any) {
       console.error("[TRON] Connection error:", error);
