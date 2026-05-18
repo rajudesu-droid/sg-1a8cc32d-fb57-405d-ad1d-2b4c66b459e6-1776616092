@@ -120,7 +120,6 @@ export default function Dashboard() {
   const positions = useAppStore((state) => state.positions);
   const router = useRouter();
   const { toast } = useToast();
-  const { wallet: walletContext } = useWallet();
 
   const [botRunning, setBotRunning] = useState(false);
   const [botStarting, setBotStarting] = useState(false);
