@@ -614,29 +614,6 @@ class BotOrchestrationService {
 
       console.log(`[BotOrchestration] Position added to ${mode} positions`);
 
-      // Deduct deployed amount from Paper Wallet
-      const paperWallets = useAppStore.getState().paperWallets;
-      if (paperWallets.length > 0) {
-        const wallet = paperWallets[0];
-        const updatedTokens = wallet.tokens.map(token => {
-          // Deduct proportionally from assets with value
-          if (token.totalValue > 0) {
-            const deductionRatio = deployAmount / idleCapital;
-            const deductAmount = token.quantity * deductionRatio;
-            return {
-              ...token,
-              quantity: Math.max(0, token.quantity - deductAmount),
-              totalValue: Math.max(0, token.totalValue - (token.totalValue * deductionRatio)),
-            };
-          }
-          return token;
-        });
-
-        useAppStore.getState().updatePaperWallet(wallet.id, updatedTokens);
-        
-        console.log(`[BotOrchestration] Deducted $${deployAmount.toFixed(2)} from Paper Wallet`);
-      }
-      
       // CRITICAL: Trigger portfolio recalculation
       const { portfolioEngine } = await import("@/core/engines");
       console.log(`[BotOrchestration] Triggering portfolio recalculation...`);
