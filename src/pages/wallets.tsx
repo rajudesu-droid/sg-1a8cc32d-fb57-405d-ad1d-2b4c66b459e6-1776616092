@@ -59,7 +59,7 @@ export default function Wallets() {
       name: asset.name,
       balance: asset.balance,
       isNative: asset.isNative,
-      type: "EVM" as const,
+      type: "EVM",
     })),
     ...connectedWallets.flatMap(wallet =>
       (wallet.tokens || []).map(token => ({
@@ -68,7 +68,7 @@ export default function Wallets() {
         name: token.name,
         balance: token.balance,
         isNative: token.isNative,
-        type: wallet.type.toUpperCase() as const,
+        type: wallet.type.toUpperCase(),
       }))
     ),
   ];
