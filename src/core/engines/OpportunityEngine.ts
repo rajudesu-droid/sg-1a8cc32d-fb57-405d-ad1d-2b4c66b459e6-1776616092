@@ -51,9 +51,7 @@ export class OpportunityEngine {
           opportunities: [],
           diagnostic: {
             reason: "no_assets",
-            message: mode === "demo" 
-              ? "Add assets to your Paper Wallet to discover opportunities" 
-              : "Connect a wallet to discover opportunities",
+            message: "Connect a wallet to discover opportunities",
           },
         },
         ["opportunities_page"]
