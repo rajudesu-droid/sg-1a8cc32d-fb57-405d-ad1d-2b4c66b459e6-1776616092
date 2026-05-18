@@ -681,140 +681,178 @@ export default function Opportunities() {
           </CardContent>
         </Card>
 
-        {/* Opportunities Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredOpportunities.map((opp) => {
-            const riskLevel = getRiskLevel(opp.riskScore);
-            const pairName = opp.token1Symbol ? `${opp.token0Symbol}/${opp.token1Symbol}` : opp.token0Symbol;
-            
-            return (
-              <Card key={opp.id} className="card-gradient border-border/50 transition-all hover:border-primary/50 flex flex-col">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        {pairName}
-                        {opp.whitelisted && (
-                          <Badge variant="outline" className="text-[10px] h-5 border-emerald-500/30 text-emerald-500">Verified</Badge>
-                        )}
-                      </CardTitle>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">
-                          {opp.protocolName}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {opp.chain}
-                        </Badge>
-                        {opp.feeTier && (
-                          <Badge variant="outline" className="text-xs">
-                            {opp.feeTier}
+        {/* Opportunities Display */}
+        {!anyWalletConnected ? (
+          <Card className="card-gradient border-border/50">
+            <CardContent className="p-12 text-center">
+              <Wallet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">Connect Your Wallet</h3>
+              <p className="text-muted-foreground mb-4">
+                Connect a wallet to discover LP opportunities based on your assets
+              </p>
+              <Button 
+                onClick={() => {
+                  toast({
+                    title: "Click 'Connect Wallet' in Header",
+                    description: "Use the Connect Wallet button in the top right to get started",
+                  });
+                }}
+              >
+                <Wallet className="mr-2 h-4 w-4" /> Connect Wallet
+              </Button>
+            </CardContent>
+          </Card>
+        ) : filteredOpportunities.length === 0 ? (
+          <Card className="card-gradient border-border/50">
+            <CardContent className="py-12 text-center">
+              <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">No opportunities found</h3>
+              <div className="space-y-3">
+                <p className="text-muted-foreground">
+                  Click "Show Details" above to see why no opportunities were found
+                </p>
+                <Button variant="outline" onClick={handleRefreshPools}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh Opportunities
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredOpportunities.map((opp) => {
+              const riskLevel = getRiskLevel(opp.riskScore);
+              const pairName = opp.token1Symbol ? `${opp.token0Symbol}/${opp.token1Symbol}` : opp.token0Symbol;
+              
+              return (
+                <Card key={opp.id} className="card-gradient border-border/50 transition-all hover:border-primary/50 flex flex-col">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          {pairName}
+                          {opp.whitelisted && (
+                            <Badge variant="outline" className="text-[10px] h-5 border-emerald-500/30 text-emerald-500">Verified</Badge>
+                          )}
+                        </CardTitle>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {opp.protocolName}
                           </Badge>
-                        )}
+                          <Badge variant="outline" className="text-xs">
+                            {opp.chain}
+                          </Badge>
+                          {opp.feeTier && (
+                            <Badge variant="outline" className="text-xs">
+                              {opp.feeTier}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    {opp.netScore > 70 && (
-                      <Badge className="bg-primary/20 text-primary border-primary/50 shrink-0">
-                        <TrendingUp className="h-3 w-3 mr-1" />
-                        Top
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-
-                <CardContent className="space-y-4 flex-1 flex flex-col">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground text-xs">Total Yield</p>
-                      <p className="text-xl font-semibold metric-positive">{opp.totalYield.toFixed(2)}%</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs">Risk Score</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-xl font-mono font-semibold">{opp.riskScore}</p>
-                        <Badge variant="outline" className={`text-xs ${getRiskBadgeColor(riskLevel)}`}>
-                          {riskLevel}
+                      {opp.netScore > 70 && (
+                        <Badge className="bg-primary/20 text-primary border-primary/50 shrink-0">
+                          <TrendingUp className="h-3 w-3 mr-1" />
+                          Top
                         </Badge>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 pt-2 border-t border-border/30 flex-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Base Yield</span>
-                      <span className="font-mono font-medium">{opp.baseYield.toFixed(2)}%</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Reward APR</span>
-                      <span className="font-mono font-medium">{opp.farmRewardYield.toFixed(2)}%</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">TVL</span>
-                      <span className="font-mono font-medium">${(opp.tvl / 1000000).toFixed(2)}M</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">24h Volume</span>
-                      <span className="font-mono font-medium">${(opp.volume24h / 1000000).toFixed(2)}M</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-lg">{pairName}</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <p className="text-sm text-muted-foreground">{opp.protocolName}</p>
-                        <Badge variant="outline" className="text-xs">
-                          {opp.chain}
-                        </Badge>
-                        {(() => {
-                          const readiness = protocolRegistry.getProtocolReadiness(opp.protocolName);
-                          return readiness ? (
-                            <ProtocolReadinessIndicator
-                              readiness={readiness.readiness as any}
-                              blockingIssues={readiness.blockingIssues}
-                              showLabel={false}
-                              size="sm"
-                            />
-                          ) : null;
-                        })()}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-cyan-400">
-                        {opp.totalYield.toFixed(2)}%
-                      </div>
-                      <p className="text-xs text-muted-foreground">APR</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 mt-4 pt-4 border-t border-border/30">
-                    <Button 
-                      className="w-full" 
-                      onClick={() => handleOpenPosition(opp)}
-                      disabled={mode.current === "shadow" || openLoading === opp.id}
-                    >
-                      {openLoading === opp.id ? (
-                        <>
-                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                          Opening...
-                        </>
-                      ) : mode.current === "shadow" ? (
-                        <>
-                          <Eye className="mr-2 h-4 w-4" />
-                          Preview Only
-                        </>
-                      ) : (
-                        <>
-                          <TrendingUp className="mr-2 h-4 w-4" />
-                          Open Position
-                        </>
                       )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-4 flex-1 flex flex-col">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground text-xs">Total Yield</p>
+                        <p className="text-xl font-semibold metric-positive">{opp.totalYield.toFixed(2)}%</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground text-xs">Risk Score</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xl font-mono font-semibold">{opp.riskScore}</p>
+                          <Badge variant="outline" className={`text-xs ${getRiskBadgeColor(riskLevel)}`}>
+                            {riskLevel}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 pt-2 border-t border-border/30 flex-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Base Yield</span>
+                        <span className="font-mono font-medium">{opp.baseYield.toFixed(2)}%</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Reward APR</span>
+                        <span className="font-mono font-medium">{opp.farmRewardYield.toFixed(2)}%</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">TVL</span>
+                        <span className="font-mono font-medium">${(opp.tvl / 1000000).toFixed(2)}M</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">24h Volume</span>
+                        <span className="font-mono font-medium">${(opp.volume24h / 1000000).toFixed(2)}M</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold text-lg">{pairName}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-sm text-muted-foreground">{opp.protocolName}</p>
+                          <Badge variant="outline" className="text-xs">
+                            {opp.chain}
+                          </Badge>
+                          {(() => {
+                            const readiness = protocolRegistry.getProtocolReadiness(opp.protocolName);
+                            return readiness ? (
+                              <ProtocolReadinessIndicator
+                                readiness={readiness.readiness as any}
+                                blockingIssues={readiness.blockingIssues}
+                                showLabel={false}
+                                size="sm"
+                              />
+                            ) : null;
+                          })()}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-cyan-400">
+                          {opp.totalYield.toFixed(2)}%
+                        </div>
+                        <p className="text-xs text-muted-foreground">APR</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 mt-4 pt-4 border-t border-border/30">
+                      <Button 
+                        className="w-full" 
+                        onClick={() => handleOpenPosition(opp)}
+                        disabled={mode.current === "shadow" || openLoading === opp.id}
+                      >
+                        {openLoading === opp.id ? (
+                          <>
+                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                            Opening...
+                          </>
+                        ) : mode.current === "shadow" ? (
+                          <>
+                            <Eye className="mr-2 h-4 w-4" />
+                            Preview Only
+                          </>
+                        ) : (
+                          <>
+                            <TrendingUp className="mr-2 h-4 w-4" />
+                            Open Position
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
 
         {filteredOpportunities.length === 0 && (
           <Card className="card-gradient border-border/50">
