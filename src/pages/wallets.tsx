@@ -251,6 +251,48 @@ export default function Wallets() {
           </AlertDescription>
         </Alert>
 
+        <Alert className="border-amber-500/50 bg-amber-500/10">
+          <Info className="h-4 w-4 text-amber-500" />
+          <AlertDescription>
+            <div className="space-y-3">
+              <div>
+                <p className="font-semibold text-sm">⚠️ IMPORTANT: WalletConnect Limitation</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  <strong>WalletConnect QR code only works for EVM chains</strong> (Ethereum, BSC, Polygon, Arbitrum, etc.)
+                </p>
+              </div>
+              <div className="border-t border-amber-500/20 pt-2">
+                <p className="text-xs font-semibold mb-1">✅ Works with QR scan (Trust Wallet, MetaMask, etc.):</p>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  <Badge variant="outline" className="text-xs border-success/50 text-success">Ethereum</Badge>
+                  <Badge variant="outline" className="text-xs border-success/50 text-success">BSC</Badge>
+                  <Badge variant="outline" className="text-xs border-success/50 text-success">Polygon</Badge>
+                  <Badge variant="outline" className="text-xs border-success/50 text-success">Arbitrum</Badge>
+                  <Badge variant="outline" className="text-xs border-success/50 text-success">Optimism</Badge>
+                  <Badge variant="outline" className="text-xs border-success/50 text-success">Base</Badge>
+                  <Badge variant="outline" className="text-xs border-success/50 text-success">Avalanche</Badge>
+                  <Badge variant="outline" className="text-xs border-success/50 text-success">Fantom</Badge>
+                </div>
+                <p className="text-xs font-semibold mb-1 text-amber-500">❌ NOT detected via QR (requires browser extension or manual entry):</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-500">Solana</Badge>
+                  <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-500">TRON</Badge>
+                  <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-500">XRP</Badge>
+                  <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-500">Bitcoin</Badge>
+                </div>
+              </div>
+              <div className="border-t border-amber-500/20 pt-2">
+                <p className="text-xs text-muted-foreground">
+                  <strong>Why?</strong> WalletConnect protocol is designed for EVM chains only. Trust Wallet's Solana/TRON/XRP/BTC require separate wallet adapters that don't work through WalletConnect QR codes.
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  <strong>Solution:</strong> For non-EVM chains, use browser extensions (Phantom for Solana, TronLink for TRON) or manually input balances.
+                </p>
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
+
         {anyWalletConnected && allTokens.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">

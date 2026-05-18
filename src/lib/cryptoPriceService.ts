@@ -25,6 +25,18 @@ const COINGECKO_ID_MAP: Record<string, string> = {
   "CRO": "crypto-com-chain",
   "ARB": "arbitrum",
   "OP": "optimism",
+  "ADA": "cardano",
+  "DOT": "polkadot",
+  "ATOM": "cosmos",
+  
+  // Meme coins
+  "SHIB": "shiba-inu",
+  "DOGE": "dogecoin",
+  "PEPE": "pepe",
+  "FLOKI": "floki",
+  "BONK": "bonk",
+  "WIF": "dogwifcoin",
+  "MEME": "memecoin",
   
   // Wrapped versions
   "WETH": "ethereum",
@@ -33,24 +45,46 @@ const COINGECKO_ID_MAP: Record<string, string> = {
   "WMATIC": "matic-network",
   "WFTM": "fantom",
   "WTRX": "tron",
+  "WSOL": "solana",
+  "WBTC": "wrapped-bitcoin",
   
   // Stablecoins
   "USDT": "tether",
   "USDC": "usd-coin",
   "DAI": "dai",
   "BUSD": "binance-usd",
+  "TUSD": "true-usd",
+  "USDD": "usdd",
+  "FRAX": "frax",
   "USD": "usd-coin",
   "EUR": "euro-coin",
   
   // DeFi tokens
   "UNI": "uniswap",
   "LINK": "chainlink",
+  "AAVE": "aave",
+  "MKR": "maker",
+  "SNX": "synthetix-network-token",
+  "COMP": "compound-governance-token",
+  "YFI": "yearn-finance",
   "CAKE": "pancakeswap-token",
   "SUSHI": "sushi",
   "CRV": "curve-dao-token",
   "BAL": "balancer",
   "RAY": "raydium",
   "SRM": "serum",
+  "1INCH": "1inch",
+  
+  // Popular tokens
+  "APE": "apecoin",
+  "LDO": "lido-dao",
+  "IMX": "immutable-x",
+  "SAND": "the-sandbox",
+  "MANA": "decentraland",
+  "AXS": "axie-infinity",
+  "CHZ": "chiliz",
+  "ENJ": "enjincoin",
+  "GALA": "gala",
 };
 
 // Price cache to avoid excessive API calls
@@ -200,6 +234,7 @@ export function clearPriceCache(): void {
  */
 export function getFallbackPrice(symbol: string): number {
   const fallbackPrices: Record<string, number> = {
+    // Major cryptocurrencies
     "BTC": 95000,
     "ETH": 3100,
     "BNB": 610,
@@ -213,26 +248,65 @@ export function getFallbackPrice(symbol: string): number {
     "CRO": 0.12,
     "ARB": 0.92,
     "OP": 2.15,
+    "ADA": 0.98,
+    "DOT": 7.2,
+    "ATOM": 6.8,
+    
+    // Meme coins
+    "SHIB": 0.000024,
+    "DOGE": 0.32,
+    "PEPE": 0.00001885,
+    "FLOKI": 0.0001825,
+    "BONK": 0.00003142,
+    "WIF": 2.45,
+    
+    // Wrapped versions
     "WETH": 3100,
     "WBNB": 610,
     "WAVAX": 38,
     "WMATIC": 0.85,
     "WFTM": 0.75,
     "WTRX": 0.24,
+    "WSOL": 145,
+    "WBTC": 95000,
+    
+    // Stablecoins
     "USDT": 1,
     "USDC": 1,
     "DAI": 1,
     "BUSD": 1,
+    "TUSD": 1,
+    "USDD": 1,
+    "FRAX": 1,
     "USD": 1,
     "EUR": 1.08,
+    
+    // DeFi tokens
     "UNI": 6.2,
     "LINK": 14.5,
+    "AAVE": 285,
+    "MKR": 1650,
+    "SNX": 2.85,
+    "COMP": 48,
+    "YFI": 7800,
     "CAKE": 2.45,
     "SUSHI": 1.2,
     "CRV": 0.85,
     "BAL": 3.5,
     "RAY": 2.8,
     "SRM": 0.35,
+    "1INCH": 0.42,
+    
+    // Popular tokens
+    "APE": 1.15,
+    "LDO": 1.85,
+    "IMX": 1.48,
+    "SAND": 0.52,
+    "MANA": 0.65,
+    "AXS": 6.45,
+    "CHZ": 0.095,
+    "ENJ": 0.28,
+    "GALA": 0.042,
   };
   
   return fallbackPrices[symbol.toUpperCase()] || 0;
@@ -247,6 +321,7 @@ function mapSymbolToCoinGeckoId(symbol: string, network?: string): string | null
     ETH: "ethereum",
     BNB: "binancecoin",
     MATIC: "matic-network",
+    POL: "polygon-ecosystem-token",
     AVAX: "avalanche-2",
     FTM: "fantom",
     CRO: "crypto-com-chain",
@@ -255,25 +330,59 @@ function mapSymbolToCoinGeckoId(symbol: string, network?: string): string | null
     TRX: "tron",
     BTC: "bitcoin",
     XRP: "ripple",
+    ADA: "cardano",
+    DOT: "polkadot",
+    ATOM: "cosmos",
+    
+    // Meme coins
+    SHIB: "shiba-inu",
+    DOGE: "dogecoin",
+    PEPE: "pepe",
+    FLOKI: "floki",
+    BONK: "bonk",
+    WIF: "dogwifcoin",
     
     // Stablecoins
     USDT: "tether",
     USDC: "usd-coin",
     DAI: "dai",
     BUSD: "binance-usd",
+    TUSD: "true-usd",
     USDD: "usdd",
+    FRAX: "frax",
     
-    // Popular tokens
-    WETH: "weth",
-    WBNB: "wbnb",
-    WMATIC: "wmatic",
+    // Wrapped tokens
+    WETH: "ethereum",
+    WBNB: "binancecoin",
+    WMATIC: "matic-network",
+    WSOL: "solana",
+    WBTC: "wrapped-bitcoin",
+    
+    // Popular DeFi
     LINK: "chainlink",
     UNI: "uniswap",
     AAVE: "aave",
+    MKR: "maker",
+    SNX: "synthetix-network-token",
+    COMP: "compound-governance-token",
+    YFI: "yearn-finance",
     SUSHI: "sushi",
     CAKE: "pancakeswap-token",
+    CRV: "curve-dao-token",
+    BAL: "balancer",
     RAY: "raydium",
     SRM: "serum",
+    
+    // Popular tokens
+    APE: "apecoin",
+    LDO: "lido-dao",
+    IMX: "immutable-x",
+    SAND: "the-sandbox",
+    MANA: "decentraland",
+    AXS: "axie-infinity",
+    CHZ: "chiliz",
+    ENJ: "enjincoin",
+    GALA: "gala",
   };
 
   return symbolMap[symbol.toUpperCase()] || null;
