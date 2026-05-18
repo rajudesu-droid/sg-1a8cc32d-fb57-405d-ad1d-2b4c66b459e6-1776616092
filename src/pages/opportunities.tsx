@@ -19,7 +19,7 @@ import { actionHandler } from "@/services/ActionHandlerService";
 type SortOption = "recommended" | "apy" | "tvl" | "risk";
 type RiskFilter = "all" | "low" | "medium" | "high";
 
-const mockOpportunities: Opportunity[] = [
+const mockOpportunities: any[] = [
   // Uniswap V3 - Ethereum
   {
     id: "uni-eth-usdc-1",
