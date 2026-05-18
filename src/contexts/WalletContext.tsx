@@ -96,40 +96,78 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // REAL IMPLEMENTATION REQUIRED:
-      // In production, integrate with:
-      // - Moralis API for multi-chain token balances
-      // - Alchemy/Infura token API
-      // - Covalent API
-      // - Custom indexer service
-      // - On-chain queries via wagmi/viem
+      // MORALIS API INTEGRATION - Detect ERC20/BEP20 tokens
+      const moralisApiKey = process.env.NEXT_PUBLIC_MORALIS_API_KEY;
       
-      // EXAMPLE INTEGRATION PATTERN:
-      /*
-      if (address && chainId) {
-        // Call real indexer API
-        const response = await fetch(
-          `https://api.moralis.io/v2/${address}/erc20?chain=0x${chainId.toString(16)}`
-        );
-        const tokens = await response.json();
-        
-        tokens.forEach((token: any) => {
-          assets.push({
-            chainId,
-            network: supportedNetworks.find(n => n.id === chainId)?.name || "Unknown",
-            symbol: token.symbol,
-            name: token.name,
-            balance: token.balance,
-            decimals: token.decimals,
-            address: token.token_address,
-            isNative: false,
-            source: "detected",  // Real detected from API
-          });
-        });
-      }
-      */
+      if (address && chainId && moralisApiKey) {
+        try {
+          // Map chainId to Moralis chain format
+          const chainMap: Record<number, string> = {
+            1: "0x1",      // Ethereum
+            56: "0x38",    // BSC
+            137: "0x89",   // Polygon
+            43114: "0xa86a", // Avalanche
+          };
+          
+          const moralisChain = chainMap[chainId];
+          
+          if (moralisChain) {
+            console.log(`[WalletContext] Fetching ERC20 tokens from Moralis for chain ${moralisChain}...`);
+            
+            const response = await fetch(
+              `https://deep-index.moralis.io/api/v2.2/${address}/erc20?chain=${moralisChain}`,
+              {
+                headers: {
+                  "X-API-Key": moralisApiKey,
+                  "accept": "application/json",
+                },
+              }
+            );
 
-      console.log(`[WalletContext] Detected ${assets.length} real assets`);
+            if (!response.ok) {
+              console.error(`[WalletContext] Moralis API error: ${response.status} ${response.statusText}`);
+            } else {
+              const data = await response.json();
+              console.log(`[WalletContext] Moralis returned ${data.length || 0} tokens`);
+              
+              if (Array.isArray(data) && data.length > 0) {
+                data.forEach((token: any) => {
+                  // Skip tokens with 0 balance
+                  if (!token.balance || token.balance === "0") return;
+                  
+                  // Convert balance from wei to human-readable
+                  const decimals = parseInt(token.decimals || "18");
+                  const balanceInWei = BigInt(token.balance);
+                  const divisor = BigInt(10 ** decimals);
+                  const balanceFloat = Number(balanceInWei) / Number(divisor);
+                  
+                  // Only add if balance > 0.0001
+                  if (balanceFloat > 0.0001) {
+                    assets.push({
+                      chainId,
+                      network: supportedNetworks.find(n => n.id === chainId)?.name || "Unknown",
+                      symbol: token.symbol,
+                      name: token.name,
+                      balance: balanceFloat.toFixed(6),
+                      decimals: decimals,
+                      address: token.token_address,
+                      isNative: false,
+                      source: "detected",  // Real detected from Moralis
+                    });
+                  }
+                });
+              }
+            }
+          } else {
+            console.log(`[WalletContext] Chain ${chainId} not supported by Moralis integration`);
+          }
+        } catch (tokenError) {
+          console.error("[WalletContext] Moralis API error:", tokenError);
+          // Continue with native balance even if token fetch fails
+        }
+      }
+
+      console.log(`[WalletContext] Detected ${assets.length} total assets (native + tokens)`);
       setDetectedAssets(assets);
       
     } catch (err) {
