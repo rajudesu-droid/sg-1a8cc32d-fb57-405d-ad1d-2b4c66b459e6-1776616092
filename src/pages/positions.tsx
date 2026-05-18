@@ -180,6 +180,16 @@ export default function Positions() {
     });
   };
 
+  const handleClearFilters = () => {
+    setFilterStatus("all");
+    setFilterChain("all");
+    setSearchTerm("");
+    toast({
+      title: "Filters Cleared",
+      description: "All filters have been reset",
+    });
+  };
+
   const getPageTitle = () => {
     switch (mode.current) {
       case "shadow": return "Recommended Positions";
@@ -307,7 +317,7 @@ export default function Positions() {
               </div>
 
               <div className="flex items-end">
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full" onClick={handleClearFilters}>
                   Clear Filters
                 </Button>
               </div>
