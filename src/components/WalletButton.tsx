@@ -1,66 +1,96 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, ChevronDown } from "lucide-react";
+import { Wallet } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
-import { WalletConnectionModal } from "@/components/WalletConnectionModal";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { supportedNetworks } from "@/lib/walletConfig";
+import { useMultiWallet } from "@/contexts/MultiWalletContext";
+import { UnifiedWalletModal } from "./UnifiedWalletModal";
 
 export function WalletButton() {
-  const [showModal, setShowModal] = useState(false);
-  const { isConnected, address, chainId, disconnectWallet } = useWallet();
+  const { isConnected: evmConnected, address: evmAddress, chainId, isConnecting, disconnectWallet: disconnectEVM } = useWallet();
+  const { connectedWallets, disconnectWallet: disconnectMulti } = useMultiWallet();
+  const [modalOpen, setModalOpen] = useState(false);
 
-  const currentNetwork = supportedNetworks.find((n) => n.id === chainId);
+  const totalConnected = (evmConnected ? 1 : 0) + connectedWallets.length;
+  const anyConnected = totalConnected > 0;
 
-  if (!isConnected) {
-    return (
-      <>
-        <Button onClick={() => setShowModal(true)} variant="default" size="sm" className="gap-2">
-          <Wallet className="h-4 w-4" />
-          Connect Wallet
-        </Button>
-        <WalletConnectionModal open={showModal} onClose={() => setShowModal(false)} />
-      </>
-    );
-  }
+  const handleClick = () => {
+    if (anyConnected) {
+      // Disconnect all wallets
+      if (evmConnected) disconnectEVM();
+      connectedWallets.forEach(wallet => disconnectMulti(wallet.id));
+    } else {
+      setModalOpen(true);
+    }
+  };
 
-  const shortAddress = `${address?.slice(0, 6)}...${address?.slice(-4)}`;
+  // Get network symbol from chainId
+  const getNetworkSymbol = (chainId: number | undefined) => {
+    const networks: Record<number, string> = {
+      1: "ETH",
+      56: "BNB",
+      137: "MATIC",
+      43114: "AVAX",
+      42161: "ARB",
+      10: "OP",
+      8453: "BASE",
+      250: "FTM",
+    };
+    return chainId ? networks[chainId] || "ETH" : "";
+  };
+
+  // Display logic for button text
+  const getDisplayText = () => {
+    if (isConnecting) return "Connecting...";
+    
+    if (evmConnected && evmAddress) {
+      return (
+        <>
+          <span className="hidden sm:inline">
+            {evmAddress.slice(0, 6)}...{evmAddress.slice(-4)}
+          </span>
+          <Badge variant="secondary" className="text-xs ml-2">
+            {getNetworkSymbol(chainId)}
+          </Badge>
+        </>
+      );
+    }
+    
+    if (connectedWallets.length > 0) {
+      const firstWallet = connectedWallets[0];
+      return (
+        <>
+          <span className="hidden sm:inline">
+            {firstWallet.address.slice(0, 6)}...{firstWallet.address.slice(-4)}
+          </span>
+          <Badge variant="secondary" className="text-xs ml-2">
+            {firstWallet.chainName}
+          </Badge>
+        </>
+      );
+    }
+    
+    return "Connect Wallet";
+  };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
-            <span className="font-mono text-xs">{shortAddress}</span>
-            {currentNetwork && (
-              <Badge variant="secondary" className="text-xs">
-                {currentNetwork.symbol}
-              </Badge>
-            )}
-          </div>
-          <ChevronDown className="h-3 w-3" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Connected Wallet</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <div className="px-2 py-2 space-y-1">
-          <div className="text-xs text-muted-foreground">Address</div>
-          <div className="font-mono text-xs">{address}</div>
-        </div>
-        {currentNetwork && (
-          <div className="px-2 py-2 space-y-1">
-            <div className="text-xs text-muted-foreground">Network</div>
-            <div className="text-xs font-medium">{currentNetwork.name}</div>
-          </div>
+    <>
+      <Button
+        onClick={handleClick}
+        variant={anyConnected ? "outline" : "default"}
+        disabled={isConnecting}
+        className="gap-2 relative"
+      >
+        <Wallet className="h-4 w-4" />
+        {getDisplayText()}
+        {totalConnected > 1 && (
+          <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
+            {totalConnected}
+          </Badge>
         )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={disconnectWallet} className="text-destructive focus:text-destructive">
-          Disconnect
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </Button>
+
+      <UnifiedWalletModal open={modalOpen} onClose={() => setModalOpen(false)} />
+    </>
   );
 }
