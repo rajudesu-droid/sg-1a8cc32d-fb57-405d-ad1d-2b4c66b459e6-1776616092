@@ -31,9 +31,7 @@ export function NetworkBalances() {
       <CardContent>
         {networkList.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            {mode.current === "demo" 
-              ? "Add assets to your demo portfolio to see network balances"
-              : "Connect wallet to see network balances"}
+            Connect wallet to see network balances
           </div>
         ) : (
           <div className="space-y-4">

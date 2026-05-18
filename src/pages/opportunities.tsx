@@ -120,8 +120,8 @@ export default function Opportunities() {
       } as any);
 
       toast({
-        title: mode.current === "demo" ? "Simulating Deployment" : "Deploying Position",
-        description: `${mode.current === "demo" ? "Simulating" : "Opening"} LP position on ${opp.protocolName}`,
+        title: "Deploying Position",
+        description: `${"Opening"} LP position on ${opp.protocolName}`,
       });
     } catch (error) {
       toast({
@@ -179,8 +179,8 @@ export default function Opportunities() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Badge variant={mode.current === "demo" ? "secondary" : mode.current === "shadow" ? "outline" : "default"}>
-              {mode.current === "demo" ? "Demo Mode" : mode.current === "shadow" ? "Shadow Mode" : "Live Mode"}
+            <Badge variant={mode.current === "shadow" ? "outline" : "default"}>
+              {mode.current === "shadow" ? "Shadow Mode" : "Live Mode"}
             </Badge>
             <Button 
               variant="outline" 
@@ -276,9 +276,7 @@ export default function Opportunities() {
                   Opportunity Scanner
                 </CardTitle>
                 <CardDescription>
-                  {mode.current === "demo" 
-                    ? "Scanning Paper Wallet assets for eligible opportunities"
-                    : mode.current === "shadow"
+                  {mode.current === "shadow"
                     ? "Scanning connected wallet assets (read-only)"
                     : "Scanning connected wallet assets for eligible opportunities"}
                 </CardDescription>
@@ -300,7 +298,7 @@ export default function Opportunities() {
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Scanner Input</p>
                   <p className="text-lg font-semibold">
-                    {mode.current === "demo" ? "Paper Wallet" : "Connected Wallet"}
+                    {"Connected Wallet"}
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -328,9 +326,7 @@ export default function Opportunities() {
                       <div className="text-center py-6 text-muted-foreground border border-dashed rounded-lg">
                         <p className="text-sm">No tradeable assets found</p>
                         <p className="text-xs mt-1">
-                          {mode.current === "demo" 
-                            ? "Add assets to your Paper Wallet to discover opportunities"
-                            : "Connect a wallet with assets to discover opportunities"}
+                          {"Connect a wallet with assets to discover opportunities"}
                         </p>
                       </div>
                     ) : (
@@ -597,9 +593,7 @@ export default function Opportunities() {
               {wallet?.assets?.filter(a => a.assetKind === "native" || a.assetKind === "token").length === 0 ? (
                 <div className="space-y-3">
                   <p className="text-muted-foreground">
-                    {mode.current === "demo" 
-                      ? "Add assets to your Paper Wallet to discover opportunities"
-                      : "Connect a wallet to discover opportunities"}
+                    {"Connect a wallet to discover opportunities"}
                   </p>
                   {mode.current === "demo" && (
                     <Button onClick={() => window.location.href = "/wallets"}>

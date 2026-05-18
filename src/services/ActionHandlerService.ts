@@ -27,11 +27,6 @@ class ActionHandlerService {
    * Validate action is allowed in current mode
    */
   private validateModePermission(action: string, mode: AppMode): { allowed: boolean; reason?: string } {
-    // Demo mode: All simulation actions allowed
-    if (mode === "demo") {
-      return { allowed: true };
-    }
-
     // Shadow mode: Only read-only and preview actions allowed
     if (mode === "shadow") {
       const readOnlyActions = [
@@ -231,9 +226,7 @@ class ActionHandlerService {
 
       return { 
         success: true, 
-        message: context.mode === "demo" 
-          ? "Simulated harvest completed" 
-          : "Rewards harvested successfully",
+        message: "Rewards harvested successfully",
         data: { positionId }
       };
     } catch (error) {
@@ -277,9 +270,7 @@ class ActionHandlerService {
 
       return { 
         success: true, 
-        message: context.mode === "demo" 
-          ? "Simulated compound completed" 
-          : "Rewards compounded successfully",
+        message: "Rewards compounded successfully",
         data: { positionId }
       };
     } catch (error) {
@@ -323,9 +314,7 @@ class ActionHandlerService {
 
       return { 
         success: true, 
-        message: context.mode === "demo" 
-          ? "Simulated rebalance completed" 
-          : "Position rebalanced successfully",
+        message: "Position rebalanced successfully",
         data: { positionId }
       };
     } catch (error) {
@@ -369,9 +358,7 @@ class ActionHandlerService {
 
       return { 
         success: true, 
-        message: context.mode === "demo" 
-          ? "Simulated position closure completed" 
-          : "Position closed successfully",
+        message: "Position closed successfully",
         data: { positionId }
       };
     } catch (error) {
@@ -415,9 +402,7 @@ class ActionHandlerService {
 
       return { 
         success: true, 
-        message: context.mode === "demo" 
-          ? "Simulated liquidity addition completed" 
-          : "Liquidity added successfully",
+        message: "Liquidity added successfully",
         data: { positionId, amount }
       };
     } catch (error) {

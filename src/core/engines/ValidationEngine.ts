@@ -83,7 +83,7 @@ export class ValidationEngine {
       console.log(`[ValidationEngine] Live Mode safety gate passed`);
     }
 
-    const mode = trigger.mode || "demo";
+    const mode = trigger.mode || "shadow";
     const store = useAppStore.getState();
 
     const checks: ValidationCheck[] = [];
@@ -268,7 +268,7 @@ export class ValidationEngine {
     // ==================== UNIVERSAL CHECKS (All Modes) ====================
 
     // Check 9: Mode validation
-    if (!["demo", "shadow", "live"].includes(mode)) {
+    if (!["shadow", "live"].includes(mode)) {
       return {
         allowed: false,
         blockingReasons: [`Invalid mode: ${mode}`],
@@ -380,7 +380,7 @@ export class ValidationEngine {
               ownerAddress,
               spenderAddress,
               (requiredAmount * Math.pow(10, walletAsset.decimals)).toString(),
-              mode as "demo" | "shadow" | "live"
+              mode as "shadow" | "live"
             );
 
             if (allowanceCheck.needed) {
@@ -486,16 +486,6 @@ export class ValidationEngine {
       };
     }
 
-    // Demo mode can only execute simulated actions
-    if (currentMode === "demo" && trigger.mode !== "demo") {
-      return {
-        checkName: "mode_validation",
-        passed: false,
-        blocking: true,
-        message: "Cannot execute real actions in Demo mode",
-      };
-    }
-
     return {
       checkName: "mode_validation",
       passed: true,
@@ -505,15 +495,6 @@ export class ValidationEngine {
   }
 
   private async checkWalletConnection(trigger: ActionTrigger): Promise<ValidationCheck> {
-    if (trigger.mode === "demo") {
-      return {
-        checkName: "wallet_connection",
-        passed: true,
-        blocking: false,
-        message: "Demo mode - wallet check skipped",
-      };
-    }
-
     const wallet = useAppStore.getState().wallet;
     
     if (!wallet.wallet) {
@@ -543,7 +524,7 @@ export class ValidationEngine {
   }
 
   private async checkNetworkConnection(trigger: ActionTrigger): Promise<ValidationCheck> {
-    if (trigger.mode === "demo" || !trigger.chain) {
+    if (!trigger.chain) {
       return {
         checkName: "network_connection",
         passed: true,
@@ -678,15 +659,6 @@ export class ValidationEngine {
   }
 
   private async checkBalances(trigger: ActionTrigger): Promise<ValidationCheck> {
-    if (trigger.mode === "demo") {
-      return {
-        checkName: "balance_check",
-        passed: true,
-        blocking: false,
-        message: "Demo mode - balance check simulated",
-      };
-    }
-
     const { amount, token } = trigger;
 
     if (!amount || !token) {

@@ -461,7 +461,7 @@ class LiveReadinessChecker {
     chain: string
   ): Promise<{
     ready: boolean;
-    readinessLevel: "demo" | "shadow" | "live";
+    readinessLevel: "shadow" | "live";
     blockers: string[];
   }> {
     const result = await this.checkLiveReadiness(protocol, chain);
@@ -470,11 +470,11 @@ class LiveReadinessChecker {
       a => a.protocolName.toLowerCase().replace(/\s+/g, '-') === protocol
     );
 
-    const readinessLevel = adapter?.getReadiness() || "demo";
+    const readinessLevel = adapter?.getReadiness() || "shadow";
     
     return {
       ready: result.liveReady,
-      readinessLevel: readinessLevel as "demo" | "shadow" | "live",
+      readinessLevel: readinessLevel as "shadow" | "live",
       blockers: result.blockingIssues.map(b => b.message),
     };
   }
@@ -483,10 +483,6 @@ class LiveReadinessChecker {
    * Check if a specific mode is allowed
    */
   async isModeAllowed(mode: AppMode): Promise<boolean> {
-    if (mode === "demo") {
-      return true; // Demo always allowed
-    }
-
     if (mode === "shadow") {
       // Shadow requires real wallet connection but no execution
       // For now, allow shadow mode
@@ -506,7 +502,7 @@ class LiveReadinessChecker {
    * Get blocking reasons for a mode
    */
   async getBlockingReasons(mode: AppMode): Promise<string[]> {
-    if (mode === "demo" || mode === "shadow") {
+    if (mode === "shadow") {
       return [];
     }
 

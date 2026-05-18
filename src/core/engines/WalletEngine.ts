@@ -56,17 +56,6 @@ export class WalletEngine {
     const mode = useAppStore.getState().mode.current;
 
     try {
-      // CRITICAL: Mode-specific asset detection
-      if (mode === "demo") {
-        console.log("[WalletEngine] Demo mode: Skipping real asset detection");
-        return {
-          success: true,
-          data: [],
-          affectedModules: [],
-          events: [],
-        };
-      }
-
       // Shadow/Live mode: Real asset detection only
       const detectedAssets: Asset[] = [];
 

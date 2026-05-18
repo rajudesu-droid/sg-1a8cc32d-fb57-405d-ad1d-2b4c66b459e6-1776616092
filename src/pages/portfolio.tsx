@@ -31,8 +31,8 @@ export default function Portfolio() {
               Complete overview of your assets and performance
             </p>
           </div>
-          <Badge variant={mode.current === "demo" ? "secondary" : mode.current === "shadow" ? "outline" : "default"}>
-            {mode.current === "demo" ? "Demo Mode" : mode.current === "shadow" ? "Shadow Mode" : "Live Mode"}
+          <Badge variant={mode.current === "shadow" ? "outline" : "default"}>
+            {mode.current === "shadow" ? "Shadow Mode" : "Live Mode"}
           </Badge>
         </div>
 
@@ -44,14 +44,12 @@ export default function Portfolio() {
                 <PieChart className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
                 <h3 className="text-lg font-semibold mb-2">No Portfolio Data</h3>
                 <p className="text-muted-foreground mb-6">
-                  {mode.current === "demo" 
-                    ? "Create a paper wallet to get started with Demo Mode"
-                    : mode.current === "shadow"
+                  {mode.current === "shadow"
                     ? "Connect a wallet to view your portfolio in Shadow Mode"
                     : "Connect a wallet and open positions to see your portfolio"}
                 </p>
-                <Button onClick={() => window.location.href = mode.current === "demo" ? "/wallets" : "/opportunities"}>
-                  {mode.current === "demo" ? "Create Paper Wallet" : "Get Started"}
+                <Button onClick={() => window.location.href = "/opportunities"}>
+                  {"Get Started"}
                 </Button>
               </div>
             </CardContent>

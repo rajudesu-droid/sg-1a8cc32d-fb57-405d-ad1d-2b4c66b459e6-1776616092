@@ -161,11 +161,6 @@ export function assertNoSimulatedDataInLiveMode(): { valid: boolean; errors: str
     errors.push(`Found ${simulatedAssets.length} simulated/manual assets in Live mode`);
   }
   
-  // Check if using demo portfolio in live mode
-  if (store.portfolio === store.demoPortfolio) {
-    errors.push("Live mode is using demo portfolio data");
-  }
-  
   // Check if using demo positions in live mode
   if (store.positions === store.demoPositions) {
     errors.push("Live mode is using demo positions");

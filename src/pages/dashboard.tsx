@@ -337,9 +337,7 @@ export default function Dashboard() {
                   </TooltipTrigger>
                   <TooltipContent>
                     <p className="text-xs max-w-xs">
-                      {mode.current === "demo"
-                        ? "Total value of all simulated assets across paper wallets"
-                        : mode.current === "shadow"
+                      {mode.current === "shadow"
                         ? "Estimated total value from connected wallet balances"
                         : "Real-time total value of all assets and positions"}
                     </p>
@@ -350,7 +348,7 @@ export default function Dashboard() {
             <CardContent>
               <div className="text-2xl font-bold">${portfolioData.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {mode.current === "demo" ? "Simulated total" : mode.current === "shadow" ? "Estimated total" : "Current total"}
+                {mode.current === "shadow" ? "Estimated total" : "Current total"}
               </p>
             </CardContent>
           </Card>
@@ -366,7 +364,7 @@ export default function Dashboard() {
             <CardContent>
               <div className="text-2xl font-bold">${portfolioData.deployedCapital.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {mode.current === "demo" ? "Simulated positions" : mode.current === "shadow" ? "Estimated positions" : "Active positions"}
+                {mode.current === "shadow" ? "Estimated positions" : "Active positions"}
               </p>
             </CardContent>
           </Card>
@@ -382,7 +380,7 @@ export default function Dashboard() {
             <CardContent>
               <div className="text-2xl font-bold">${portfolioData.idleCapital.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {mode.current === "demo" ? "Simulated undeployed" : mode.current === "shadow" ? "Estimated undeployed" : "Available capital"}
+                {mode.current === "shadow" ? "Estimated undeployed" : "Available capital"}
               </p>
             </CardContent>
           </Card>
@@ -398,7 +396,7 @@ export default function Dashboard() {
             <CardContent>
               <div className="text-2xl font-bold">{portfolioData.netApy.toFixed(2)}%</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {mode.current === "demo" ? "Simulated portfolio APY" : mode.current === "shadow" ? "Estimated APY" : "Annualized yield"}
+                {mode.current === "shadow" ? "Estimated APY" : "Annualized yield"}
               </p>
             </CardContent>
           </Card>
@@ -416,9 +414,7 @@ export default function Dashboard() {
                   </TooltipTrigger>
                   <TooltipContent>
                     <p className="text-xs max-w-xs">
-                      {mode.current === "demo"
-                        ? "Simulated earnings for today (realized + projected)"
-                        : mode.current === "shadow"
+                      {mode.current === "shadow"
                         ? "Estimated daily earnings if positions were active"
                         : "Realized earnings today + projected for remainder of day"}
                     </p>
@@ -433,7 +429,7 @@ export default function Dashboard() {
                   : (portfolioData.dailyEarnings.realized + portfolioData.dailyEarnings.projected).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {mode.current === "demo" ? "Simulated today" : mode.current === "shadow" ? "Estimated today" : "Today's earnings"}
+                {mode.current === "shadow" ? "Estimated today" : "Today's earnings"}
               </p>
             </CardContent>
           </Card>
@@ -453,7 +449,7 @@ export default function Dashboard() {
                   : (portfolioData.monthlyEarnings.realized + portfolioData.monthlyEarnings.projected).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {mode.current === "demo" ? "Simulated MTD" : mode.current === "shadow" ? "Estimated MTD" : "Current month"}
+                {mode.current === "shadow" ? "Estimated MTD" : "Current month"}
               </p>
             </CardContent>
           </Card>
@@ -471,9 +467,7 @@ export default function Dashboard() {
                   </TooltipTrigger>
                   <TooltipContent>
                     <p className="text-xs max-w-xs">
-                      {mode.current === "demo"
-                        ? "Total simulated fees and rewards claimed so far"
-                        : mode.current === "shadow"
+                      {mode.current === "shadow"
                         ? "Estimated total if positions were harvested"
                         : "All-time fees and rewards successfully claimed"}
                     </p>
@@ -486,7 +480,7 @@ export default function Dashboard() {
                 +${portfolioData.realizedEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {mode.current === "demo" ? "Simulated all-time" : mode.current === "shadow" ? "Estimated potential" : "Lifetime claimed"}
+                {mode.current === "shadow" ? "Estimated potential" : "Lifetime claimed"}
               </p>
             </CardContent>
           </Card>
@@ -504,7 +498,7 @@ export default function Dashboard() {
                 +${portfolioData.projected30Day.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {mode.current === "demo" ? "Simulated projection" : mode.current === "shadow" ? "Estimated projection" : "30-day forecast"}
+                {mode.current === "shadow" ? "Estimated projection" : "30-day forecast"}
               </p>
             </CardContent>
           </Card>
