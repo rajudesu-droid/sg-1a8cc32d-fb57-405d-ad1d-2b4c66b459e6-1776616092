@@ -36,14 +36,91 @@ import { assertNoSimulatedDataInLiveMode, getPortfolioForMode } from "@/core/uti
 import { botOrchestrationService } from "@/services/BotOrchestrationService";
 import { useToast } from "@/hooks/use-toast";
 import type { BotConfig } from "@/services/BotOrchestrationService";
+import { useWallet } from "@/contexts/WalletContext";
+import { useMultiWallet } from "@/contexts/MultiWalletContext";
+import { fetchTokenPrices } from "@/lib/cryptoPriceService";
 
 export default function Dashboard() {
   const mode = useAppStore((state) => state.mode);
+  const { isConnected, address, chainId, detectedAssets } = useWallet();
+  const { connectedWallets } = useMultiWallet();
+  
+  // Prevent hydration mismatch
+  const [mounted, setMounted] = useState(false);
+  const [tokenPrices, setTokenPrices] = useState<Record<string, number>>({});
+  const [loadingPrices, setLoadingPrices] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Combine all tokens from all sources
+  const allTokens = [
+    ...detectedAssets.map(asset => ({
+      symbol: asset.symbol,
+      balance: asset.balance,
+      network: asset.network,
+    })),
+    ...connectedWallets.flatMap(wallet =>
+      (wallet.tokens || []).map(token => ({
+        symbol: token.symbol,
+        balance: token.balance,
+        network: wallet.chainName,
+      }))
+    ),
+  ];
+
+  // Fetch token prices when tokens change
+  useEffect(() => {
+    if (mounted && allTokens.length > 0) {
+      loadTokenPrices();
+    }
+  }, [mounted, detectedAssets.length, connectedWallets.length]);
+
+  const loadTokenPrices = async () => {
+    setLoadingPrices(true);
+    try {
+      const uniqueTokens = [...new Set(allTokens.map(t => t.symbol))].map(symbol => ({
+        symbol,
+        network: allTokens.find(t => t.symbol === symbol)?.network,
+      }));
+
+      const prices = await fetchTokenPrices(uniqueTokens);
+      setTokenPrices(prices);
+      console.log("[Dashboard] Fetched prices for", Object.keys(prices).length, "tokens");
+    } catch (error) {
+      console.error("[Dashboard] Failed to fetch token prices:", error);
+    } finally {
+      setLoadingPrices(false);
+    }
+  };
+
+  // Calculate USD value for a token
+  const getUSDValue = (symbol: string, balance: string): number => {
+    const price = tokenPrices[symbol.toUpperCase()];
+    if (!price) return 0;
+    return parseFloat(balance) * price;
+  };
+
+  // Calculate total portfolio value
+  const totalPortfolioValue = allTokens.reduce((sum, token) => {
+    return sum + getUSDValue(token.symbol, token.balance);
+  }, 0);
+
+  // Calculate deployed capital (for now, assume 0 in LP positions)
+  const deployedCapital = 0;
+
+  // Calculate idle capital
+  const idleCapital = totalPortfolioValue;
+
+  const anyWalletConnected = mounted && (isConnected || connectedWallets.length > 0);
+
   const wallet = useAppStore((state) => state.wallet);
   const portfolio = useAppStore((state) => state.portfolio);
   const positions = useAppStore((state) => state.positions);
   const router = useRouter();
   const { toast } = useToast();
+  const { wallet: walletContext } = useWallet();
 
   const [botRunning, setBotRunning] = useState(false);
   const [botStarting, setBotStarting] = useState(false);
@@ -324,181 +401,73 @@ export default function Dashboard() {
 
         {/* Portfolio Metrics Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {/* Total Portfolio Value */}
           <Card className="card-gradient border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Portfolio Value ({getModeLabel()})
+                Portfolio Value
               </CardTitle>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs max-w-xs">
-                      {mode.current === "shadow"
-                        ? "Estimated total value from connected wallet balances"
-                        : "Real-time total value of all assets and positions"}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${portfolioData.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {mode.current === "shadow" ? "Estimated total" : "Current total"}
+              <div className="text-2xl font-bold" suppressHydrationWarning>
+                {mounted && totalPortfolioValue > 0 ? (
+                  `$${totalPortfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                ) : (
+                  "$0.00"
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {loadingPrices ? "Loading..." : "Total assets value"}
               </p>
             </CardContent>
           </Card>
-
-          {/* Deployed Capital */}
           <Card className="card-gradient border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Deployed Capital ({getModeLabel()})
+                Deployed Capital
               </CardTitle>
-              <Target className="h-4 w-4 text-muted-foreground" />
+              <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${portfolioData.deployedCapital.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {mode.current === "shadow" ? "Estimated positions" : "Active positions"}
+              <div className="text-2xl font-bold" suppressHydrationWarning>
+                {mounted && deployedCapital > 0 ? (
+                  `$${deployedCapital.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                ) : (
+                  "$0.00"
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Active in LP positions
               </p>
             </CardContent>
           </Card>
-
-          {/* Idle Capital */}
           <Card className="card-gradient border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Idle Capital ({getModeLabel()})
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">Idle Capital</CardTitle>
               <PiggyBank className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${portfolioData.idleCapital.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {mode.current === "shadow" ? "Estimated undeployed" : "Available capital"}
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Net APY */}
-          <Card className="card-gradient border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Net APY ({getModeLabel()})
-              </CardTitle>
-              <Percent className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{portfolioData.netApy.toFixed(2)}%</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {mode.current === "shadow" ? "Estimated APY" : "Annualized yield"}
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Daily Earnings */}
-          <Card className="card-gradient border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Daily Earnings ({getModeLabel()})
-              </CardTitle>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs max-w-xs">
-                      {mode.current === "shadow"
-                        ? "Estimated daily earnings if positions were active"
-                        : "Realized earnings today + projected for remainder of day"}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-emerald-400">
-                +${typeof portfolioData.dailyEarnings === 'number' 
-                  ? portfolioData.dailyEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                  : (portfolioData.dailyEarnings.realized + portfolioData.dailyEarnings.projected).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <div className="text-2xl font-bold" suppressHydrationWarning>
+                {mounted && idleCapital > 0 ? (
+                  `$${idleCapital.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                ) : (
+                  "$0.00"
+                )}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {mode.current === "shadow" ? "Estimated today" : "Today's earnings"}
+              <p className="text-xs text-muted-foreground">
+                Available to deploy
               </p>
             </CardContent>
           </Card>
-
-          {/* Monthly Earnings */}
           <Card className="card-gradient border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Monthly Earnings ({getModeLabel()})
-              </CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-emerald-400">
-                +${typeof portfolioData.monthlyEarnings === 'number'
-                  ? portfolioData.monthlyEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                  : (portfolioData.monthlyEarnings.realized + portfolioData.monthlyEarnings.projected).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {mode.current === "shadow" ? "Estimated MTD" : "Current month"}
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Realized Earnings */}
-          <Card className="card-gradient border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Realized Earnings ({getModeLabel()})
-              </CardTitle>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs max-w-xs">
-                      {mode.current === "shadow"
-                        ? "Estimated total if positions were harvested"
-                        : "All-time fees and rewards successfully claimed"}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-emerald-400">
-                +${portfolioData.realizedEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {mode.current === "shadow" ? "Estimated potential" : "Lifetime claimed"}
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Projected 30-Day */}
-          <Card className="card-gradient border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Projected 30-Day ({getModeLabel()})
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">Net APY</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-cyan-400">
-                +${portfolioData.projected30Day.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {mode.current === "shadow" ? "Estimated projection" : "30-day forecast"}
+              <div className="text-2xl font-bold">0.00%</div>
+              <p className="text-xs text-muted-foreground">
+                Expected annual return
               </p>
             </CardContent>
           </Card>
@@ -510,8 +479,135 @@ export default function Dashboard() {
           <PerformanceMonitorWidget />
           <ActivePositions />
           <RecentAlerts />
-          <NetworkBalances />
-          <ConnectedWallets />
+          <Card className="card-gradient border-border/50">
+            <CardHeader>
+              <CardTitle>Network Balances</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Assets grouped by blockchain
+              </p>
+            </CardHeader>
+            <CardContent>
+              {mounted && anyWalletConnected ? (
+                <div className="space-y-4">
+                  {(() => {
+                    // Group tokens by network
+                    const networkGroups = allTokens.reduce((acc, token) => {
+                      const network = token.network;
+                      if (!acc[network]) {
+                        acc[network] = [];
+                      }
+                      acc[network].push(token);
+                      return acc;
+                    }, {} as Record<string, typeof allTokens>);
+
+                    return Object.entries(networkGroups).map(([network, tokens]) => {
+                      const networkValue = tokens.reduce((sum, token) => 
+                        sum + getUSDValue(token.symbol, token.balance), 0
+                      );
+
+                      return (
+                        <div key={network} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">{network}</Badge>
+                              <span className="text-sm font-medium">
+                                {tokens.length} asset(s)
+                              </span>
+                            </div>
+                            <span className="text-sm font-bold text-success">
+                              ${networkValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                          <div className="space-y-1 ml-4">
+                            {tokens.slice(0, 3).map((token, idx) => {
+                              const value = getUSDValue(token.symbol, token.balance);
+                              return (
+                                <div key={idx} className="flex items-center justify-between text-sm">
+                                  <span className="text-muted-foreground">
+                                    {parseFloat(token.balance).toFixed(4)} {token.symbol}
+                                  </span>
+                                  {value > 0 && (
+                                    <span className="text-success">
+                                      ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                            {tokens.length > 3 && (
+                              <p className="text-xs text-muted-foreground">
+                                +{tokens.length - 3} more
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              ) : (
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    Connect your wallet to view network balances
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+          {/* Connected Wallets */}
+          <Card className="card-gradient border-border/50">
+            <CardHeader>
+              <CardTitle>Connected Wallets</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Active wallet connections
+              </p>
+            </CardHeader>
+            <CardContent>
+              {mounted && anyWalletConnected ? (
+                <div className="space-y-3" suppressHydrationWarning>
+                  {isConnected && address && (
+                    <div className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-card/30">
+                      <div>
+                        <Badge variant="outline" className="mb-1">EVM</Badge>
+                        <p className="font-mono text-sm">
+                          {address.slice(0, 10)}...{address.slice(-8)}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {detectedAssets.length} asset(s)
+                        </p>
+                      </div>
+                      <Badge variant="default">Connected</Badge>
+                    </div>
+                  )}
+                  {connectedWallets.map((wallet) => (
+                    <div key={wallet.id} className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-card/30">
+                      <div>
+                        <Badge variant="outline" className="mb-1">
+                          {wallet.type.toUpperCase()}
+                        </Badge>
+                        <p className="font-mono text-sm">
+                          {wallet.address.slice(0, 10)}...{wallet.address.slice(-8)}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {wallet.tokens?.length || 0} asset(s)
+                        </p>
+                      </div>
+                      <Badge variant="default">Connected</Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <Alert>
+                  <Wallet className="h-4 w-4" />
+                  <AlertDescription>
+                    No wallets connected. Click "Connect Wallet" in the header to
+                    get started.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </AppLayout>
