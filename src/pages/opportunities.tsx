@@ -1,15 +1,27 @@
 import { AppLayout } from "@/components/AppLayout";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, Search, Activity, DollarSign, Percent, RefreshCw, Eye, AlertTriangle } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/hooks/use-toast";
-import { useAppStore } from "@/store";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ModeBanner } from "@/components/ModeBanner";
+import { useAppStore } from "@/store";
+import { useToast } from "@/hooks/use-toast";
+import { useWallet } from "@/contexts/WalletContext";
+import { useMultiWallet } from "@/contexts/MultiWalletContext";
+import {
+  TrendingUp,
+  Search,
+  Filter,
+  ArrowUpRight,
+  Info,
+  AlertTriangle,
+  Wallet,
+} from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import { orchestrator } from "@/core/orchestrator";
 import { opportunityEngine } from "@/core/engines";
 import { ProtocolReadinessIndicator } from "@/components/ProtocolReadinessIndicator";
@@ -196,6 +208,11 @@ export default function Opportunities() {
   const mode = useAppStore((state) => state.mode);
   const opportunities = useAppStore((state) => state.opportunities);
   const wallet = useAppStore((state) => state.wallet);
+  const { isConnected: evmConnected, address: evmAddress } = useWallet();
+  const { connectedWallets } = useMultiWallet();
+  
+  // Check if any wallet is connected
+  const anyWalletConnected = evmConnected || connectedWallets.length > 0;
 
   // Listen for mode changes and trigger initial scan
   useEffect(() => {
@@ -365,15 +382,40 @@ export default function Opportunities() {
         </div>
 
         {/* Summary Report */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card className="card-gradient border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Opportunities</CardTitle>
+              <CardTitle className="text-sm font-medium">Wallet Status</CardTitle>
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {anyWalletConnected ? (
+                  <span className="text-success">Connected</span>
+                ) : (
+                  <span className="text-muted-foreground">Not Connected</span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {anyWalletConnected 
+                  ? `${(evmConnected ? 1 : 0) + connectedWallets.length} wallet(s)` 
+                  : "Connect to see opportunities"}
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card className="card-gradient border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Available Opportunities</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{filteredOpportunities.length}</div>
-              <p className="text-xs text-muted-foreground">Available pools</p>
+              <div className="text-2xl font-bold">
+                {anyWalletConnected ? mockOpportunities.length : 0}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {anyWalletConnected ? "Across all chains" : "Connect wallet first"}
+              </p>
             </CardContent>
           </Card>
 
