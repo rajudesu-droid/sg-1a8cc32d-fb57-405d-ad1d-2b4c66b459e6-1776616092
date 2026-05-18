@@ -159,7 +159,7 @@ export default function Wallets() {
                 {detectedAssets.length}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Native balances only
+                Native + ERC20 tokens
               </p>
             </CardContent>
           </Card>
@@ -181,24 +181,22 @@ export default function Wallets() {
 
         <ModeBanner />
 
-        {/* API Integration Notice */}
-        <Alert className="border-amber-500/50 bg-amber-500/10">
-          <Info className="h-4 w-4 text-amber-500" />
+        {/* Moralis Integration Status */}
+        <Alert className="border-primary/50 bg-primary/10">
+          <Info className="h-4 w-4 text-primary" />
           <AlertDescription>
             <div className="space-y-2">
-              <p className="font-semibold text-sm">Token Detection Requires API Integration</p>
+              <p className="font-semibold text-sm">✅ Moralis API Enabled</p>
               <p className="text-xs text-muted-foreground">
-                Currently showing native balance only (ETH/BNB/MATIC/AVAX). To detect ERC20/BEP20 tokens, 
-                you need to integrate with a blockchain data provider:
+                Full ERC20/BEP20 token detection is active. Connect your wallet to see all your tokens across Ethereum, BSC, Polygon, and Avalanche networks.
               </p>
-              <ul className="text-xs text-muted-foreground space-y-1 ml-4">
-                <li>• <a href="https://moralis.io" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Moralis API <ExternalLink className="h-3 w-3" /></a> (Multi-chain token balances)</li>
-                <li>• <a href="https://alchemy.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Alchemy API <ExternalLink className="h-3 w-3" /></a> (EVM chains)</li>
-                <li>• <a href="https://covalenthq.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Covalent API <ExternalLink className="h-3 w-3" /></a> (Historical balances)</li>
-              </ul>
-              <p className="text-xs text-muted-foreground mt-2">
-                See <code className="bg-muted px-1 py-0.5 rounded">src/contexts/WalletContext.tsx</code> line 104 for integration instructions.
-              </p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+                <span>Supported chains:</span>
+                <Badge variant="outline" className="text-xs">Ethereum</Badge>
+                <Badge variant="outline" className="text-xs">BSC</Badge>
+                <Badge variant="outline" className="text-xs">Polygon</Badge>
+                <Badge variant="outline" className="text-xs">Avalanche</Badge>
+              </div>
             </div>
           </AlertDescription>
         </Alert>
@@ -236,8 +234,8 @@ export default function Wallets() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Detected Assets</h2>
-              <Badge variant="outline" className="text-xs">
-                Native balances only
+              <Badge variant="secondary" className="text-xs">
+                {detectedAssets.filter(a => a.isNative).length} Native + {detectedAssets.filter(a => !a.isNative).length} Tokens
               </Badge>
             </div>
             <Card className="card-gradient border-border/50">
