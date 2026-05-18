@@ -14,7 +14,7 @@ import { actionHandler } from "@/services/ActionHandlerService";
 
 export default function Wallets() {
   const mode = useAppStore((state) => state.mode);
-  const { isConnected, address, chainId, detectedAssets, refreshBalances, disconnectWallet } = useWallet();
+  const { isConnected, isConnecting, address, chainId, detectedAssets, refreshBalances, disconnectWallet, connectWallet } = useWallet();
   const { toast } = useToast();
 
   const [refreshLoading, setRefreshLoading] = useState(false);
@@ -24,20 +24,8 @@ export default function Wallets() {
     metadata: { source: "wallets_page" },
   });
 
-  const handleConnectWallet = async () => {
-    setConnectLoading(true);
-    try {
-      const result = await actionHandler.connectWallet(getActionContext());
-      toast({
-        title: result.success ? "Wallet Connected" : "Connection Failed",
-        description: result.message,
-        variant: result.success ? "default" : "destructive",
-      });
-    } catch (error) {
-      toast({ title: "Connection Failed", description: "Failed to connect wallet", variant: "destructive" });
-    } finally {
-      setConnectLoading(false);
-    }
+  const handleConnectWallet = () => {
+    connectWallet();
   };
 
   const handleDisconnectWallet = () => {
@@ -93,9 +81,9 @@ export default function Wallets() {
               {mode.current === "shadow" ? "Shadow Mode" : "Live Mode"}
             </Badge>
             
-            {!wallet.wallet && (
-              <Button onClick={handleConnectWallet} disabled={connectLoading}>
-                {connectLoading ? (
+            {!isConnected && (
+              <Button onClick={handleConnectWallet} disabled={isConnecting}>
+                {isConnecting ? (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> 
                     Connecting...
@@ -109,7 +97,7 @@ export default function Wallets() {
               </Button>
             )}
             
-            {wallet.wallet && (
+            {isConnected && (
               <>
                 <Button variant="outline" onClick={handleRefreshBalances} disabled={refreshLoading}>
                   {refreshLoading ? (
@@ -124,15 +112,8 @@ export default function Wallets() {
                     </>
                   )}
                 </Button>
-                <Button variant="destructive" onClick={handleDisconnectWallet} disabled={disconnectLoading}>
-                  {disconnectLoading ? (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> 
-                      Disconnecting...
-                    </>
-                  ) : (
-                    "Disconnect"
-                  )}
+                <Button variant="destructive" onClick={handleDisconnectWallet}>
+                  Disconnect
                 </Button>
               </>
             )}
