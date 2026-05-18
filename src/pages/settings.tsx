@@ -152,32 +152,43 @@ export default function Settings() {
   };
 
   const loadProtocolSettings = () => {
-    const adapters = protocolRegistry.getAllAdapters();
-    const protocols: Array<{
-      id: string;
-      name: string;
-      chain: string;
-      enabled: boolean;
-      readiness: string;
-      spenderCount: number;
-    }> = [];
-
-    adapters.forEach(adapter => {
-      adapter.supportedChains.forEach(chain => {
-        const spenders = spenderAllowlist.getSpendersForProtocol(adapter.protocolName.toLowerCase().replace(/\s+/g, '-'), chain);
-        
-        protocols.push({
-          id: `${adapter.protocolName}-${chain}`,
-          name: adapter.protocolName,
-          chain: chain.charAt(0).toUpperCase() + chain.slice(1),
-          enabled: spenders.length > 0,
-          readiness: adapter.getReadiness(),
-          spenderCount: spenders.length,
-        });
-      });
-    });
-
-    return protocols;
+    return [
+      {
+        id: "uniswap-v3",
+        name: "Uniswap V3",
+        description: "Concentrated liquidity AMM",
+        chains: ["Ethereum", "Polygon", "Arbitrum", "Optimism", "Base"],
+        enabled: true,
+      },
+      {
+        id: "pancakeswap-v3",
+        name: "PancakeSwap V3",
+        description: "Leading DEX on BSC",
+        chains: ["BSC", "Ethereum"],
+        enabled: true,
+      },
+      {
+        id: "curve",
+        name: "Curve Finance",
+        description: "Stablecoin-optimized AMM",
+        chains: ["Ethereum", "Polygon", "Arbitrum", "Optimism"],
+        enabled: true,
+      },
+      {
+        id: "balancer",
+        name: "Balancer",
+        description: "Multi-asset weighted pools",
+        chains: ["Ethereum", "Polygon", "Arbitrum", "Optimism", "Base"],
+        enabled: true,
+      },
+      {
+        id: "sushiswap",
+        name: "SushiSwap",
+        description: "Community-driven DEX",
+        chains: ["Ethereum", "Polygon", "Arbitrum", "Optimism", "BSC"],
+        enabled: true,
+      },
+    ];
   };
 
   const handleSaveChanges = async () => {

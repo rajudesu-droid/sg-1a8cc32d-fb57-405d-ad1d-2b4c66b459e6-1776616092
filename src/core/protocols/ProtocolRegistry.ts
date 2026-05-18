@@ -6,9 +6,9 @@
 import type { IProtocolAdapter, ProtocolConfig, ChainConfig } from "./types";
 import { UniswapV3Adapter } from "./adapters/UniswapV3Adapter";
 import { PancakeSwapV3Adapter } from "./adapters/PancakeSwapV3Adapter";
-import { SushiSwapAdapter } from "./adapters/SushiSwapAdapter";
 import { CurveAdapter } from "./adapters/CurveAdapter";
 import { BalancerAdapter } from "./adapters/BalancerAdapter";
+import { SushiSwapAdapter } from "./adapters/SushiSwapAdapter";
 import type { BaseProtocolAdapter } from "./BaseProtocolAdapter";
 import type { ProtocolType } from "./types";
 import type { AdapterReadiness } from "./types";

@@ -19,6 +19,168 @@ import { actionHandler } from "@/services/ActionHandlerService";
 type SortOption = "recommended" | "apy" | "tvl" | "risk";
 type RiskFilter = "all" | "low" | "medium" | "high";
 
+const mockOpportunities: Opportunity[] = [
+  // Uniswap V3 - Ethereum
+  {
+    id: "uni-eth-usdc-1",
+    protocol: "Uniswap V3",
+    chain: "Ethereum",
+    pair: "ETH/USDC",
+    feeTier: 0.05,
+    tvl: 125000000,
+    volume24h: 45000000,
+    estimatedAPY: 18.5,
+    riskScore: 72,
+    feeAPY: 12.5,
+    farmAPY: 6.0,
+    rangePreset: "Narrow (±5%)",
+    token0: "ETH",
+    token1: "USDC",
+    token0Address: "0x0000000000000000000000000000000000000000",
+    token1Address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    poolAddress: "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640",
+  },
+  {
+    id: "uni-wbtc-eth-1",
+    protocol: "Uniswap V3",
+    chain: "Ethereum",
+    pair: "WBTC/ETH",
+    feeTier: 0.3,
+    tvl: 98000000,
+    volume24h: 28000000,
+    estimatedAPY: 22.3,
+    riskScore: 68,
+    feeAPY: 15.8,
+    farmAPY: 6.5,
+    rangePreset: "Medium (±10%)",
+    token0: "WBTC",
+    token1: "ETH",
+    token0Address: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+    token1Address: "0x0000000000000000000000000000000000000000",
+    poolAddress: "0xCBCdF9626bC03E24f779434178A73a0B4bad62eD",
+  },
+  
+  // Curve Finance - Stablecoin pools
+  {
+    id: "curve-3pool-eth",
+    protocol: "Curve",
+    chain: "Ethereum",
+    pair: "USDT/USDC/DAI",
+    feeTier: 0.04,
+    tvl: 1200000000,
+    volume24h: 85000000,
+    estimatedAPY: 8.2,
+    riskScore: 88,
+    feeAPY: 5.8,
+    farmAPY: 2.4,
+    rangePreset: "Full Range",
+    token0: "USDT",
+    token1: "USDC",
+    token0Address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+    token1Address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    poolAddress: "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
+  },
+  {
+    id: "curve-fraxusdc-eth",
+    protocol: "Curve",
+    chain: "Ethereum",
+    pair: "FRAX/USDC",
+    feeTier: 0.04,
+    tvl: 345000000,
+    volume24h: 12000000,
+    estimatedAPY: 6.5,
+    riskScore: 85,
+    feeAPY: 4.2,
+    farmAPY: 2.3,
+    rangePreset: "Full Range",
+    token0: "FRAX",
+    token1: "USDC",
+    token0Address: "0x853d955aCEf822Db058eb8505911ED77F175b99e",
+    token1Address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    poolAddress: "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2",
+  },
+  
+  // Balancer - Multi-asset pools
+  {
+    id: "bal-weth-wbtc-usdc-eth",
+    protocol: "Balancer",
+    chain: "Ethereum",
+    pair: "WETH/WBTC/USDC",
+    feeTier: 0.3,
+    tvl: 28000000,
+    volume24h: 5600000,
+    estimatedAPY: 14.8,
+    riskScore: 75,
+    feeAPY: 9.2,
+    farmAPY: 5.6,
+    rangePreset: "Balanced (50/25/25)",
+    token0: "WETH",
+    token1: "WBTC",
+    token0Address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    token1Address: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+    poolAddress: "0x5c6Ee304399DBdB9C8Ef030aB642B10820DB8F56",
+  },
+  {
+    id: "bal-wsteth-weth-eth",
+    protocol: "Balancer",
+    chain: "Ethereum",
+    pair: "wstETH/WETH",
+    feeTier: 0.05,
+    tvl: 156000000,
+    volume24h: 18000000,
+    estimatedAPY: 11.2,
+    riskScore: 78,
+    feeAPY: 6.8,
+    farmAPY: 4.4,
+    rangePreset: "Narrow (±3%)",
+    token0: "wstETH",
+    token1: "WETH",
+    token0Address: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0",
+    token1Address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    poolAddress: "0x32296969Ef14EB0c6d29669C550D4a0449130230",
+  },
+  
+  // SushiSwap - Multi-chain DEX
+  {
+    id: "sushi-eth-usdt-eth",
+    protocol: "SushiSwap",
+    chain: "Ethereum",
+    pair: "ETH/USDT",
+    feeTier: 0.3,
+    tvl: 42000000,
+    volume24h: 8500000,
+    estimatedAPY: 16.3,
+    riskScore: 71,
+    feeAPY: 10.8,
+    farmAPY: 5.5,
+    rangePreset: "Medium (±8%)",
+    token0: "ETH",
+    token1: "USDT",
+    token0Address: "0x0000000000000000000000000000000000000000",
+    token1Address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+    poolAddress: "0x06da0fd433C1A5d7a4faa01111c044910A184553",
+  },
+  {
+    id: "sushi-matic-usdc-polygon",
+    protocol: "SushiSwap",
+    chain: "Polygon",
+    pair: "MATIC/USDC",
+    feeTier: 0.3,
+    tvl: 18000000,
+    volume24h: 3200000,
+    estimatedAPY: 19.5,
+    riskScore: 69,
+    feeAPY: 13.2,
+    farmAPY: 6.3,
+    rangePreset: "Medium (±10%)",
+    token0: "MATIC",
+    token1: "USDC",
+    token0Address: "0x0000000000000000000000000000000000001010",
+    token1Address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+    poolAddress: "0x6e7a5fafcec6bb1e78bae2a1f0b612012bf14827",
+  },
+];
+
 export default function Opportunities() {
   const [sortBy, setSortBy] = useState<SortOption>("recommended");
   const [riskFilter, setRiskFilter] = useState<RiskFilter>("all");
@@ -411,15 +573,17 @@ export default function Opportunities() {
                 </SelectContent>
               </Select>
 
-              <Select value={protocolFilter} onValueChange={setProtocolFilter}>
+              <Select value={protocolFilter} onValueChange={(v) => setProtocolFilter(v as RiskFilter)}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Protocols" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Protocols</SelectItem>
-                  {uniqueProtocols.map(protocol => (
-                    <SelectItem key={protocol} value={protocol}>{protocol}</SelectItem>
-                  ))}
+                  <SelectItem value="Uniswap V3">Uniswap V3</SelectItem>
+                  <SelectItem value="PancakeSwap V3">PancakeSwap V3</SelectItem>
+                  <SelectItem value="Curve">Curve Finance</SelectItem>
+                  <SelectItem value="Balancer">Balancer</SelectItem>
+                  <SelectItem value="SushiSwap">SushiSwap</SelectItem>
                 </SelectContent>
               </Select>
 
