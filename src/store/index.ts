@@ -110,6 +110,20 @@ interface AppState {
   setBotRunning: (running: boolean) => void;
 }
 
+export interface Policy {
+  autoDeployIdle: boolean;
+  autoHarvest: boolean;
+  autoCompound: boolean;
+  autoRebalance: boolean;
+  emergencyPause: boolean;
+  minHarvestAmount: number;
+  rebalanceThreshold: number;
+  minPoolScore: number;
+  maxDailyGasBudget: number;
+  maxCapitalPerPool: number;
+  requireWalletConfirmation: boolean;  // NEW: Safety toggle for Live mode
+}
+
 export const useAppStore = create<AppState>()(
   devtools(
     persist(
@@ -225,6 +239,7 @@ export const useAppStore = create<AppState>()(
           emergencyPause: false,
           pausedChains: [],
           pausedDexes: [],
+          requireWalletConfirmation: true,  // Default to safe mode
         },
         setPolicy: (policy) =>
           set((state) => ({

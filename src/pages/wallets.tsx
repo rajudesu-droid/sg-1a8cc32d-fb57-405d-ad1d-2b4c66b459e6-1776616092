@@ -185,25 +185,43 @@ export default function Wallets() {
         <Alert className="border-primary/50 bg-primary/10">
           <Info className="h-4 w-4 text-primary" />
           <AlertDescription>
-            <div className="space-y-2">
-              <p className="font-semibold text-sm">✅ Moralis API Enabled</p>
-              <p className="text-xs text-muted-foreground">
-                Full ERC20/BEP20 token detection is active. Connect your wallet to see all your tokens across Ethereum, BSC, Polygon, and Avalanche networks.
-              </p>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-2">
-                <span>Supported chains:</span>
-                <Badge variant="outline" className="text-xs">Ethereum</Badge>
-                <Badge variant="outline" className="text-xs">BSC</Badge>
-                <Badge variant="outline" className="text-xs">Polygon</Badge>
-                <Badge variant="outline" className="text-xs">Avalanche</Badge>
-                <Badge variant="outline" className="text-xs">Arbitrum</Badge>
-                <Badge variant="outline" className="text-xs">Optimism</Badge>
-                <Badge variant="outline" className="text-xs">Base</Badge>
-                <Badge variant="outline" className="text-xs">Fantom</Badge>
-                <Badge variant="outline" className="text-xs">Cronos</Badge>
-                <Badge variant="outline" className="text-xs">Gnosis</Badge>
-                <Badge variant="outline" className="text-xs">zkSync</Badge>
-                <Badge variant="outline" className="text-xs">Linea</Badge>
+            <div className="space-y-3">
+              <div>
+                <p className="font-semibold text-sm">✅ Multi-Chain EVM Token Detection Enabled</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Automatic detection of tokens across ALL supported EVM chains. Connect once, see balances everywhere!
+                </p>
+              </div>
+              
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-1">Supported EVM Chains (12):</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <Badge variant="outline" className="text-xs">Ethereum</Badge>
+                  <Badge variant="outline" className="text-xs">BSC</Badge>
+                  <Badge variant="outline" className="text-xs">Polygon</Badge>
+                  <Badge variant="outline" className="text-xs">Avalanche</Badge>
+                  <Badge variant="outline" className="text-xs">Arbitrum</Badge>
+                  <Badge variant="outline" className="text-xs">Optimism</Badge>
+                  <Badge variant="outline" className="text-xs">Base</Badge>
+                  <Badge variant="outline" className="text-xs">Fantom</Badge>
+                  <Badge variant="outline" className="text-xs">Cronos</Badge>
+                  <Badge variant="outline" className="text-xs">Gnosis</Badge>
+                  <Badge variant="outline" className="text-xs">zkSync</Badge>
+                  <Badge variant="outline" className="text-xs">Linea</Badge>
+                </div>
+              </div>
+
+              <div className="border-t border-border/20 pt-2">
+                <p className="text-xs font-semibold text-amber-500 mb-1">⚠️ Non-EVM Chains (Coming Soon):</p>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  <Badge variant="outline" className="text-xs opacity-50">Solana</Badge>
+                  <Badge variant="outline" className="text-xs opacity-50">TRON</Badge>
+                  <Badge variant="outline" className="text-xs opacity-50">Bitcoin</Badge>
+                  <Badge variant="outline" className="text-xs opacity-50">XRP</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Requires separate wallet adapters (Phantom, TronLink, etc.). WalletConnect primarily supports EVM chains.
+                </p>
               </div>
             </div>
           </AlertDescription>
@@ -241,7 +259,7 @@ export default function Wallets() {
         {isConnected && detectedAssets.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Detected Assets</h2>
+              <h2 className="text-xl font-semibold">Detected Assets Across All Chains</h2>
               <Badge variant="secondary" className="text-xs">
                 {detectedAssets.filter(a => a.isNative).length} Native + {detectedAssets.filter(a => !a.isNative).length} Tokens
               </Badge>
@@ -250,18 +268,27 @@ export default function Wallets() {
               <CardContent className="pt-6">
                 <div className="space-y-3">
                   {detectedAssets.map((asset, index) => (
-                    <div key={`${asset.network}-${asset.symbol}-${index}`} className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-card/30">
+                    <div key={`${asset.chainId}-${asset.symbol}-${asset.address || 'native'}-${index}`} className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-card/30 hover:bg-card/50 transition-colors">
                       <div className="flex items-center gap-3">
-                        <Badge variant="outline">{asset.network}</Badge>
+                        <Badge variant="outline" className="min-w-[80px] justify-center">
+                          {asset.network}
+                        </Badge>
                         <div>
-                          <p className="font-semibold">{asset.symbol}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold">{asset.symbol}</p>
+                            {detectedAssets.filter(a => a.symbol === asset.symbol).length > 1 && (
+                              <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                                Multi-chain
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-xs text-muted-foreground">{asset.name}</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="font-medium">{parseFloat(asset.balance).toFixed(4)} {asset.symbol}</p>
-                        <Badge variant="secondary" className="text-xs mt-1">
-                          {asset.isNative ? "Native" : "Token"}
+                        <Badge variant={asset.isNative ? "default" : "secondary"} className="text-xs mt-1">
+                          {asset.isNative ? "Native" : "ERC20"}
                         </Badge>
                       </div>
                     </div>
