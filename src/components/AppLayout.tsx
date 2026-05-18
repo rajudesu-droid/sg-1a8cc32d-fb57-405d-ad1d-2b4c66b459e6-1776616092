@@ -18,8 +18,8 @@ import {
   Menu,
   Bell,
   X,
-  FileText,
-} from "lucide-react";
+  FileText } from
+"lucide-react";
 import { ModeSelector } from "./ModeSelector";
 import { WalletButton } from "./WalletButton";
 import {
@@ -35,21 +35,21 @@ import {
   SidebarInset,
   SidebarHeader,
   SidebarFooter,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+  SidebarTrigger } from
+"@/components/ui/sidebar";
 import { LiveActivityBar } from "@/components/LiveActivityBar";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/opportunities", label: "Opportunities", icon: TrendingUp },
-  { href: "/positions", label: "Positions", icon: Target },
-  { href: "/automation", label: "Automation", icon: Zap },
-  { href: "/withdraw", label: "Withdraw", icon: ArrowDownToLine },
-  { href: "/wallets", label: "Wallets", icon: Wallet },
-  { href: "/portfolio", label: "Portfolio", icon: Beaker },
-  { href: "/settings", label: "Settings", icon: Settings },
-  { href: "/admin", label: "System Monitor", icon: Activity },
-];
+{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+{ href: "/opportunities", label: "Opportunities", icon: TrendingUp },
+{ href: "/positions", label: "Positions", icon: Target },
+{ href: "/automation", label: "Automation", icon: Zap },
+{ href: "/withdraw", label: "Withdraw", icon: ArrowDownToLine },
+{ href: "/wallets", label: "Wallets", icon: Wallet },
+{ href: "/portfolio", label: "Portfolio", icon: Beaker },
+{ href: "/settings", label: "Settings", icon: Settings },
+{ href: "/admin", label: "System Monitor", icon: Activity }];
+
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -77,8 +77,8 @@ export function AppLayout({ children }: AppLayoutProps) {
             <SidebarGroup>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {navItems.map((item) => (
-                    <SidebarMenuItem key={item.href}>
+                  {navItems.map((item) =>
+                  <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton asChild isActive={router.pathname === item.href}>
                         <Link href={item.href}>
                           <item.icon />
@@ -86,13 +86,13 @@ export function AppLayout({ children }: AppLayoutProps) {
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
-                  ))}
+                  )}
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild isActive={router.pathname === "/withdraw"}>
-                      <Link href="/withdraw">
-                        <ArrowRightLeft className="mr-2 h-4 w-4" />
-                        Withdraw
-                      </Link>
+                      
+
+
+                      
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
@@ -143,6 +143,6 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       {/* Live Activity Bar */}
       <LiveActivityBar />
-    </SidebarProvider>
-  );
+    </SidebarProvider>);
+
 }
