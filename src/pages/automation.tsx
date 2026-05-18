@@ -48,14 +48,6 @@ export default function Automation() {
   });
 
   const handleSaveRules = async () => {
-    if (mode.current === "shadow") {
-      toast({
-        title: "Shadow Mode",
-        description: "Policy changes are preview-only in Shadow mode",
-      });
-      return;
-    }
-
     console.log("[Automation] Saving policy:", localPolicy);
     console.log("[Automation] autoDeployIdle value:", localPolicy.autoDeployIdle);
 
@@ -89,14 +81,6 @@ export default function Automation() {
   };
 
   const handleResetRules = async () => {
-    if (mode.current === "shadow") {
-      toast({
-        title: "Shadow Mode",
-        description: "Policy changes are preview-only in Shadow mode",
-      });
-      return;
-    }
-
     setResetLoading(true);
     try {
       const defaultPolicy = {
@@ -146,14 +130,6 @@ export default function Automation() {
   };
 
   const handleEmergencyPause = async () => {
-    if (mode.current === "shadow") {
-      toast({
-        title: "Shadow Mode",
-        description: "Emergency pause is preview-only in Shadow mode",
-      });
-      return;
-    }
-
     setPauseLoading(true);
     try {
       const result = await actionHandler.emergencyPause(getActionContext());
@@ -179,14 +155,6 @@ export default function Automation() {
   };
 
   const handleResumeAutomation = async () => {
-    if (mode.current === "shadow") {
-      toast({
-        title: "Shadow Mode",
-        description: "Cannot resume automation in Shadow mode",
-      });
-      return;
-    }
-
     setPauseLoading(true);
     try {
       const updatedPolicy = { ...localPolicy, emergencyPause: false };
@@ -265,7 +233,7 @@ export default function Automation() {
             <Button 
               variant="outline" 
               onClick={handleResetRules}
-              disabled={resetLoading || mode.current === "shadow"}
+              disabled={resetLoading}
             >
               {resetLoading ? (
                 <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Resetting...</>
@@ -275,7 +243,7 @@ export default function Automation() {
             </Button>
             <Button 
               onClick={handleSaveRules}
-              disabled={saveLoading || mode.current === "shadow"}
+              disabled={saveLoading}
             >
               {saveLoading ? (
                 <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
@@ -350,9 +318,9 @@ export default function Automation() {
               <div className="flex items-start gap-4">
                 <Eye className="h-5 w-5 text-accent flex-shrink-0" />
                 <div>
-                  <p className="font-semibold">Shadow Mode - Preview Only</p>
+                  <p className="font-semibold">Shadow Mode - Read-Only Recommendations</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Automation rules are displayed for preview. No actions will be executed in Shadow mode. Switch to Demo or Live to enable automation.
+                    You can configure automation rules, but no actions will be executed. Switch to Live mode to enable real execution.
                   </p>
                 </div>
               </div>
@@ -386,7 +354,7 @@ export default function Automation() {
                 variant="destructive" 
                 className="w-full"
                 onClick={handleEmergencyPause}
-                disabled={pauseLoading || mode.current === "shadow"}
+                disabled={pauseLoading}
               >
                 {pauseLoading ? (
                   <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Activating...</>
@@ -406,7 +374,7 @@ export default function Automation() {
                   variant="default" 
                   className="w-full"
                   onClick={handleResumeAutomation}
-                  disabled={pauseLoading || mode.current === "shadow"}
+                  disabled={pauseLoading}
                 >
                   {pauseLoading ? (
                     <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Resuming...</>
