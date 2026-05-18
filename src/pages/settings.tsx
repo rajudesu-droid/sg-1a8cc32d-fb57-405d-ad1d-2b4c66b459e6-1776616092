@@ -74,8 +74,22 @@ export default function Settings() {
       let chains = loadChainSettings();
       let protocols = loadProtocolSettings();
       
-      // Load user preferences from database
-      const preferences = await userPreferencesService.loadPreferences();
+      // Try to load user preferences from database first
+      let preferences = await userPreferencesService.loadPreferences();
+      
+      // If database load fails (not authenticated), try localStorage
+      if (!preferences) {
+        console.log("[Settings] No database preferences, checking localStorage");
+        const localSettings = localStorage.getItem("lp_autopilot_settings");
+        if (localSettings) {
+          try {
+            preferences = JSON.parse(localSettings);
+            console.log("[Settings] Loaded preferences from localStorage");
+          } catch (parseError) {
+            console.error("[Settings] Failed to parse localStorage settings:", parseError);
+          }
+        }
+      }
       
       if (preferences) {
         setSlippageTolerance(preferences.defaultSlippage.toString());
@@ -118,11 +132,10 @@ export default function Settings() {
       setProtocolSettings(protocols);
     } catch (error) {
       console.error("[Settings] Failed to load settings:", error);
-      toast({
-        title: "Error Loading Settings",
-        description: "Failed to load your saved preferences. Using defaults.",
-        variant: "destructive",
-      });
+      
+      // Final attempt: load default chains and protocols
+      setChainSettings(loadChainSettings());
+      setProtocolSettings(loadProtocolSettings());
     } finally {
       setLoading(false);
     }
@@ -186,6 +199,7 @@ export default function Settings() {
         testnetMode: advancedSettings.testnetMode,
       };
 
+      // Try to save to database (requires authentication)
       const success = await userPreferencesService.savePreferences(preferences);
 
       if (success) {
@@ -202,18 +216,58 @@ export default function Settings() {
         
         toast({
           title: "Settings Saved",
-          description: "All settings have been saved successfully to your account",
+          description: "All settings have been saved successfully",
         });
       } else {
-        throw new Error("Failed to save preferences");
+        // Database save failed - likely not authenticated
+        // Fall back to localStorage
+        console.log("[Settings] Database save failed, using localStorage fallback");
+        
+        localStorage.setItem("lp_autopilot_settings", JSON.stringify(preferences));
+        
+        setHasUnsavedChanges(false);
+        
+        toast({
+          title: "Settings Saved Locally",
+          description: "Settings saved to browser. Connect wallet and sign in to persist settings to your account.",
+        });
       }
     } catch (error) {
       console.error("[Settings] Failed to save:", error);
-      toast({
-        title: "Save Failed",
-        description: "Failed to save settings. Please try again.",
-        variant: "destructive",
-      });
+      
+      // Final fallback: always save to localStorage
+      try {
+        const preferences: UserPreferences = {
+          enabledChains: chainSettings.filter(c => c.enabled).map(c => c.id),
+          enabledProtocols: protocolSettings.map(p => ({ id: p.id, enabled: p.enabled })),
+          defaultSlippage: parseFloat(slippageTolerance),
+          autoApprove: false,
+          notifyOutOfRange: notificationSettings.notifyOutOfRange,
+          notifyHarvest: notificationSettings.notifyHarvest,
+          notifyRebalance: notificationSettings.notifyRebalance,
+          notifyActions: notificationSettings.notifyActions,
+          emailAlerts: notificationSettings.emailAlerts,
+          pushAlerts: notificationSettings.pushAlerts,
+          discordAlerts: notificationSettings.discordAlerts,
+          debugMode: advancedSettings.debugMode,
+          testnetMode: advancedSettings.testnetMode,
+        };
+        
+        localStorage.setItem("lp_autopilot_settings", JSON.stringify(preferences));
+        
+        setHasUnsavedChanges(false);
+        
+        toast({
+          title: "Settings Saved Locally",
+          description: "Settings saved to browser storage. Sign in to persist to your account.",
+        });
+      } catch (localError) {
+        toast({
+          title: "Save Failed",
+          description: "Failed to save settings. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setSaving(false);
     }
